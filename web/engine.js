@@ -427,3 +427,131 @@ export function checkBoth(x, y, opts = {}) {
     focus: focusOverlap(x, y),
   };
 }
+
+// ---------------------------------------------------------------------------
+// A whole buff set, rather than a pair.
+//
+// This scales without new mechanics because the game itself works pairwise: an
+// incoming spell is checked against each buff already on you, one at a time. So
+// a set can all be up at once exactly when every pair is mutually independent.
+// There is no three-way interaction to model — analyzeSet is a loop over
+// checkStack, not a new rule.
+//
+// What it deliberately does NOT do is score a set. Ranking buff sets by damage
+// needs a model of how these values combine into a number — bonus buckets,
+// additive versus non-cumulative, which focus wins — and six of the seven
+// non-cumulative claims are unverified while the focus claim is corroborated
+// rather than confirmed. A damage figure built on that would look far more
+// authoritative than its evidence. So this answers "what am I wasting?" and
+// leaves "what is best?" alone.
+
+/** The Ff_ slots on a spell — what a focus on it is restricted to applying to. */
+export function limitersOf(sp) {
+  return (sp.slots || []).map((sl, i) => sl && focusLimit.has(sl.spa)
+    ? { spa: sl.spa, name: spaName(sl.spa), slot: i, base1: sl.base1, base2: sl.base2 }
+    : null).filter(Boolean);
+}
+
+/** Every slot on `sp` carrying `spa`, with its value at `level`. */
+function carriedAt(sp, spa, level) {
+  const out = [];
+  const len = sp.slots?.length || 0;
+  for (let i = 0; i < len; i++) {
+    const sl = slotOf(sp, i);
+    if (sl && sl.spa === spa) out.push({ slot: i, value: calcValue(sp, i, level) });
+  }
+  return out;
+}
+
+/**
+ * @param {object[]} spells   the set, in no particular order
+ * @param {object} [opts]
+ * @param {number} [opts.level]            caster level applied to all of them
+ * @param {Object<number,number>} [opts.levels]  per-spell-id override
+ */
+export function analyzeSet(spells, opts = {}) {
+  const lvlOf = sp => opts.levels?.[sp.id] ?? opts.level ?? MAX_PLAYER_LEVEL;
+
+  // --- which of these can be up at the same time ---------------------------
+  const conflicts = [];
+  const compatible = spells.map(() => new Set());
+  for (let i = 0; i < spells.length; i++) {
+    for (let j = i + 1; j < spells.length; j++) {
+      const a = spells[i], b = spells[j];
+      const levelA = lvlOf(a), levelB = lvlOf(b);
+      const ab = checkStack(a, b, { levelA, levelB });
+      const ba = checkStack(b, a, { levelA: levelB, levelB: levelA });
+      if (ab.verdict === 'independent' && ba.verdict === 'independent') {
+        compatible[i].add(j); compatible[j].add(i);
+      } else {
+        conflicts.push({
+          i, j, a: a.id, b: b.id, aName: a.name, bName: b.name,
+          aThenB: { verdict: ab.verdict, reason: ab.reason, rule: ab.rule },
+          bThenA: { verdict: ba.verdict, reason: ba.reason, rule: ba.rule },
+        });
+      }
+    }
+  }
+  const coexist = (idxs) => idxs.every((x, n) => idxs.slice(n + 1).every(y => compatible[x].has(y)));
+
+  // --- effects several of them carry ---------------------------------------
+  //
+  // Grouped by SPA across the whole set, which is the part a pair view cannot
+  // show: four buffs each carrying the same best-only focus is a fact about the
+  // set, not about any pair inside it.
+  const groupsFor = (predicate) => {
+    const bySpa = new Map();
+    spells.forEach((sp, i) => {
+      const seen = new Set();
+      for (const sl of sp.slots || []) {
+        if (!sl || !predicate(sl.spa) || seen.has(sl.spa)) continue;
+        seen.add(sl.spa);
+        if (!bySpa.has(sl.spa)) bySpa.set(sl.spa, []);
+        bySpa.get(sl.spa).push(i);
+      }
+    });
+    return [...bySpa.entries()]
+      .filter(([, members]) => members.length > 1)
+      .sort((x, y) => y[1].length - x[1].length || x[0] - y[0]);
+  };
+
+  const nonCumulative = groupsFor(spa => NON_CUMULATIVE_SPA.includes(spa)).map(([spa, idxs]) => {
+    const confirmed = NON_CUMULATIVE_CONFIRMED.includes(spa);
+    const members = idxs.map(i => {
+      const carried = carriedAt(spells[i], spa, lvlOf(spells[i]));
+      return {
+        index: i, id: spells[i].id, name: spells[i].name,
+        slots: carried.map(c => c.slot),
+        value: Math.max(...carried.map(c => c.value)),
+      };
+    });
+    // Same discipline as the pair view: a winner only where the claim is
+    // confirmed. Ties keep every tied member as applying.
+    const best = Math.max(...members.map(m => m.value));
+    for (const m of members) m.applies = confirmed ? m.value === best : null;
+    return { spa, name: spaName(spa), confirmed, members, coexist: coexist(idxs) };
+  });
+
+  const focusShared = (list) => groupsFor(spa => list.includes(spa)).map(([spa, idxs]) => ({
+    spa, name: spaName(spa), coexist: coexist(idxs),
+    members: idxs.map(i => ({
+      index: i, id: spells[i].id, name: spells[i].name,
+      value: Math.max(...carriedAt(spells[i], spa, lvlOf(spells[i])).map(c => c.value)),
+      // Two foci of the same type only compete where their limiters overlap. We
+      // do not try to decide that — we show them, because deciding it needs the
+      // per-cast context the tool does not have.
+      limiters: limitersOf(spells[i]),
+    })),
+  }));
+
+  return {
+    count: spells.length,
+    conflicts,
+    // The set holds as-is only if nothing in it fights anything else.
+    allHold: conflicts.length === 0,
+    nonCumulative,
+    focusBestOnly: focusShared(FOCUS_BEST_ONLY.filter(spa => !focusLimit.has(spa))),
+    // The exception worth stating positively: these all fire.
+    focusProcs: focusShared(FOCUS_PROC_EXCEPTIONS),
+  };
+}

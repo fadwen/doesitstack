@@ -3,34 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Does it stack? — EverQuest buff stacking checker</title>
-<meta name="description" content="Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.">
+<title>Buff set — Does it stack?</title>
+<meta name="description" content="Check a whole EverQuest buff set at once: which buffs fight each other, and which effects overlap without adding up.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312141a'/%3E%3Crect x='7' y='18' width='18' height='4' rx='1' fill='%237cc4ff'/%3E%3Crect x='7' y='12' width='18' height='4' rx='1' fill='%235fd39a'/%3E%3Crect x='7' y='6' width='18' height='4' rx='1' fill='%23f2c35c'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <header class="top">
   <div class="wrap">
-    <h1>Does it stack?</h1>
-    <p class="tag">Slot-by-slot buff arbitration for EverQuest — spells, disciplines, songs and AA effects. <a href="set.html">Check a whole buff set</a>.</p>
+    <h1>Buff set</h1>
+    <p class="tag">Everything you expect to have up at once — what fights, and what overlaps without adding. <a href="index.html">Compare two instead</a>.</p>
   </div>
 </header>
 
 <main class="wrap">
-  <section class="pickers">
-    <div class="picker" data-side="a">
-      <label class="picker-label" for="q-a">Buff already on you</label>
-      <input id="q-a" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
-      <div class="results" id="results-a" hidden></div>
-      <div class="chosen" id="chosen-a"></div>
-    </div>
-    <div class="swap-col"><button id="swap" class="swap" title="Swap the two spells">⇄</button></div>
-    <div class="picker" data-side="b">
-      <label class="picker-label" for="q-b">Buff being cast</label>
-      <input id="q-b" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
-      <div class="results" id="results-b" hidden></div>
-      <div class="chosen" id="chosen-b"></div>
-    </div>
+  <section class="picker set-picker">
+    <label class="picker-label" for="q">Add a buff, song, discipline or AA</label>
+    <input id="q" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
+    <div class="results" id="results" hidden></div>
   </section>
 
   <section class="filters">
@@ -46,17 +36,19 @@
       <label><input type="checkbox" id="f-buffs" checked> Only effects with a duration</label>
       <label><input type="checkbox" id="f-benef"> Beneficial only</label>
       <label class="lvl">Caster level <input type="number" id="lvl" min="1" max="130" value="130"></label>
+      <button id="clear" class="chip wide" hidden>Clear the set</button>
     </div>
   </section>
 
-  <section id="verdict" class="verdict" hidden></section>
-  <section id="detail" class="detail" hidden></section>
+  <section id="setlist" class="setlist"></section>
+  <section id="report" class="report" hidden></section>
 
   <section id="empty" class="empty">
-    <p>Pick two effects to see whether they can sit on you at the same time.</p>
-    <p class="examples">Try
-      <a href="#a=6273&amp;b=70855">Prophet's Gift of the Ruchu vs Savage Spirit XVII</a>.
-    </p>
+    <p>Add the buffs you expect to be carrying and this will tell you which of them cannot be up at once, and which effects several of them carry where only one counts.</p>
+    <details class="evidence">
+      <summary>It will not tell you which set is best — why not</summary>
+      <p class="src" id="why-no-score"></p>
+    </details>
   </section>
 </main>
 
@@ -67,6 +59,6 @@
   <p id="credits" class="credits"></p>
 </footer>
 
-<script type="module" src="app.js"></script>
+<script type="module" src="set.js"></script>
 </body>
 </html>

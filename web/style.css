@@ -151,3 +151,21 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
   .slotno{min-width:18px;padding:0 4px}
   table.slots .spa{padding-left:0}
 }
+
+/* ---- set view -------------------------------------------------------------- */
+.set-picker{max-width:520px}
+.set-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.setchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:var(--panel);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.setchip.bad{border-color:#6b3a3a;background:#2a1f1f}
+.setchip-x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;
+  line-height:1;padding:2px 6px;border-radius:999px}
+.setchip-x:hover{background:var(--panel-2);color:var(--ink)}
+.setlist .sec{margin-bottom:2px}
+.report .note h4{margin:0;font-size:14px}
+.group-members{margin:8px 0 0;padding-left:18px}
+.group-members li{margin-bottom:6px}
+.limiters{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.dirverdict{font-weight:600}
+.report table.slots td:first-child{min-width:150px}
+.report table.slots{min-width:720px}

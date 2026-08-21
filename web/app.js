@@ -1,72 +1,21 @@
 import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
-
-const $ = s => document.querySelector(s);
-const el = (t, cls, txt) => { const n = document.createElement(t); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
-const LUCY = id => `https://lucy.allakhazam.com/spell.html?id=${id}&source=Live`;
-// Lucy's own item export stores this link verbatim, and it is the item id
-// templated in with no exceptions across all 134,079 of its rows — so we build
-// it rather than shipping a second download to look it up.
-const LUCY_ITEM = id => `https://lucy.allakhazam.com/item.html?id=${id}`;
+import {
+  $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
+  KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, search, spellById, load as loadData,
+} from './data.js';
 
 let META, INDEX;
-const shardCache = new Map(), descCache = new Map();
 const picked = { a: null, b: null };
 
-const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16, F_STACKGRP = 32;
-const row = { id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6,
-              kind: 7, classMask: 8, extMask: 9, itemRel: 10 };
-
-// How an item grants a spell. Additive, not a classification: a scribed spell
-// can also be a clicky, and one spell can be several of these at once.
-const REL_LABEL = {
-  click: 'Click', proc: 'Proc', worn: 'Worn', focus: 'Focus',
-  bard: 'Bard', mount: 'Mount', blessing: 'Blessing', familiar: 'Familiar',
-};
-const REL_HELP = {
-  click: 'Cast by activating the item.',
-  proc: 'Fires by itself while the item is in use.',
-  worn: 'Applied for as long as the item is equipped.',
-  focus: 'The item carries this as a focus effect.',
-  bard: 'The item is a bard instrument granting this.',
-  mount: 'Granted by a mount.',
-  blessing: 'A mount blessing effect.',
-  familiar: 'Granted by a familiar.',
-};
-// index rows carry the relationships as a bitmask so the search list can show
-// tags without fetching a shard. Bit order matches meta.items.rel.
-const relsOf = mask => (META.items?.rel || []).filter((_, i) => mask & (1 << i));
-
-// Labels for the `kind` a spell was classified into at build time.
-const KIND_LABEL = {
-  spell: 'Spell', discipline: 'Discipline', song: 'Song', aa: 'AA',
-  item: 'Item', triggered: 'Triggered', npc: 'NPC', other: 'Unattributed',
-};
-const KIND_HELP = {
-  spell: 'Scribed into a spellbook by a class at a normal level.',
-  discipline: 'A combat skill — flagged as a discipline in the spell file.',
-  song: 'Usable by bards and not a combat skill.',
-  aa: 'Granted by an alternate ability (the class level reads 254).',
-  item: 'An item casts this — a click, proc, worn or focus effect. Named items come from a community database, not your client files.',
-  triggered: 'Fired by another spell as a side effect, recourse or proc rather than cast directly.',
-  npc: 'Flagged in the spell file as castable by NPCs only, and no known item grants it.',
-  other: 'No class learns it, nothing in the spell file triggers it, and no item in the item database casts it. Unexplained rather than absent — the item data lags new content, so recent effects can land here for a while.',
-};
-// Said when the build ran without item data, so 'item' keeps its older,
-// looser meaning and 'other' cannot occur at all.
-const KIND_HELP_NO_ITEMS = {
-  item: 'No class can learn it and nothing in the spell file triggers it — clickies, procs and worn effects land here, but so do NPC spells. This build has no item database loaded, so the bucket is a deduction rather than a fact.',
-};
+// Which source buckets the pair tool shows by default. Triggered and NPC are the
+// two a player is not choosing between, so they start off.
 const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'other'];
-const kindHelp = k => (META.items ? KIND_HELP[k] : KIND_HELP_NO_ITEMS[k] || KIND_HELP[k]) || '';
 
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 
 async function boot() {
-  [META, INDEX] = await Promise.all([
-    fetch('data/meta.json').then(r => r.json()),
-    fetch('data/index.json').then(r => r.json()),
-  ]);
+  ({ META, INDEX } = await loadData());
   renderDataAge();
   renderCredits();
   $('#lvl').value = META.max_level;
@@ -109,12 +58,6 @@ function buildFilters() {
 }
 
 /** Say where the data came from and how old it is; warn once that matters. */
-const link = (href, text) => {
-  const a = el('a', null, text);
-  a.href = href; a.target = '_blank'; a.rel = 'noopener';
-  return a;
-};
-
 /**
  * Who else's work this is built on, named on the page rather than only in the
  * repo. Most visitors never open the README, and the item database in particular
@@ -171,35 +114,6 @@ function renderDataAge() {
   box.textContent = notes.map(n => n.message).join(' ');
 }
 
-// ---------- search ----------------------------------------------------------
-function matches(r, q) {
-  if (/^\d+$/.test(q)) return String(r[row.id]).startsWith(q);
-  return r[row.name].toLowerCase().includes(q);
-}
-
-function filtered(q) {
-  const buffsOnly = $('#f-buffs').checked, benefOnly = $('#f-benef').checked;
-  const clsBit = active.cls >= 0 ? (1 << active.cls) : 0;
-  const out = [];
-  for (const r of INDEX) {
-    if (buffsOnly && r[row.duration] <= 0) continue;
-    if (benefOnly && !(r[row.flags] & F_BENEFICIAL)) continue;
-    if (!active.kinds.has(META.kinds[r[row.kind]])) continue;
-    // a class matches either by learning the spell or by triggering it
-    if (clsBit && !((r[row.classMask] | r[row.extMask]) & clsBit)) continue;
-    if (!matches(r, q)) continue;
-    out.push(r);
-    if (out.length >= 400) break;
-  }
-  // exact-ish first, then shortest name, then id
-  const ql = q.toLowerCase();
-  out.sort((x, y) => {
-    const a = x[row.name].toLowerCase(), b = y[row.name].toLowerCase();
-    return (a.startsWith(ql) ? 0 : 1) - (b.startsWith(ql) ? 0 : 1) || a.length - b.length || x[row.id] - y[row.id];
-  });
-  return out.slice(0, 60);
-}
-
 function wirePicker(side) {
   const input = $(`#q-${side}`), box = $(`#results-${side}`);
   input.addEventListener('input', () => rerunSearch(side));
@@ -223,7 +137,10 @@ function rerunSearch(side) {
   const q = $(`#q-${side}`).value.trim().toLowerCase(), box = $(`#results-${side}`);
   box.innerHTML = '';
   if (q.length < 2) { box.hidden = true; return; }
-  const hits = filtered(q);
+  const hits = search(q, {
+    buffsOnly: $('#f-buffs').checked, benefOnly: $('#f-benef').checked,
+    kinds: active.kinds, cls: active.cls,
+  });
   if (!hits.length) { box.hidden = true; return; }
   for (const r of hits) {
     const b = el('button');
@@ -253,31 +170,8 @@ function rerunSearch(side) {
   box.hidden = false;
 }
 
-// ---------- data ------------------------------------------------------------
-async function shard(id) {
-  const b = Math.floor(id / META.bucket);
-  if (!shardCache.has(b)) shardCache.set(b, fetch(`data/spells/${b}.json`).then(r => r.ok ? r.json() : {}));
-  return (await shardCache.get(b))[id] || null;
-}
-async function descOf(id) {
-  const b = Math.floor(id / META.bucket);
-  if (!descCache.has(b)) descCache.set(b, fetch(`data/desc/${b}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
-  return (await descCache.get(b))[id] || null;
-}
-
-/** compact record -> the shape engine.js expects */
-function hydrate(rec) {
-  if (!rec) return null;
-  return {
-    ...rec,
-    stacking: rec.stacking || [],
-    slots: (rec.slots || []).map(s => s && { spa: s[0], base1: s[1], base2: s[2], calc: s[3], max: s[4] }),
-  };
-}
-
 async function select(side, id) {
-  picked[side] = hydrate(await shard(id));
-  if (picked[side]) picked[side].desc = await descOf(id);
+  picked[side] = await spellById(id);
   syncAll();
 }
 
@@ -294,10 +188,8 @@ async function fromHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   for (const side of ['a', 'b']) {
     const id = parseInt(p.get(side), 10);
-    if (id && picked[side]?.id !== id) {
-      picked[side] = hydrate(await shard(id));
-      if (picked[side]) picked[side].desc = await descOf(id);
-    } else if (!id) picked[side] = null;
+    if (id && picked[side]?.id !== id) picked[side] = await spellById(id);
+    else if (!id) picked[side] = null;
   }
   render();
 }
@@ -715,7 +607,5 @@ function slotCell(sp, i, lvl, mark) {
   td.appendChild(el('div', 'spa', `SPA ${s.spa} · base ${s.base1}${s.base2 ? ' / ' + s.base2 : ''}${s.max ? ' · max ' + s.max : ''} · value ${v}`));
   return td;
 }
-
-const escape = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 boot();

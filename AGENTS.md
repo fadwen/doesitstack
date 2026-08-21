@@ -47,6 +47,11 @@ clicky; an AA can also be a proc; one spell can be a click on one item and a pro
 another. Never let an item relationship overwrite a `kind` the spell file already
 justifies — the only bucket item data may reclassify is the residual.
 
+**The set view reports, it does not score.** `analyzeSet` says what a buff set is wasting;
+it must never rank sets by damage. That needs a bonus-bucket model resting on six
+unverified non-cumulative claims and a corroborated focus rule, and would present a number
+far more confident than its evidence. A test enforces it.
+
 **No slot caps.** EverQuest allows up to 100 effect slots. Any constant that limits
 iteration to 12, 40 or any other number is a bug — that exact mistake silently corrupted
 thousands of verdicts once already.

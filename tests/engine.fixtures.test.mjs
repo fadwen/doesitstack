@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
-import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, calcValue } from '../web/engine.js';
+import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue } from '../web/engine.js';
 import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
@@ -300,4 +300,134 @@ test('non-cumulative overlap is found anywhere in the 100', () => {
   const o = nonCumulativeOverlap(a, b);
   assert.equal(o.length, 1);
   assert.deepEqual([o[0].slotA, o[0].slotB], [97, 4]);
+});
+
+
+// --- a whole set, not a pair ------------------------------------------------
+//
+// The set view exists because some facts are about the set: four buffs each
+// carrying the same best-only focus is not visible from any pair inside it.
+
+const setSpell = (id, name, spas) => ({
+  id, name, beneficial: true, target: 5, duration: 100, dur_calc: 7, dur_cap: 0,
+  is_skill: false, song_window: false, unstackable_dot: false, timer: 0,
+  levels: new Array(16).fill(255), stacking: [], categories: [],
+  slots: spas.map(s => typeof s === 'number'
+    ? { spa: s, base1: 10, base2: 0, calc: 100, max: 0 }
+    : { spa: s[0], base1: s[1], base2: 0, calc: 100, max: 0 }),
+});
+
+test('a set with nothing in common all holds', () => {
+  const r = analyzeSet([setSpell(1, 'A', [1]), setSpell(2, 'B', [2]), setSpell(3, 'C', [4])]);
+  assert.equal(r.count, 3);
+  assert.equal(r.conflicts.length, 0);
+  assert.equal(r.allHold, true);
+});
+
+test('a conflicting pair inside a set is named, with both directions', () => {
+  // same SPA in the same slot: the stronger overwrites, the weaker is refused
+  const weak = setSpell(1, 'Weak', [[1, 10]]), strong = setSpell(2, 'Strong', [[1, 99]]);
+  const r = analyzeSet([weak, strong, setSpell(3, 'Other', [2])]);
+  assert.equal(r.allHold, false);
+  assert.equal(r.conflicts.length, 1, 'only the one pair, not everything downstream of it');
+  const c = r.conflicts[0];
+  assert.deepEqual([c.aName, c.bName], ['Weak', 'Strong']);
+  assert.notEqual(c.aThenB.verdict, 'independent');
+  assert.ok(c.aThenB.reason);
+});
+
+test('coexistence is pairwise, so the set scales without new rules', () => {
+  // The game checks an incoming spell against each existing buff on its own, so
+  // three mutually-compatible buffs hold — there is no emergent three-way rule.
+  const a = setSpell(1, 'A', [1]), b = setSpell(2, 'B', [2]), c = setSpell(3, 'C', [4]);
+  for (const [x, y] of [[a, b], [a, c], [b, c]]) {
+    assert.equal(checkStack(x, y).verdict, 'independent');
+    assert.equal(checkStack(y, x).verdict, 'independent');
+  }
+  assert.equal(analyzeSet([a, b, c]).allHold, true);
+});
+
+test('an effect several buffs carry is grouped across the whole set', () => {
+  // four spells each carrying SPA 124, in different slots — invisible pairwise
+  const set = [
+    setSpell(1, 'One', [1, [124, 10]]),
+    setSpell(2, 'Two', [2, 3, [124, 40]]),
+    setSpell(3, 'Three', [4, 5, 6, [124, 25]]),
+    setSpell(4, 'Unrelated', [7]),
+  ];
+  const g = analyzeSet(set).focusBestOnly;
+  assert.equal(g.length, 1);
+  assert.equal(g[0].spa, 124);
+  assert.deepEqual(g[0].members.map(m => m.name), ['One', 'Two', 'Three']);
+  assert.equal(g[0].coexist, true, 'all three can be up together, so all three really do compete');
+});
+
+test('a focus limiter is never reported as a focus that competes', () => {
+  // FOCUS_SPA unions Daybreak's Fc_ and Ff_ prefixes, so the best-only list used
+  // to pick up limiters — and "only the best Ff_LevelMax applies" is meaningless.
+  // A limiter does not apply to a cast; it restricts the focus beside it.
+  const a = setSpell(1, 'A', [[124, 10], [134, 60]]);
+  const b = setSpell(2, 'B', [[125, 10], [134, 65]]);
+  assert.deepEqual(focusOverlap(a, b).bestOnly.map(f => f.spa), [],
+    'they share only a limiter, so nothing competes');
+  assert.deepEqual(analyzeSet([a, b]).focusBestOnly.map(g => g.spa), []);
+});
+
+test('a focus carries its limiters, so a reader can see whether two really compete', () => {
+  const a = setSpell(1, 'A', [[124, 10], [134, 60], [142, 5]]);
+  assert.deepEqual(limitersOf(a).map(l => l.spa), [134, 142]);
+  const g = analyzeSet([a, setSpell(2, 'B', [[124, 20]])]).focusBestOnly[0];
+  assert.equal(g.members[0].limiters.length, 2);
+  assert.equal(g.members[1].limiters.length, 0);
+});
+
+test('a group whose members cannot all be up says so', () => {
+  // two of the three fight over slot 1, so they never actually compete on the focus
+  const set = [
+    setSpell(1, 'Weak', [[1, 10], [124, 10]]),
+    setSpell(2, 'Strong', [[1, 99], [124, 40]]),
+    setSpell(3, 'Third', [2, [124, 25]]),
+  ];
+  const r = analyzeSet(set);
+  assert.equal(r.conflicts.length, 1);
+  assert.equal(r.focusBestOnly[0].coexist, false);
+});
+
+test('a confirmed non-cumulative effect names which member applies, across the set', () => {
+  const set = [
+    setSpell(1, 'Low', [1, [496, 40]]),
+    setSpell(2, 'High', [2, [496, 100]]),
+    setSpell(3, 'Mid', [4, [496, 70]]),
+  ];
+  const g = analyzeSet(set).nonCumulative[0];
+  assert.equal(g.spa, 496);
+  assert.equal(g.confirmed, true);
+  assert.deepEqual(g.members.map(m => [m.name, m.applies]), [['Low', false], ['High', true], ['Mid', false]]);
+});
+
+test('an unverified non-cumulative effect names none of them', () => {
+  const set = [setSpell(1, 'A', [1, [185, 40]]), setSpell(2, 'B', [2, [185, 100]])];
+  const g = analyzeSet(set).nonCumulative[0];
+  assert.equal(g.confirmed, false);
+  assert.deepEqual(g.members.map(m => m.applies), [null, null]);
+});
+
+test('proc-type foci are reported apart, because they all do fire', () => {
+  const set = [setSpell(1, 'A', [[383, 10]]), setSpell(2, 'B', [[383, 20]])];
+  const r = analyzeSet(set);
+  assert.deepEqual(r.focusProcs.map(g => g.spa), [383]);
+  assert.deepEqual(r.focusBestOnly.map(g => g.spa), [], 'and not counted as competing');
+});
+
+test('the set view never scores a set', () => {
+  // Ranking sets by damage needs a bonus-bucket model resting on six unverified
+  // claims. If this ever grows a score, that decision needs its own evidence.
+  const r = analyzeSet([setSpell(1, 'A', [[124, 10]]), setSpell(2, 'B', [[124, 90]])]);
+  for (const key of ['score', 'rank', 'dps', 'best', 'total'])
+    assert.equal(key in r, false, `analyzeSet must not return a "${key}"`);
+});
+
+test('an empty or single-spell set is not an error', () => {
+  assert.equal(analyzeSet([]).allHold, true);
+  assert.equal(analyzeSet([setSpell(1, 'Alone', [1, 1])]).focusBestOnly.length, 0);
 });
