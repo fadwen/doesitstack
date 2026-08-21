@@ -81,6 +81,18 @@ export const FIXTURES = {
     slots: [...Array(15).fill(null).map((_, i) => slot(200 + i)), slot(1, 250)],
   }),
 
+  // EverQuest allows up to 100 slots. The longest in the current file is 67, so the
+  // top of the range is not exercised by real data — these two are built at the full
+  // 100 and collide only at the last one.
+  hundredSlotA: make({
+    id: 900016, name: 'Test 100 Slot A',
+    slots: [...Array(99).fill(null).map((_, i) => slot(600 + i)), slot(1, 100)],
+  }),
+  hundredSlotB: make({
+    id: 900017, name: 'Test 100 Slot B',
+    slots: [...Array(99).fill(null).map((_, i) => slot(800 + i)), slot(1, 400)],
+  }),
+
   // Two members of one Live stacking group.
   stackGroupLow:  make({ id: 900006, name: 'Test Group Rank 1', slots: [slot(2, 50)],
                          stacking: [{ group: 4242, group_name: 'Test Stacking Group', rank: 1, type: 1 }] }),

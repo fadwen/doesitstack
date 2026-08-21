@@ -182,3 +182,42 @@ test('a spell recast at the cap still refreshes over one cast below it', () => {
   assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL - 5, levelB: MAX_PLAYER_LEVEL }).code, 1);
   assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: MAX_PLAYER_LEVEL - 5 }).code, -1);
 });
+
+
+// --- the full 100-slot range ------------------------------------------------
+
+test('a spell may carry 100 slots and every one is arbitrated', () => {
+  const a = fx('hundredSlotA'), b = fx('hundredSlotB');
+  assert.equal(a.slots.length, 100);
+  assert.equal(b.slots.length, 100);
+
+  // they share nothing until the hundredth
+  for (let i = 0; i < 99; i++) assert.notEqual(a.slots[i].spa, b.slots[i].spa);
+
+  const r = checkStack(a, b);
+  assert.equal(r.code, 1, 'slot 100 should decide it');
+  assert.equal(r.decidedBy, 1);
+  assert.equal(checkStack(b, a).code, -1);
+
+  // and the conflict is reported against the right slot index
+  const row = r.slots.find(s => s.outcome === 'conflict-b-wins');
+  assert.equal(row.slot, 99);
+});
+
+test('a stacking command can name a slot beyond the old twelve-slot range', () => {
+  const a = fx('hundredSlotA');
+  // SPA 148: block anything whose slot 100 is SPA 1 below 500
+  a.slots[50] = { spa: 148, base1: 1, base2: 100, calc: 100, max: 500 };
+  const r = checkStack(a, fx('hundredSlotB'));   // slot 100 is AC 400, under the bar
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'spa-148');
+});
+
+test('non-cumulative overlap is found anywhere in the 100', () => {
+  const a = fx('hundredSlotA'), b = fx('hundredSlotB');
+  a.slots[97] = { spa: 496, base1: 100, base2: -1, calc: 100, max: 0 };
+  b.slots[4]  = { spa: 496, base1: 300, base2: -1, calc: 100, max: 0 };
+  const o = nonCumulativeOverlap(a, b);
+  assert.equal(o.length, 1);
+  assert.deepEqual([o[0].slotA, o[0].slotB], [97, 4]);
+});

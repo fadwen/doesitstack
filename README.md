@@ -110,7 +110,12 @@ spell has to be at least as strong on *every* shared slot or it is refused outri
 Slot counts are not capped at twelve. That is a RoF2-era limit that EQEmu still carries
 as `EFFECT_COUNT`, and live spells long outgrew it — Aria of Kenburk Rk. III has 22
 slots, 2,612 spells in the current file have more than twelve, and the longest has 67.
-The engine walks whatever the two spells actually have.
+
+**EverQuest allows up to 100.** The engine and the slot table impose no ceiling of their
+own: they walk whatever the two spells actually carry. Since no live spell reaches 100
+yet, the top of the range is covered by fixtures built at the full hundred rather than
+left to chance — a conflict at slot 100, a SPA 148 command naming slot 100, and a
+non-cumulative overlap at slot 98.
 
 On top of that sit the special cases this engine implements:
 
@@ -121,7 +126,7 @@ On top of that sit the special cases this engine implements:
 | Ignore list | 84 SPAs (focus effects, counters, vision, limits…) never cause a conflict |
 | Focus effects | Reported to stack regardless of slot; verdicts resting on an unexempted one are flagged doubtful |
 | Blank slots | SPA 254, and SPA 10 spacers with base 0, are invisible to arbitration |
-| Slot count | Whatever the spells carry, not EQEmu's RoF2-era cap of twelve |
+| Slot count | Whatever the spells carry, up to EverQuest's limit of 100 — not EQEmu's RoF2-era cap of twelve |
 | Bard songs | A song and a non-song beneficial spell always stack |
 | Negative AC | AC debuffs skip arbitration, so things like Sun's Corona and Glacier Breath coexist |
 | Snare vs. run speed | A snare already in place refuses a movement buff |

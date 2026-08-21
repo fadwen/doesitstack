@@ -30,9 +30,10 @@ const SPELL_EYE_OF_ZOMM = 331;
 const SPELL_MANA_BURN   = 2751;
 
 // EQEmu's EFFECT_COUNT is a hard 12, because that is what the RoF2 client held.
-// Live spells carry far more — modern bard songs run past 20, and the longest in
-// the current file has 67 — so arbitration has to walk however many slots the two
-// spells actually have or it silently ignores everything past the twelfth.
+// EverQuest allows up to 100. Modern bard songs run past 20 and the longest spell in
+// the current file has 67, so arbitration walks however many slots the two spells
+// actually have — there is no ceiling here, and imposing one at any number below 100
+// would silently drop effects the way the twelve-slot cap did.
 const LEGACY_EFFECT_COUNT = 12;
 const slotSpan = (a, b) => Math.max(a.slots?.length || 0, b.slots?.length || 0, LEGACY_EFFECT_COUNT);
 
