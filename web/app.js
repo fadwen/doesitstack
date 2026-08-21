@@ -68,6 +68,7 @@ async function boot() {
     fetch('data/index.json').then(r => r.json()),
   ]);
   renderDataAge();
+  renderCredits();
   $('#lvl').value = META.max_level;
   buildFilters();
   for (const side of ['a', 'b']) wirePicker(side);
@@ -108,13 +109,58 @@ function buildFilters() {
 }
 
 /** Say where the data came from and how old it is; warn once that matters. */
+const link = (href, text) => {
+  const a = el('a', null, text);
+  a.href = href; a.target = '_blank'; a.rel = 'noopener';
+  return a;
+};
+
+/**
+ * Who else's work this is built on, named on the page rather than only in the
+ * repo. Most visitors never open the README, and the item database in particular
+ * is the one source whose data is shipped here rather than merely linked — so
+ * "a separate community database" was not an acceptable way to describe it.
+ *
+ * Built from META, not hardcoded, so a build that ran without item data does not
+ * credit a source it never used.
+ */
+function renderCredits() {
+  const p = $('#credits');
+  p.appendChild(document.createTextNode('Built on work by others: '));
+  const parts = [
+    link('https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/', 'Daybreak\u2019s published SPA list'),
+    link('https://github.com/EQEmu/Server', 'the EQEmu stacking implementation'),
+    link('https://github.com/rumstil/eqspellparser', 'eqspellparser\u2019s field layout'),
+  ];
+  if (META.items) parts.push(link(META.items.source, 'the SoDeq item database'));
+  parts.push(link('https://lucy.allakhazam.com/', 'Lucy'));
+  parts.forEach((node, i) => {
+    if (i) p.appendChild(document.createTextNode(i === parts.length - 1 ? ' and ' : ', '));
+    p.appendChild(node);
+  });
+  p.appendChild(document.createTextNode('.'));
+  if (META.repo_url) {
+    p.appendChild(document.createTextNode(' '));
+    p.appendChild(link(`${META.repo_url}#credits`, 'Full credits'));
+    p.appendChild(document.createTextNode('.'));
+  }
+}
+
 function renderDataAge() {
-  $('#build').textContent =
+  const b = $('#build');
+  b.appendChild(document.createTextNode(
     `${META.spell_count.toLocaleString()} spells, read from a client spells_us.txt dated ${META.spell_file_date}. `
-    + `This copy was built ${META.built.slice(0, 10)}.`
-    + (META.items
-        ? ` Which items grant an effect comes from a separate community database, last updated ${META.items.updated}.`
-        : ' No item database was loaded for this build, so nothing is tagged with the item that grants it.');
+    + `This copy was built ${META.built.slice(0, 10)}.`));
+  if (META.items) {
+    // Name the source here too — this is the sentence a reader is actually
+    // looking at when they wonder where the item tags came from.
+    b.appendChild(document.createTextNode(' Which items grant an effect comes from the '));
+    b.appendChild(link(META.items.source, 'SoDeq item database'));
+    b.appendChild(document.createTextNode(`, last updated ${META.items.updated}.`));
+  } else {
+    b.appendChild(document.createTextNode(
+      ' No item database was loaded for this build, so nothing is tagged with the item that grants it.'));
+  }
 
   const notes = [dataAge(META.spell_file_date), META.items ? itemDataAge(META.items.updated) : {}]
     .filter(n => n.message);
