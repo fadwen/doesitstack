@@ -18,7 +18,7 @@ export const CLAIMS_PATH = path.join(ROOT, 'claims.json');
 
 export const STRENGTHS = ['primary', 'supporting', 'weak'];
 export const KINDS = ['game-text', 'dev-statement', 'patch-notes', 'parse', 'implementation', 'community'];
-export const TYPES = ['non_cumulative'];
+export const TYPES = ['non_cumulative', 'focus_best_only', 'focus_stacking'];
 
 export function deriveStatus(claim) {
   if (claim.evidence.some(e => e.refutes)) return 'disputed';
@@ -42,9 +42,16 @@ export function validate(doc) {
     else seen.add(c.id);
 
     if (!TYPES.includes(c.type)) fail(where, `unknown type "${c.type}" (expected one of ${TYPES.join(', ')})`);
-    if (!Number.isInteger(c.spa)) fail(where, 'spa must be an integer');
-    if (c.id && c.type && c.spa != null && c.id !== `${c.type.replace(/_/g, '-')}/${c.spa}`)
-      fail(where, `id should be "${c.type.replace(/_/g, '-')}/${c.spa}"`);
+
+    // A claim is about one SPA (`spa`) or a set of them (`spas`), never both.
+    const hasOne = Number.isInteger(c.spa), hasMany = Array.isArray(c.spas);
+    if (hasOne === hasMany) fail(where, 'needs exactly one of "spa" (an integer) or "spas" (an array)');
+    if (hasMany && !c.spas.every(Number.isInteger)) fail(where, 'every entry in "spas" must be an integer');
+    if (hasMany && !c.slug) fail(where, 'a claim covering several SPAs needs a "slug" to name it');
+    if (c.id && c.type) {
+      const want = `${c.type.replace(/_/g, '-')}/${hasOne ? c.spa : c.slug}`;
+      if (c.id !== want) fail(where, `id should be "${want}"`);
+    }
     if (!c.assertion || c.assertion.length < 10) fail(where, 'assertion missing or too short to be meaningful');
     if (!Array.isArray(c.evidence) || c.evidence.length === 0) { fail(where, 'needs at least one evidence entry'); continue; }
 
@@ -76,3 +83,6 @@ export function load(file = CLAIMS_PATH) {
 }
 
 export const byType = (doc, type) => doc.claims.filter(c => c.type === type);
+
+/** Every SPA a claim covers, whether it names one or many. */
+export const spasOf = (claim) => Number.isInteger(claim.spa) ? [claim.spa] : claim.spas.slice();

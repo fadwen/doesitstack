@@ -135,11 +135,15 @@ async function main() {
     ignored_in_stacking: spaMeta.ignored_in_stacking,
     non_cumulative: NON_CUMULATIVE_SPA,
     non_cumulative_confirmed: NON_CUMULATIVE_CONFIRMED,
-    claims: Object.fromEntries(nonCumulative.map(c => [c.spa, {
-      status: c.status,
-      assertion: c.assertion,
-      evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source })),
-    }])),
+    // Keyed by SPA for the non-cumulative notes and by claim id for the rest.
+    claims: Object.fromEntries(claimsDoc.claims.flatMap(c => {
+      const payload = {
+        status: c.status,
+        assertion: c.assertion,
+        evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source })),
+      };
+      return c.type === 'non_cumulative' ? [[c.spa, payload], [c.id, payload]] : [[c.id, payload]];
+    })),
     claim_notes: claimsDoc.notes || {},
     repo_url: repoUrl(),
   };

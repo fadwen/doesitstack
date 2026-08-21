@@ -137,12 +137,25 @@ Open an issue with the [evidence form](.github/ISSUE_TEMPLATE/mechanic-evidence.
 say what you know. Someone will turn it into a PR and credit you. A patch note nobody
 else had noticed is worth more than a well-formatted commit.
 
+## Credit
+
+Evidence gets credited in the claim's `source` field, which is shown in the site's
+evidence disclosure. The focus-effect claims came from a reader who replied to the
+announcement post; that reply is quoted verbatim in `claims.json` and rendered in the
+UI. If you would rather be credited by name or handle than as "reader feedback", say so
+in the PR or issue and it goes in the source line.
+
 ## Adding a new kind of claim
 
-`claims.json` currently holds one type, `non_cumulative`. To add another — say a claim
-about how a specific stacking rule behaves — add the type to `TYPES` in
-`tools/claims.mjs`, teach `tools/build.mjs` to emit it, and have the UI read it. Keep
-the same shape: an assertion in plain language, evidence entries, a derived status.
+`claims.json` holds three types: `non_cumulative`, `focus_best_only` and
+`focus_stacking`. To add another, add the type to `TYPES` in `tools/claims.mjs`, teach
+`tools/build.mjs` to emit it, and have the UI read it. Keep the same shape: an assertion
+in plain language, evidence entries, a derived status.
+
+A claim can name one SPA (`spa`) or a set (`spas` plus a `slug` for the id). An **empty**
+`spas` array means "the whole category" — the build derives the actual SPA list from
+`tools/spa_meta.json`, so a regenerated SPA table picks up whatever a new expansion adds
+instead of freezing a list that quietly goes stale. Both focus claims work that way.
 
 ## Code changes
 

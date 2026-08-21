@@ -25,6 +25,33 @@ Same effect, different slot index, so they stack — but SPA 496 is a *non-cumul
 modifier, so only the larger of the two actually applies. Both halves of that answer
 matter, and the site says both.
 
+### Focus effects
+
+Focus effects — the ones that modify a spell you cast rather than doing something
+themselves — behave differently from ordinary buffs in two ways, both reported by a
+reader after the project went up and both recorded in `claims.json`:
+
+**They stack regardless of slot.** EQEmu treats 44 SPAs as focus effects, and 31 of
+them are already on the client's stacking ignore list, so the category is plainly meant
+to be exempt. The rest are missing from it, which means the engine still arbitrates them
+and can report a conflict between two focus buffs that in fact coexist. Rather than flip
+those silently, a verdict resting on one is **marked doubtful in the UI**, with the
+evidence and the counter-evidence shown. The counter-evidence matters: 399 FcTwincast
+sits below the ignore list's ceiling, so the client had it and chose not to exempt it —
+consistent with the long-standing player report that twincast effects don't stack with
+each other. Exempting the whole category unchecked would trade one wrong answer for
+another.
+
+**Only the best one applies.** When several foci could affect the same cast, the game
+uses the largest rather than adding them — EQEmu's focus aggregation keeps the best
+across the item, AA and spell buckets. So two focus buffs can stack and still not give
+you both benefits, and the tool says so. The exceptions are the proc-type foci — 339
+TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc — which fire independently and can
+all land on one cast.
+
+Both are `unverified`: a knowledgeable reader plus corroborating emulator code, but no
+primary source. If you can settle either, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Non-cumulative effects
 
 A handful of SPAs land on you together but are not added together; the game keeps the
@@ -79,7 +106,8 @@ On top of that sit the special cases this engine implements:
 | --- | --- |
 | Live stacking groups | Two spells in one `SpellStackingGroups.txt` group never coexist; rank decides which wins |
 | SPA 148 / 149 | Explicit block and overwrite commands carried by the spell itself |
-| Ignore list | ~84 SPAs (focus effects, counters, vision, limits…) never cause a conflict |
+| Ignore list | 84 SPAs (focus effects, counters, vision, limits…) never cause a conflict |
+| Focus effects | Reported to stack regardless of slot; verdicts resting on an unexempted one are flagged doubtful |
 | Blank slots | SPA 254, and SPA 10 spacers with base 0, are invisible to arbitration |
 | Bard songs | A song and a non-song beneficial spell always stack |
 | Negative AC | AC debuffs skip arbitration, so things like Sun's Corona and Glacier Breath coexist |
@@ -224,6 +252,8 @@ tests/                  node:test — fixtures and claims run anywhere, dataset 
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max",
   not Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
 - Bard instrument modifiers are not applied to song values.
+- Focus effects missing from the client's ignore list are still arbitrated, and flagged
+  rather than exempted. See above.
 - "Item / other" is a residual bucket, not a real source flag — see above.
 
 ## Contributing

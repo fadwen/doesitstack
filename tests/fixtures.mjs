@@ -58,6 +58,17 @@ export const FIXTURES = {
   singleVersion: make({ id: 900004, name: 'Test Single Buff', target: 5, slots: [slot(1, 150)] }),
   // SPA 148: block anything whose slot 1 is SPA 1 (AC) below 500.
   blocker: make({ id: 900005, name: 'Test Blocker', slots: [slot(1, 400), slot(148, 1, 1, 100, 500)] }),
+  // Focus effects. 399 FcTwincast is absent from the client-derived ignore list, so
+  // the engine still arbitrates it and the verdict is flagged contested.
+  twincastA: make({ id: 900008, name: 'Test Twincast A', slots: [slot(399, 10)] }),
+  twincastB: make({ id: 900009, name: 'Test Twincast B', slots: [slot(399, 30)] }),
+  // 286 FcDamageAmt is on the ignore list, so it never conflicts at all.
+  focusIgnoredA: make({ id: 900010, name: 'Test Focus Ignored A', slots: [slot(286, 100)] }),
+  focusIgnoredB: make({ id: 900011, name: 'Test Focus Ignored B', slots: [slot(286, 400)] }),
+  // 383 SympatheticProc is proc-type: several can fire on one cast.
+  procFocusA: make({ id: 900012, name: 'Test Proc Focus A', slots: [slot(383, 5, 12345)] }),
+  procFocusB: make({ id: 900013, name: 'Test Proc Focus B', slots: [slot(1, 50), slot(383, 9, 12346)] }),
+
   // Two members of one Live stacking group.
   stackGroupLow:  make({ id: 900006, name: 'Test Group Rank 1', slots: [slot(2, 50)],
                          stacking: [{ group: 4242, group_name: 'Test Stacking Group', rank: 1, type: 1 }] }),

@@ -266,6 +266,13 @@ function renderVerdict(a, b, res) {
 
   // Only meaningful when both buffs actually hold at once.
   if (res.nonCumulative.length && bothIndependent) v.appendChild(nonCumulativeNote(res.nonCumulative));
+
+  // A verdict resting on a focus SPA the client-derived ignore list omits.
+  const contested = [res.xThenY, res.yThenX].map(r => r.contestedFocus).filter(Boolean);
+  if (contested.length) v.appendChild(contestedFocusNote(contested));
+
+  // Both hold, but only the best focus applies to any one cast.
+  if (bothIndependent && res.focus?.bestOnly.length) v.appendChild(focusBestOnlyNote(res.focus));
   const g = res.xThenY.sharedGroups;
   if (g.length) {
     const n = el('div', 'note');
@@ -329,6 +336,69 @@ function nonCumulativeNote(overlaps) {
   d.appendChild(ask);
   n.appendChild(d);
   return n;
+}
+
+/** Shared scaffolding for the caveat boxes: text, evidence disclosure, invitation. */
+function claimNote(text, claimKey, askText) {
+  const n = el('div', 'note');
+  n.appendChild(el('p', null, text));
+  const claim = META.claims?.[claimKey];
+  if (!claim) return n;
+
+  const d = el('details', 'evidence');
+  d.appendChild(el('summary', null, 'Where this comes from'));
+  const box = el('div', 'claim');
+  const head = el('div', 'claim-head');
+  head.appendChild(el('span', null, claim.assertion ? '' : String(claimKey)));
+  head.appendChild(el('span', 'badge ' + claim.status, claim.status));
+  box.appendChild(head);
+  if (claim.assertion) box.appendChild(el('p', 'src', claim.assertion));
+  const ul = el('ul');
+  for (const e of claim.evidence) {
+    const li = el('li');
+    li.appendChild(el('span', 'strength ' + e.strength, e.strength));
+    li.appendChild(el('span', null, ` ${e.summary} `));
+    li.appendChild(el('span', 'src', `— ${e.source}`));
+    ul.appendChild(li);
+  }
+  box.appendChild(ul);
+  d.appendChild(box);
+
+  const ask = el('p', 'ask');
+  ask.appendChild(document.createTextNode(askText + ' '));
+  if (META.repo_url) {
+    const a = el('a', null, 'Open a PR against claims.json');
+    a.href = `${META.repo_url}/blob/main/CONTRIBUTING.md`;
+    a.target = '_blank'; a.rel = 'noopener';
+    ask.appendChild(a);
+    ask.appendChild(document.createTextNode(' — the evidence standard is in CONTRIBUTING.md.'));
+  } else {
+    ask.appendChild(document.createTextNode('Open a PR against claims.json — the evidence standard is in CONTRIBUTING.md.'));
+  }
+  d.appendChild(ask);
+  n.appendChild(d);
+  return n;
+}
+
+function contestedFocusNote(contested) {
+  const names = [...new Set(contested.map(c => `${c.name} (SPA ${c.spa})`))].join(', ');
+  const n = claimNote(
+    `This answer turns on ${names}, a focus effect. Focus effects are reported to stack regardless of slot, `
+    + `and most of them are already exempt from slot arbitration — but this one is missing from the client-derived `
+    + `list the engine uses, so the conflict above may not be real. Treat the verdict as doubtful here.`,
+    'focus-stacking/not-on-client-ignore-list',
+    'Know how this one behaves?');
+  n.classList.add('note-doubt');
+  return n;
+}
+
+function focusBestOnlyNote(focus) {
+  const names = focus.bestOnly.map(f => f.name).join(', ');
+  let text = `Both carry ${names}, a focus effect. They stack as buffs, but only the best focus applies to any one cast — `
+           + `two of them do not add up.`;
+  if (focus.procs.length)
+    text += ` (${focus.procs.map(f => f.name).join(', ')} is proc-type and does fire independently.)`;
+  return claimNote(text, 'focus-best-only/all-focus-spas', 'Can you confirm or refute this?');
 }
 
 function renderDetail(a, b, res, lvl) {

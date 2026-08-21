@@ -1,126 +1,185 @@
 {
-  "version": 1,
-  "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file — see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
-  "evidence_strength": {
-    "primary": "Daybreak's own words, or a parse that meets the protocol in CONTRIBUTING.md. Enough on its own.",
-    "supporting": "Independent but second-hand — an emulator implementation, a datamined structure. Corroborates; does not settle.",
-    "weak": "Community consensus with no data behind it. Recorded for context, never load-bearing."
-  },
-  "claims": [
+ "version": 1,
+ "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
+ "evidence_strength": {
+  "primary": "Daybreak's own words, or a parse that meets the protocol in CONTRIBUTING.md. Enough on its own.",
+  "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; does not settle.",
+  "weak": "Community consensus with no data behind it. Recorded for context, never load-bearing."
+ },
+ "claims": [
+  {
+   "id": "non-cumulative/496",
+   "type": "non_cumulative",
+   "spa": 496,
+   "spa_name": "Critical_Melee_Damage_Mod_Max",
+   "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
+   "evidence": [
     {
-      "id": "non-cumulative/496",
-      "type": "non_cumulative",
-      "spa": 496,
-      "spa_name": "Critical_Melee_Damage_Mod_Max",
-      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies — the game does not add them.",
-      "evidence": [
-        {
-          "strength": "primary",
-          "kind": "game-text",
-          "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 — and none says it without.",
-          "source": "dbstr_us.txt, shipped with the live client",
-          "check": { "id": "desc-phrase-implies-spa", "phrase": "non-cumulative", "spa": 496 }
-        },
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
-        }
-      ]
+     "strength": "primary",
+     "kind": "game-text",
+     "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 \u2014 and none says it without.",
+     "source": "dbstr_us.txt, shipped with the live client",
+     "check": {
+      "id": "desc-phrase-implies-spa",
+      "phrase": "non-cumulative",
+      "spa": 496
+     }
     },
     {
-      "id": "non-cumulative/185",
-      "type": "non_cumulative",
-      "spa": 185,
-      "spa_name": "DamageModifier",
-      "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') — commit body empty, no source cited"
-        }
-      ]
-    },
-    {
-      "id": "non-cumulative/186",
-      "type": "non_cumulative",
-      "spa": 186,
-      "spa_name": "MinDamageModifier",
-      "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) — no source cited"
-        }
-      ]
-    },
-    {
-      "id": "non-cumulative/459",
-      "type": "non_cumulative",
-      "spa": 459,
-      "spa_name": "DamageModifier2",
-      "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) — no source cited"
-        }
-      ]
-    },
-    {
-      "id": "non-cumulative/482",
-      "type": "non_cumulative",
-      "spa": 482,
-      "spa_name": "Skill_Base_Damage_Mod",
-      "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all — the behaviour is only visible in the code.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) — no source cited"
-        }
-      ]
-    },
-    {
-      "id": "non-cumulative/503",
-      "type": "non_cumulative",
-      "spa": 503,
-      "spa_name": "Melee_Damage_Position_Mod",
-      "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) — no source cited"
-        }
-      ]
-    },
-    {
-      "id": "non-cumulative/505",
-      "type": "non_cumulative",
-      "spa": 505,
-      "spa_name": "Damage_Taken_Position_Mod",
-      "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
-      "evidence": [
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) — no source cited"
-        }
-      ]
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
     }
-  ],
-  "notes": {
-    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs — the case this tool compares — are both in the spell bucket."
+   ]
+  },
+  {
+   "id": "non-cumulative/185",
+   "type": "non_cumulative",
+   "spa": 185,
+   "spa_name": "DamageModifier",
+   "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') \u2014 commit body empty, no source cited"
+    }
+   ]
+  },
+  {
+   "id": "non-cumulative/186",
+   "type": "non_cumulative",
+   "spa": 186,
+   "spa_name": "MinDamageModifier",
+   "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) \u2014 no source cited"
+    }
+   ]
+  },
+  {
+   "id": "non-cumulative/459",
+   "type": "non_cumulative",
+   "spa": 459,
+   "spa_name": "DamageModifier2",
+   "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) \u2014 no source cited"
+    }
+   ]
+  },
+  {
+   "id": "non-cumulative/482",
+   "type": "non_cumulative",
+   "spa": 482,
+   "spa_name": "Skill_Base_Damage_Mod",
+   "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all \u2014 the behaviour is only visible in the code.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) \u2014 no source cited"
+    }
+   ]
+  },
+  {
+   "id": "non-cumulative/503",
+   "type": "non_cumulative",
+   "spa": 503,
+   "spa_name": "Melee_Damage_Position_Mod",
+   "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
+    }
+   ]
+  },
+  {
+   "id": "non-cumulative/505",
+   "type": "non_cumulative",
+   "spa": 505,
+   "spa_name": "Damage_Taken_Position_Mod",
+   "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
+    }
+   ]
+  },
+  {
+   "id": "focus-best-only/all-focus-spas",
+   "type": "focus_best_only",
+   "slug": "all-focus-spas",
+   "spas": [],
+   "_spas_note": "Empty means 'every focus effect', taken from spa_meta.json focus_effects (EQEmu's Mob::IsFocusEffect). The build expands it, so a regenerated spa_meta.json picks up new foci automatically.",
+   "exceptions": [
+    339,
+    340,
+    383
+   ],
+   "assertion": "When more than one focus effect could apply to the same cast, only the best one applies \u2014 they do not add. The exceptions are the proc-type foci (339 TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc), which fire independently and can all land on one cast.",
+   "evidence": [
+    {
+     "strength": "weak",
+     "kind": "community",
+     "summary": "Reported in feedback on the project: 'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
+     "source": "Reader feedback to fadwen on the doesitstack announcement, 2026-08-21"
+    },
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three exceptions exactly.",
+     "source": "EQEmu/Server zone/spell_effects.cpp Mob::GetFocusEffect and zone/bonuses.cpp:4157,4167"
+    }
+   ]
+  },
+  {
+   "id": "focus-stacking/not-on-client-ignore-list",
+   "type": "focus_stacking",
+   "slug": "not-on-client-ignore-list",
+   "spas": [],
+   "assertion": "Focus effects stack regardless of slot conflicts. Most focus SPAs are already exempt from slot arbitration, but some are missing from the client-derived ignore list the engine uses, so the tool may report a conflict between two focus buffs that in fact coexist.",
+   "evidence": [
+    {
+     "strength": "weak",
+     "kind": "community",
+     "summary": "Reported in feedback on the project: focus SPAs (the Fc_ entries in Daybreak's enumerated SPA list) stack regardless of slot conflicts.",
+     "source": "Reader feedback to fadwen on the doesitstack announcement, 2026-08-21, citing https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/"
+    },
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is clearly meant to be exempt and the remaining 13 look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
+     "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking and IsFocusLimit"
+    },
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "Counter-evidence for part of the set: 399 FcTwincast sits below the ignore list's ceiling of SPA 512, so the client had it and did not exempt it \u2014 consistent with the long-standing player report that twincast effects do not stack with each other. Treating the whole category as exempt without checking would trade one wrong answer for another.",
+     "source": "EQEmu/Server common/spdat.cpp; the ignore list extends to SPA 512, well past the RoF2 client it is derived from"
+    }
+   ],
+   "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The build derives the set, currently 13 SPAs, so it tracks spa_meta.json rather than freezing a list."
   }
+ ],
+ "notes": {
+  "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket."
+ }
 }

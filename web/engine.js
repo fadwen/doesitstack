@@ -14,7 +14,10 @@
 // Live's SpellStackingGroups.txt adds a second, newer mechanism on top of the
 // slot arbitration: two spells in the same stacking group never coexist.
 
-import { SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA } from './spa.js';
+import {
+  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA,
+  FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED,
+} from './spa.js';
 
 export const SPA = {
   CurrentHP: 0, ArmorClass: 1, ATK: 2, MovementSpeed: 3, CHA: 10, AttackSpeed: 11,
@@ -31,6 +34,9 @@ const ST_GROUP_TELEPORT = 0x03, ST_AE_BARD = 0x28, ST_GROUP = 0x29;
 const BARD_INDEX = 7;
 
 const ignored = new Set(IGNORED_IN_STACKING);
+const focusSpa = new Set(FOCUS_SPA);
+const focusBestOnly = new Set(FOCUS_BEST_ONLY);
+const focusContested = new Set(FOCUS_CONTESTED);
 
 export const slotOf = (sp, i) => (sp.slots && sp.slots[i]) || null;
 export const spaOf  = (sp, i) => { const s = slotOf(sp, i); return s ? s.spa : SPA.Blank; };
@@ -157,9 +163,15 @@ export function checkStack(a, b, opts = {}) {
   const levelB = opts.levelB ?? 125;
   const slots = [];
   const caveats = [];
-  const done = (code, rule, reason) => ({
+  const done = (code, rule, reason, decidedBy = null) => ({
     verdict: code === 1 ? 'overwrite' : code === -1 ? 'blocked' : 'independent',
-    code, rule, reason, slots, caveats, sharedGroups: sharedStackingGroups(a, b),
+    code, rule, reason, slots, caveats, decidedBy,
+    // A verdict resting on a focus SPA that the client-derived ignore list omits.
+    // Focus effects are widely reported to stack regardless of slot, so this answer
+    // may be wrong — see the focus_stacking claim in claims.json.
+    contestedFocus: code !== 0 && decidedBy != null && focusContested.has(decidedBy)
+      ? { spa: decidedBy, name: spaName(decidedBy) } : null,
+    sharedGroups: sharedStackingGroups(a, b),
   });
 
   // --- Live spell stacking groups -----------------------------------------
@@ -246,7 +258,7 @@ export function checkStack(a, b, opts = {}) {
 
   // --- slot-by-slot arbitration -------------------------------------------
   const aDet = isDetrimental(a), bDet = isDetrimental(b);
-  let willOverwrite = false, valuesEqual = true;
+  let willOverwrite = false, valuesEqual = true, lastConflictSpa = null;
 
   for (let i = 0; i < EFFECT_COUNT; i++) {
     if (isBlankSlot(a, i) || isBlankSlot(b, i)) continue;
@@ -312,11 +324,13 @@ export function checkStack(a, b, opts = {}) {
       slots.push({ ...row, kind: 'slot', outcome: 'conflict-blocked', valueA: v1, valueB: v2,
         detail: `Slot ${i + 1}: both are ${spaName(e1)}. ${b.name} gives ${v2} where ${a.name} already gives ${v1} — the weaker spell is refused.` });
       return done(-1, 'weaker-slot',
-        `Slot ${i + 1} is ${spaName(e1)} on both. ${b.name} gives ${v2} where ${a.name} already gives ${v1}, so the weaker spell is refused.`);
+        `Slot ${i + 1} is ${spaName(e1)} on both. ${b.name} gives ${v2} where ${a.name} already gives ${v1}, so the weaker spell is refused.`,
+        e1);
     }
 
     if (v2 !== v1) valuesEqual = false;
     willOverwrite = true;
+    lastConflictSpa = e1;
     slots.push({ ...row, kind: 'slot', outcome: 'conflict-b-wins', valueA: v1, valueB: v2,
       detail: `Slot ${i + 1}: both are ${spaName(e1)}. ${b.name} (${v2}) is at least as strong as ${a.name} (${v1}), so it would overwrite unless another slot objects.` });
   }
@@ -324,7 +338,7 @@ export function checkStack(a, b, opts = {}) {
   if (willOverwrite) {
     if (valuesEqual && effectMatch && !isGroupSpell(b) && isGroupSpell(a))
       return done(-1, 'single-vs-group', `${b.name} looks like the single-target version of ${a.name} — the group version already on you wins.`);
-    return done(1, 'overwrite', `${b.name} shares at least one slot with ${a.name} and is at least as strong everywhere, so it overwrites.`);
+    return done(1, 'overwrite', `${b.name} shares at least one slot with ${a.name} and is at least as strong everywhere, so it overwrites.`, lastConflictSpa);
   }
   return done(0, 'independent', `${a.name} and ${b.name} share no conflicting slot, so both hold at once.`);
 }
@@ -357,11 +371,27 @@ export function nonCumulativeOverlap(a, b) {
   return out;
 }
 
+/**
+ * Focus effects both spells carry. Two buffs can hold at once and still not give
+ * you both benefits: when several foci could apply to one cast, only the best is
+ * used. The proc-type foci are the exception — they fire independently.
+ */
+export function focusOverlap(a, b) {
+  const spasOf = sp => new Set((sp.slots || []).filter(Boolean).map(s => s.spa).filter(s => focusSpa.has(s)));
+  const inA = spasOf(a), inB = spasOf(b);
+  const shared = [...inA].filter(s => inB.has(s));
+  return {
+    bestOnly: shared.filter(s => focusBestOnly.has(s)).map(s => ({ spa: s, name: spaName(s) })),
+    procs: shared.filter(s => FOCUS_PROC_EXCEPTIONS.includes(s)).map(s => ({ spa: s, name: spaName(s) })),
+  };
+}
+
 /** Both directions, since "does it stack" has no natural order. */
 export function checkBoth(x, y, opts = {}) {
   return {
     xThenY: checkStack(x, y, { levelA: opts.levelX, levelB: opts.levelY }),
     yThenX: checkStack(y, x, { levelA: opts.levelY, levelB: opts.levelX }),
     nonCumulative: nonCumulativeOverlap(x, y),
+    focus: focusOverlap(x, y),
   };
 }

@@ -76,6 +76,10 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 
 .note{border-left:3px solid var(--warn);background:#221f16;padding:10px 14px;border-radius:0 8px 8px 0;margin:14px 0;color:#e6dcc2}
 .note p{margin:0}
+.note-doubt{border-left-color:var(--bad);background:#241a1a;color:#e9d2d2}
+.note-doubt .evidence{color:#d8c2c2}
+.note-doubt .evidence summary{color:#ff9b9b}
+.note-doubt .evidence .src{color:#a58c8c}
 .evidence{margin-top:10px;font-size:13px;color:#cfc7ae}
 .evidence summary{cursor:pointer;color:#f2c35c;list-style:revert}
 .evidence summary:hover{text-decoration:underline}

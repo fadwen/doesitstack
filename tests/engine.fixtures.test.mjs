@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
-import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, calcValue } from '../web/engine.js';
+import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, calcValue } from '../web/engine.js';
+import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
   const r = checkBoth(fx('prophetsGift'), fx('savageSpirit'));
@@ -74,4 +75,50 @@ test('level-scaling formulas are applied', () => {
   const s = fx('weakBuff');
   s.slots[0] = { spa: 1, base1: 10, base2: 0, calc: 102, max: 0 };  // base + level
   assert.equal(calcValue(s, 0, 100), 110);
+});
+
+
+// --- focus effects ----------------------------------------------------------
+
+test('a focus SPA on the ignore list never causes a conflict', () => {
+  const r = checkStack(fx('focusIgnoredA'), fx('focusIgnoredB'));
+  assert.equal(r.code, 0);
+  assert.equal(r.contestedFocus, null);
+});
+
+test('a focus SPA missing from the ignore list still arbitrates, but is flagged', () => {
+  const r = checkStack(fx('twincastB'), fx('twincastA'));   // stronger already up
+  assert.equal(r.code, -1);
+  assert.ok(r.contestedFocus, 'the verdict should be marked contested');
+  assert.equal(r.contestedFocus.spa, 399);
+  assert.ok(FOCUS_CONTESTED.includes(399));
+});
+
+test('an ordinary conflict is not flagged as contested focus', () => {
+  const r = checkStack(fx('strongBuff'), fx('weakBuff'));
+  assert.equal(r.code, -1);
+  assert.equal(r.contestedFocus, null);
+});
+
+test('shared best-only foci are reported so the numbers are not assumed to add', () => {
+  const o = focusOverlap(fx('focusIgnoredA'), fx('focusIgnoredB'));
+  assert.deepEqual(o.bestOnly.map(f => f.spa), [286]);
+  assert.equal(o.procs.length, 0);
+});
+
+test('proc-type foci are reported separately, since they all fire', () => {
+  const o = focusOverlap(fx('procFocusA'), fx('procFocusB'));
+  assert.deepEqual(o.procs.map(f => f.spa), [383]);
+  assert.equal(o.bestOnly.length, 0);
+});
+
+test('the proc exceptions are exactly the three trigger SPAs', () => {
+  assert.deepEqual([...FOCUS_PROC_EXCEPTIONS].sort((a, b) => a - b), [339, 340, 383]);
+  for (const spa of FOCUS_PROC_EXCEPTIONS) assert.ok(!FOCUS_BEST_ONLY.includes(spa));
+});
+
+test('checkBoth surfaces the focus overlap alongside the verdicts', () => {
+  const r = checkBoth(fx('focusIgnoredA'), fx('focusIgnoredB'));
+  assert.ok(r.focus);
+  assert.equal(r.focus.bestOnly.length, 1);
 });
