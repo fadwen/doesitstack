@@ -211,6 +211,21 @@ Two things come out of it:
   that needs per-cast context this tool does not have, so it shows them and leaves the
   judgement to you.
 
+### Saving a set
+
+A raid set is worth building once. Name it and it is kept in **that browser**, so you can
+load it back, pile a few things on to see what they cost, and put it back the way it was —
+the page tells you when the live set has drifted from the one you loaded, and offers both
+**Revert** and **Update**.
+
+A reordered set is not "changed": the ids carry insertion order, which is a display
+detail, so comparison is order-insensitive rather than crying wolf.
+
+Saved sets never leave the browser they were made in — no account, no server. The **URL
+already carries the whole set**, so that stays the way to move one between machines or send
+it to someone. Storage that is blocked or full is reported rather than silently losing a
+set, and a browser that refuses it entirely still leaves the link in the address bar.
+
 ### Why it will not rank sets
 
 Because it cannot do so honestly. A damage figure needs a model of how these values
@@ -414,6 +429,7 @@ web/engine.js                      the stacking rules, pair and set
 web/data.js                        loading and searching the dataset, shared by both pages
 web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
+web/saved.js                       named sets in browser storage, pure and testable
 web/freshness.js                   how stale the shipped data is
 tests/                             node:test — fixtures and claims run anywhere
 ```

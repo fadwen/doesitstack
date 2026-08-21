@@ -11,6 +11,7 @@ import {
   $, el, link, LUCY, F_BENEFICIAL, row,
   KIND_LABEL, kindHelp, search, spellById, load as loadData,
 } from './data.js';
+import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 
 let META, INDEX;
 const chosen = [];                                     // spells, in the order added
@@ -18,13 +19,24 @@ const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'other'];
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 const MAX_SET = 100;                                   // far past a real buff bar
 
+// Saved sets live in this browser only. The URL already carries a set, so that
+// stays the way to move one between machines or send it to someone.
+const store = (() => { try { return window.localStorage; } catch { return null; } })();
+let saved = [];
+// Which saved set the live one came from, so drifting away from it can be shown
+// and undone. That round trip — load the standard set, pile things on to see
+// what they cost, put it back — is the whole reason saving is here.
+let loadedFrom = null;
+let storageWarned = false;
+
 async function boot() {
   ({ META, INDEX } = await loadData());
+  saved = readSets(store);
   renderFooter();
   $('#lvl').value = META.max_level;
   buildFilters();
   wirePicker();
-  $('#clear').onclick = () => { chosen.length = 0; sync(); };
+  $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; sync(); };
   $('#lvl').addEventListener('change', render);
   for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunSearch);
   $('#why-no-score').textContent = NO_SCORE;
@@ -124,6 +136,48 @@ async function add(id) {
   if (sp) { chosen.push(sp); sync(); }
 }
 
+// ---------- saved sets ------------------------------------------------------
+
+const ids = () => chosen.map(s => s.id);
+const baseline = () => (loadedFrom ? findSet(saved, loadedFrom) : null);
+const drifted = () => { const b = baseline(); return b ? !sameSet(b.ids, ids()) : false; };
+
+function persist(next) {
+  saved = next;
+  if (!writeSets(store, saved) && !storageWarned) {
+    storageWarned = true;
+    // Better to say it once than to let someone build a set, save it, and find
+    // it gone after a reload.
+    alertLine('Could not save — this browser is blocking site data, so sets will '
+            + 'not survive a reload. The link in your address bar still holds the set.');
+  }
+  render();
+}
+
+const saveAs = (name) => {
+  const clean = cleanName(name);
+  if (!clean || !chosen.length) return;
+  loadedFrom = clean;
+  persist(upsert(saved, clean, ids()));
+};
+
+async function loadSet(name) {
+  const s = findSet(saved, name);
+  if (!s) return;
+  chosen.length = 0;
+  for (const id of s.ids) {
+    const sp = await spellById(id);
+    if (sp) chosen.push(sp);
+  }
+  loadedFrom = s.name;
+  sync();
+}
+
+const alertLine = (text) => {
+  const box = $('#saved-note');
+  if (box) { box.textContent = text; box.hidden = false; }
+};
+
 const remove = id => {
   const i = chosen.findIndex(s => s.id === id);
   if (i > -1) { chosen.splice(i, 1); sync(); }
@@ -154,6 +208,7 @@ async function fromHash() {
 const level = () => parseInt($('#lvl').value, 10) || META.max_level;
 
 function render() {
+  renderSaved();
   const list = $('#setlist'); list.innerHTML = '';
   $('#clear').hidden = !chosen.length;
   $('#empty').hidden = chosen.length > 0;
@@ -178,6 +233,85 @@ function render() {
   list.appendChild(ul);
 
   renderReport(res);
+}
+
+function renderSaved() {
+  const box = $('#saved'); box.innerHTML = '';
+  if (!saved.length && !chosen.length) return;
+
+  const rowEl = el('div', 'frow');
+  rowEl.appendChild(el('span', 'flabel', 'Saved'));
+  const chips = el('div', 'chips');
+
+  for (const s of saved) {
+    const wrap = el('span', 'setchip' + (s.name === loadedFrom ? ' on' : ''));
+    const open = el('button', 'setchip-name as-button', `${s.name} (${s.ids.length})`);
+    open.title = `Load ${s.name}`;
+    open.onclick = () => loadSet(s.name);
+    wrap.appendChild(open);
+    const del = el('button', 'setchip-x', '×');
+    del.title = `Forget ${s.name}`;
+    del.onclick = () => {
+      if (loadedFrom === s.name) loadedFrom = null;
+      persist(removeSet(saved, s.name));
+    };
+    wrap.appendChild(del);
+    chips.appendChild(wrap);
+  }
+
+  if (chosen.length) {
+    const name = el('input', 'search saveas');
+    name.type = 'text';
+    name.placeholder = loadedFrom ? `Save as… (${loadedFrom} loaded)` : 'Save this set as…';
+    name.maxLength = 40;
+    name.onkeydown = e => { if (e.key === 'Enter') { saveAs(name.value); name.value = ''; } };
+    const go = el('button', 'chip wide', 'Save');
+    go.onclick = () => { saveAs(name.value); name.value = ''; };
+    chips.appendChild(name);
+    chips.appendChild(go);
+  }
+  rowEl.appendChild(chips);
+  box.appendChild(rowEl);
+
+  // The experiment round trip: you loaded something, you have changed it, and
+  // you want either to go back or to keep the change.
+  if (drifted()) {
+    const b = baseline();
+    const n = chosen.length - b.ids.length;
+    const note = el('div', 'frow drift');
+    note.appendChild(el('span', null,
+      `Changed from ${b.name} — ${n > 0 ? `${n} added` : n < 0 ? `${-n} removed` : 'same size, different spells'}.`));
+    const revert = el('button', 'chip wide', `Revert to ${b.name}`);
+    revert.onclick = () => loadSet(b.name);
+    const update = el('button', 'chip wide', `Update ${b.name}`);
+    update.onclick = () => saveAs(b.name);
+    note.appendChild(revert);
+    note.appendChild(update);
+    box.appendChild(note);
+  }
+
+  if (chosen.length) {
+    const share = el('button', 'chip wide', 'Copy link to this set');
+    share.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(location.href);
+        share.textContent = 'Link copied';
+        setTimeout(() => { share.textContent = 'Copy link to this set'; }, 1500);
+      } catch {
+        // Clipboard access is refused in plenty of contexts; the URL bar already
+        // holds the set, so say that rather than failing silently.
+        alertLine('Could not reach the clipboard — the address bar already holds this set, copy it from there.');
+      }
+    };
+    const shareRow = el('div', 'frow');
+    shareRow.appendChild(share);
+    box.appendChild(shareRow);
+  }
+
+  const note = el('p', 'legend');
+  note.id = 'saved-note';
+  note.hidden = true;
+  box.appendChild(note);
 }
 
 function spellLink(name, id) {

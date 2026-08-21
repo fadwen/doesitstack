@@ -169,3 +169,10 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 .dirverdict{font-weight:600}
 .report table.slots td:first-child{min-width:150px}
 .report table.slots{min-width:720px}
+.saved{margin-top:10px}
+.saved .frow{margin-bottom:6px}
+.setchip.on{border-color:#3d6c94;background:#20364a}
+.setchip-name.as-button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
+.setchip-name.as-button:hover{text-decoration:underline}
+.saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
+.drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}
