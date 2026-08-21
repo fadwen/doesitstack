@@ -272,9 +272,10 @@ function renderVerdict(a, b, res) {
     const hedged = spas.filter(s2 => !META.non_cumulative_confirmed.includes(s2));
     n.textContent = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
     if (hedged.length)
-      n.textContent += ` (Read that as likely rather than certain for SPA ${hedged.join(', ')}: it comes from how the EQEmu server accumulates the bonus, and the live spell text does not say so outright.)`;
+      n.textContent += ` Treat that as unverified for SPA ${hedged.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which no source in that project backs up, and Daybreak's own spell text never calls these non-cumulative.`;
     n.title = 'These effects keep the larger magnitude in the spell bonus bucket instead of summing. '
-            + 'A worn item bonus can behave additively for some of them.';
+            + 'A worn item bonus can behave additively for some of them. '
+            + 'See tools/spa_meta.json for where each one comes from.';
     v.appendChild(n);
   }
   const g = res.xThenY.sharedGroups;

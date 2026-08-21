@@ -28,20 +28,43 @@ matter, and the site says both.
 ### Non-cumulative effects
 
 A handful of SPAs land on you together but are not added together; the game keeps the
-larger value. The tool warns when a stacking pair shares one.
+larger value. The tool warns when a stacking pair shares one — with different wording
+depending on how well the claim is backed, because the backing genuinely differs.
 
-The list comes from `zone/bonuses.cpp` in the EQEmu server, where these seven keep the
-larger magnitude in the spell bonus bucket rather than using the `+=` of an ordinary
-bonus: **185** DamageModifier, **186** MinDamageModifier, **459** DamageModifier2,
-**482** Skill_Base_Damage_Mod, **496** Critical_Melee_Damage_Mod_Max, **503**
+**How the list was built.** `zone/bonuses.cpp` in the EQEmu server accumulates most
+bonuses with `+=`. Seven use a keep-the-larger-magnitude idiom instead: **185**
+DamageModifier, **186** MinDamageModifier, **459** DamageModifier2, **482**
+Skill_Base_Damage_Mod, **496** Critical_Melee_Damage_Mod_Max, **503**
 Melee_Damage_Position_Mod, **505** Damage_Taken_Position_Mod.
 
-Only 496 is independently confirmed by the live spell text: of all 70,963 spells,
-exactly 53 descriptions use the word "non-cumulative", and every one of them carries
-SPA 496 — no spell says it without. The other six rest on the server implementation
-alone, so the UI hedges its wording for them.
+**Where EQEmu gets its own knowledge.** Its code cites real sources in places — the
+RoF2 client itself (`zone/spells.cpp`: *"big ol' list according to the client"*, for the
+stacking ignore list), Daybreak's enumerated SPA list on the official EQ forums
+(`common/spdat.h` header), samanna.net for buff duration formulas, and live-server
+parses by its developers (*"~Kayen confirmed on live 2/2/22"*).
 
-Two caveats worth knowing:
+**None of those citations attach to these seven.** Each was introduced by a developer
+asserting the behaviour with no stated source:
+
+| SPA | Introduced |
+| --- | --- |
+| 185, 186, 459 | `6fc5f8fb`, 2016-01-10, mackal — "Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier" |
+| 496, 503, 505 | `8a2a1b15`, 2021-07-14, KayenEQ — PR #1454, *"SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier"* |
+| 482 | `fee8772b`, 2021-07-29, KayenEQ — PR #1474 |
+
+Neither PR discussion cites a parse, a forum thread or a test. Daybreak's own SPA list
+stops at 471, so it never covered 496 at all.
+
+**The one thing that is independently confirmed is 496**, and not by EQEmu — by
+Daybreak. Of all 70,963 spells, exactly 53 descriptions contain the word
+"non-cumulative", and every one of them carries SPA 496. None says it without. That is
+the game's own text, shipped in `dbstr_us.txt`, and EQEmu's implementation happens to
+agree with it.
+
+So: 496 is established, and the other six are one project's reading of the mechanic.
+The UI says so.
+
+Two caveats that apply either way:
 
 - The larger value wins **within one bonus bucket**. Spell, AA and worn-item bonuses
   are summed at use time, so a worn item effect and a buff can still add. Two buffs —
@@ -49,7 +72,8 @@ Two caveats worth knowing:
 - 185, 459, 482, 503 and 505 are additive when they arrive as a worn item bonus rather
   than as a buff.
 
-The full provenance note lives in `tools/spa_meta.json` under `non_cumulative`.
+Per-SPA provenance, including the commits above, lives in `tools/spa_meta.json` under
+`non_cumulative`.
 
 ## How the rules work
 
@@ -193,8 +217,8 @@ tests/                  node:test suite over the built dataset
 
 - Caster level is a single input applied to both spells; the game tracks it per buff.
 - Formula 123 (random range) is evaluated at its midpoint.
-- Six of the seven non-cumulative SPAs are inferred from the EQEmu server rather than
-  confirmed by the live spell text. See the section above.
+- Six of the seven non-cumulative SPAs rest on uncited EQEmu implementation rather than
+  on any primary source. See the section above.
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max",
   not Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
 - Bard instrument modifiers are not applied to song values.
