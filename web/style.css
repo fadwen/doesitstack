@@ -100,10 +100,17 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 .evidence .src{color:#9a937f}
 .evidence .ask{margin-top:12px;color:#e6dcc2}
 
-table.slots{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.slots{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;min-width:520px}
 table.slots th,table.slots td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
 table.slots th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
-table.slots td.n{width:44px;color:var(--muted);font-family:var(--mono)}
+table.slots td.empty-slot{color:#59607080}
+.slot-head{display:flex;gap:8px;align-items:baseline}
+.slotno{flex:0 0 auto;min-width:20px;font-family:var(--mono);font-size:12px;color:var(--muted);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px;text-align:center}
+table.slots tr.hit .slotno{border-color:#6b3a3a}
+table.slots tr.ok .slotno{border-color:#2f5a44}
+table.slots .spa{padding-left:33px}
 table.slots tr.hit td{background:#2a1f1f}
 table.slots tr.ok td{background:#1a231e}
 .spa{font-family:var(--mono);font-size:12px;color:var(--muted)}
@@ -123,4 +130,8 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
   .pickers{grid-template-columns:1fr}
   .swap-col{padding:0}
   .dirs{grid-template-columns:1fr}
+  table.slots{font-size:13px}
+  table.slots th,table.slots td{padding:6px}
+  .slotno{min-width:18px;padding:0 4px}
+  table.slots .spa{padding-left:0}
 }

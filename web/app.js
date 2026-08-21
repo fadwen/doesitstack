@@ -435,7 +435,11 @@ function renderDetail(a, b, res, lvl) {
   const d = $('#detail'); d.hidden = false; d.innerHTML = '';
   d.appendChild(el('h3', 'sec', 'Slot by slot'));
   const t = el('table', 'slots');
-  t.innerHTML = `<thead><tr><th class="n">Slot</th><th>${escape(a.name)}</th><th>${escape(b.name)}</th><th>Verdict</th></tr></thead>`;
+  // Each spell carries its own slot numbers rather than sharing one column. The rows
+  // still line up by index, because that is what arbitration compares — but the two
+  // spells' slot lists are independent, and a single "Slot" column asserted a pairing
+  // they do not have. It also read wrongly where only one of the two has a slot.
+  t.innerHTML = `<thead><tr><th>${escape(a.name)}</th><th>${escape(b.name)}</th><th>Verdict</th></tr></thead>`;
   const body = el('tbody');
   const bySlot = new Map();
   for (const s of res.xThenY.slots) if (s.kind === 'slot') bySlot.set(s.slot, s);
@@ -446,7 +450,6 @@ function renderDetail(a, b, res, lvl) {
     const sa = slotOf(a, i), sb = slotOf(b, i);
     if (!sa && !sb) continue;
     const tr = el('tr');
-    tr.appendChild(el('td', 'n', String(i + 1)));
     tr.appendChild(slotCell(a, i, lvl));
     tr.appendChild(slotCell(b, i, lvl));
     const info = bySlot.get(i);
@@ -462,7 +465,10 @@ function renderDetail(a, b, res, lvl) {
     body.appendChild(tr);
   }
   t.appendChild(body);
-  d.appendChild(t);
+  // Wide content scrolls inside its own box rather than pushing the page sideways.
+  const scroller = el('div', 'table-scroll');
+  scroller.appendChild(t);
+  d.appendChild(scroller);
 
   const notes = res.xThenY.slots.filter(s => s.kind !== 'slot');
   if (notes.length) {
@@ -516,9 +522,12 @@ function ruleProvenance(rules) {
 
 function slotCell(sp, i, lvl) {
   const s = slotOf(sp, i);
-  if (!s) return el('td', null, '—');
+  if (!s) return el('td', 'empty-slot', '—');
   const td = el('td');
-  td.appendChild(el('div', null, META.spa_names[s.spa] || `SPA ${s.spa}`));
+  const head = el('div', 'slot-head');
+  head.appendChild(el('span', 'slotno', String(i + 1)));
+  head.appendChild(el('span', null, META.spa_names[s.spa] || `SPA ${s.spa}`));
+  td.appendChild(head);
   const v = calcValue(sp, i, lvl);
   td.appendChild(el('div', 'spa', `SPA ${s.spa} · base ${s.base1}${s.base2 ? ' / ' + s.base2 : ''}${s.max ? ' · max ' + s.max : ''} · value ${v}`));
   return td;
