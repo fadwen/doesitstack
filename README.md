@@ -291,6 +291,8 @@ tests/                  node:test — fixtures and claims run anywhere, dataset 
 ## Known gaps
 
 - Caster level is a single input applied to both spells; the game tracks it per buff.
+  It defaults to 130, the live cap — raise `MAX_PLAYER_LEVEL` in `tools/spells.mjs` on
+  the expansion that raises it, and everything else follows from there.
 - Formula 123 (random range) is evaluated at its midpoint.
 - Six of the seven non-cumulative SPAs rest on uncited EQEmu implementation rather than
   on any primary source. See the section above — and `claims.json` for each one.

@@ -13,6 +13,13 @@ import readline from 'node:readline';
 
 export const CLASSES = ['WAR','CLR','PAL','RNG','SHD','DRU','MNK','BRD','ROG','SHM','NEC','WIZ','MAG','ENC','BST','BER'];
 
+// The live level cap. Level-scaled formulas and durations are evaluated here by
+// default, so this is what the site answers with unless you say otherwise.
+// Corroborated by the spell file itself: class level requirements top out at 130
+// (355 spells) with nothing between 131 and the 250 used for special entries.
+// Raise it on the expansion that raises the cap — it is the only place to change.
+export const MAX_PLAYER_LEVEL = 130;
+
 const F = {
   ID: 0, NAME: 1, EXTRA: 3, RANGE: 4, AERANGE: 5, CAST_MS: 8, RECOVERY_MS: 9, RECAST_MS: 10,
   DUR_CALC: 11, DUR_CAP: 12, AEDURATION: 13, MANA: 14, BENEFICIAL: 28, RESIST: 29, TARGET: 30,
@@ -68,7 +75,7 @@ const int = s => {
 const bool = s => int(s) !== 0;
 
 /** Buff duration in ticks. Mirrors Spell.CalcDuration. */
-export function calcDuration(calc, cap, level = 125) {
+export function calcDuration(calc, cap, level = MAX_PLAYER_LEVEL) {
   let v;
   switch (calc) {
     case 0: v = 0; break;
@@ -169,7 +176,7 @@ async function loadDbstr(file) {
   return out;
 }
 
-export async function loadAll(eqDir, level = 125) {
+export async function loadAll(eqDir, level = MAX_PLAYER_LEVEL) {
   const spells = [], byId = new Map();
   for await (const line of lines(path.join(eqDir, 'spells_us.txt'))) {
     if (!line || line[0] === '#') continue;
@@ -259,7 +266,7 @@ function fmtTime(sec) {
 }
 
 /** Level-scaled slot value, used for description rendering. */
-export function calcSlotValue(sl, level = 125) {
+export function calcSlotValue(sl, level = MAX_PLAYER_LEVEL) {
   const { calc: formula, base1: base, max } = sl;
   const ubase = Math.abs(base);
   const sign = (max < base && max !== 0) ? -1 : 1;
@@ -344,7 +351,7 @@ function decode(token, sp, byId, level, depth = 0) {
   return simple[token] ?? null;
 }
 
-export function prepareDesc(sp, byId, level = 125) {
+export function prepareDesc(sp, byId, level = MAX_PLAYER_LEVEL) {
   if (!sp.desc) return '';
   let text = sp.desc.replace(TAG_RE, m => m.toLowerCase() === '<br>' ? m : '');
   text = text.replace(LOOSE_REF, (_, g) => ' *' + g);

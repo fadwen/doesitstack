@@ -8,7 +8,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spell, index, byName, META, ROW, SKIP } from './load.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, calcValue, nonCumulativeOverlap } from '../web/engine.js';
-import { NON_CUMULATIVE_SPA } from '../web/spa.js';
+import { NON_CUMULATIVE_SPA, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 const SAVAGE_SPIRIT_17 = 70855;   // Berserker AA "Savage Spirit" rank 17
 const PROPHETS_GIFT    = 6273;    // Shaman epic 2.0 click
@@ -25,12 +25,12 @@ test('the two effects Jeff asked about land together', SKIP, () => {
 
 test('a spell always refreshes itself at equal caster level', SKIP, () => {
   const s = spell(PROPHETS_GIFT);
-  assert.equal(checkStack(s, s, { levelA: 125, levelB: 125 }).code, 1);
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: MAX_PLAYER_LEVEL }).code, 1);
 });
 
 test('a spell cast at a lower level cannot overwrite the same spell', SKIP, () => {
   const s = spell(PROPHETS_GIFT);
-  assert.equal(checkStack(s, s, { levelA: 125, levelB: 60 }).code, -1);
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: 60 }).code, -1);
 });
 
 test('blank slots (SPA 10 spacers) never create a conflict', SKIP, () => {
@@ -62,7 +62,7 @@ test('a snare already in place blocks a run-speed buff', SKIP, () => {
 test('level formulas evaluate sanely', SKIP, () => {
   const sow = spell(278);
   const i = sow.slots.findIndex(s => s && s.spa === 3);
-  assert.ok(calcValue(sow, i, 125) > 0);
+  assert.ok(calcValue(sow, i, MAX_PLAYER_LEVEL) > 0);
 });
 
 test('every spell is self-consistent (no crashes, verdict always set)', SKIP, () => {
@@ -112,6 +112,19 @@ test('the search index carries a class mask that matches the level list', SKIP, 
   assert.equal(META.kinds[r[ROW.kind]], 'aa');
   assert.equal(r[ROW.classMask], 1 << 15);     // berserker only
   assert.equal(r[ROW.levels], 'BER 254');
+});
+
+test('the dataset is built at the level cap', SKIP, () => {
+  assert.equal(META.max_level, MAX_PLAYER_LEVEL);
+  // Nothing in the file needs a level between the cap and the 250 marker used for
+  // special entries — which is what corroborates 130 as the cap.
+  const levels = new Set();
+  for (const r of index())
+    for (const part of r[ROW.levels].split('|'))
+      if (part) levels.add(Number(part.split(' ')[1]));
+  const between = [...levels].filter(l => l > MAX_PLAYER_LEVEL && l < 250).sort((a, b) => a - b);
+  assert.deepEqual(between, [], `unexpected level requirements above the cap: ${between.join(', ')}`);
+  assert.ok(levels.has(MAX_PLAYER_LEVEL), 'and spells do exist at the cap itself');
 });
 
 test('real spells carry more than twelve slots, and arbitration sees them', SKIP, () => {

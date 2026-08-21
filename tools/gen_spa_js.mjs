@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { load as loadClaims, byType, spasOf, isActionable } from './claims.mjs';
+import { MAX_PLAYER_LEVEL } from './spells.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -66,7 +67,8 @@ export function generate() {
     + `export const FOCUS_SPA = ${JSON.stringify(focusSpas)};\n`
     + `export const FOCUS_BEST_ONLY = ${JSON.stringify(focusBestOnly)};\n`
     + `export const FOCUS_PROC_EXCEPTIONS = ${JSON.stringify(focusExceptions)};\n`
-    + `export const FOCUS_CONTESTED = ${JSON.stringify(contested)};\n`;
+    + `export const FOCUS_CONTESTED = ${JSON.stringify(contested)};\n`
+    + `export const MAX_PLAYER_LEVEL = ${MAX_PLAYER_LEVEL};\n`;
   fs.writeFileSync(path.join(ROOT, 'web', 'spa.js'), js);
   return { spaNames, spas, confirmed, nonCumulative, focusSpas, focusBestOnly, focusExceptions, contested, exemptedByClaim };
 }

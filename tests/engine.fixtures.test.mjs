@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, calcValue } from '../web/engine.js';
-import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
+import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
   const r = checkBoth(fx('prophetsGift'), fx('savageSpirit'));
@@ -67,8 +67,8 @@ test('group targeting is recognised', () => {
 
 test('a spell refreshes itself at equal level but not at a lower one', () => {
   const s = fx('weakBuff');
-  assert.equal(checkStack(s, s, { levelA: 125, levelB: 125 }).code, 1);
-  assert.equal(checkStack(s, s, { levelA: 125, levelB: 60 }).code, -1);
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: MAX_PLAYER_LEVEL }).code, 1);
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: 60 }).code, -1);
 });
 
 test('level-scaling formulas are applied', () => {
@@ -162,4 +162,23 @@ test('non-cumulative overlap is found past slot 12 too', () => {
   assert.equal(o.length, 1);
   assert.equal(o[0].slotA, 20);
   assert.equal(o[0].slotB, 13);
+});
+
+
+// --- caster level -----------------------------------------------------------
+
+test('the level cap is 130 and is the default everything is answered at', () => {
+  assert.equal(MAX_PLAYER_LEVEL, 130);
+
+  // Unstated caster levels use the cap, so an unqualified answer is the max-level one.
+  const s = fx('weakBuff');
+  s.slots[0] = { spa: 1, base1: 10, base2: 0, calc: 102, max: 0 };   // base + level
+  assert.equal(calcValue(s, 0), 10 + MAX_PLAYER_LEVEL);
+  assert.equal(calcValue(s, 0, 100), 110);
+});
+
+test('a spell recast at the cap still refreshes over one cast below it', () => {
+  const s = fx('weakBuff');
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL - 5, levelB: MAX_PLAYER_LEVEL }).code, 1);
+  assert.equal(checkStack(s, s, { levelA: MAX_PLAYER_LEVEL, levelB: MAX_PLAYER_LEVEL - 5 }).code, -1);
 });

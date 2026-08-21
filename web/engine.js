@@ -16,7 +16,7 @@
 
 import {
   SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, IGNORED_BY_CLAIM,
-  FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED,
+  FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
 export const SPA = {
@@ -70,7 +70,7 @@ export function isStackableDot(sp) {
 
 // Mob::CalcSpellEffectValue_formula. `ticsRemaining` only matters for the
 // degenerating formulas (107/108/120/122/1000-1999), which we evaluate at cast time.
-export function calcValue(sp, i, level, ticsRemaining = 0) {
+export function calcValue(sp, i, level = MAX_PLAYER_LEVEL, ticsRemaining = 0) {
   const s = slotOf(sp, i);
   if (!s || isBlankSlot(sp, i)) return 0;
   const { calc: formula, base1: base, max } = s;
@@ -128,7 +128,7 @@ export function calcValue(sp, i, level, ticsRemaining = 0) {
   return r;
 }
 
-export function calcDuration(calc, cap, level = 125) {
+export function calcDuration(calc, cap, level = MAX_PLAYER_LEVEL) {
   let v;
   switch (calc) {
     case 0: v = 0; break;
@@ -168,8 +168,8 @@ const spaName = spa => SPA_NAMES[spa] || `SPA ${spa}`;
  *            sharedGroups:Array}}
  */
 export function checkStack(a, b, opts = {}) {
-  const levelA = opts.levelA ?? 125;
-  const levelB = opts.levelB ?? 125;
+  const levelA = opts.levelA ?? MAX_PLAYER_LEVEL;
+  const levelB = opts.levelB ?? MAX_PLAYER_LEVEL;
   const n = slotSpan(a, b);
   const slots = [];
   const caveats = [];

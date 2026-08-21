@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadAll, CLASSES, KINDS, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
+import { loadAll, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs, prettySpa } from './gen_spa_js.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
@@ -63,7 +63,7 @@ async function main() {
     process.exit(1);
   }
   const out = path.resolve(ROOT, arg('out', 'dist'));
-  const level = parseInt(arg('level', '125'), 10);
+  const level = parseInt(arg('level', String(MAX_PLAYER_LEVEL)), 10);
   console.log(`using ${eqDir}`);
 
   const t0 = Date.now();
