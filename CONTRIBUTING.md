@@ -199,9 +199,14 @@ Open the PR. The template asks for the same fields as above.
 
 ### If you do not want to touch JSON
 
-Open an issue with the [evidence form](.github/ISSUE_TEMPLATE/mechanic-evidence.yml) and
-say what you know. Someone will turn it into a PR and credit you. A patch note nobody
-else had noticed is worth more than a well-formatted commit.
+Open an issue with the
+[evidence form](https://github.com/fadwen/doesitstack/issues/new?template=mechanic-evidence.yml&labels=evidence)
+and say what you know — it is a web form, and it asks the same questions this document
+does. Someone will turn it into a PR and credit you. A patch note nobody else had
+noticed is worth more than a well-formatted commit.
+
+The site links to that form from every claim it hedges on, prefilled with the claim you
+were looking at, so most people should never have to find it themselves.
 
 ## Credit
 

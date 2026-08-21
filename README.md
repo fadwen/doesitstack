@@ -338,9 +338,13 @@ Bug fixes and features: normal pull request.
 
 Claims about how the game behaves are different — they live in
 [`claims.json`](claims.json) with their evidence, and a PR that settles one is usually a
-ten-line diff and no code. There is an evidence standard, a parse protocol, and an issue
-form for people who would rather not touch JSON. All in
-[CONTRIBUTING.md](CONTRIBUTING.md).
+ten-line diff and no code.
+
+**You do not need to touch git for that.** Every claim the site hedges on links to an
+[evidence form](https://github.com/fadwen/doesitstack/issues/new?template=mechanic-evidence.yml&labels=evidence),
+prefilled with the claim you were looking at; it asks what you know and where it came
+from. Someone else turns it into a PR and credits you. The evidence standard and the
+parse protocol are in [CONTRIBUTING.md](CONTRIBUTING.md) for anyone who wants them.
 
 ## Credits
 

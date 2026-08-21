@@ -113,6 +113,7 @@ h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:
 .provenance{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .provenance p{margin:6px 0;line-height:1.5}
 .provenance .src{color:#7d8494}
+.provenance .ask{margin-top:10px;color:var(--muted)}
 .empty{color:var(--muted);padding:30px 0}
 .foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px;padding-bottom:40px}
 .stale{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}

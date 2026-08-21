@@ -313,7 +313,7 @@ function nonCumulativeNote(overlaps) {
   n.appendChild(el('p', null, text));
 
   const d = el('details', 'evidence');
-  d.appendChild(el('summary', null, 'Where this comes from'));
+  d.appendChild(el('summary', null, 'Where this comes from, and how to correct it'));
   for (const spa of spas) {
     const claim = META.claims?.[spa];
     if (!claim) continue;
@@ -329,22 +329,51 @@ function nonCumulativeNote(overlaps) {
   }
   if (META.claim_notes?.bonus_buckets) d.appendChild(el('p', 'src', META.claim_notes.bonus_buckets));
 
-  const ask = el('p', 'ask');
-  ask.appendChild(document.createTextNode(unverified.length
-    ? 'Have a parse, a patch note or a developer statement that settles this? '
-    : 'Think this is wrong? '));
-  if (META.repo_url) {
-    const a = el('a', null, 'Open a PR against claims.json');
-    a.href = `${META.repo_url}/blob/main/CONTRIBUTING.md`;
-    a.target = '_blank'; a.rel = 'noopener';
-    ask.appendChild(a);
-    ask.appendChild(document.createTextNode(' — the evidence standard is in CONTRIBUTING.md.'));
-  } else {
-    ask.appendChild(document.createTextNode('Open a PR against claims.json — the evidence standard is in CONTRIBUTING.md.'));
-  }
-  d.appendChild(ask);
+  d.appendChild(askParagraph(
+    spas.map(s2 => `non-cumulative/${s2}`),
+    unverified.length
+      ? 'Have a parse, a patch note or a developer statement that settles this?'
+      : 'Think this is wrong?'));
   n.appendChild(d);
   return n;
+}
+
+/**
+ * The two ways to correct a claim, easiest first.
+ *
+ * A PR against claims.json is the smaller change, but it assumes GitHub fluency —
+ * and the people most likely to know a mechanic cold are not necessarily the people
+ * who know how to fork a repo. The issue form asks the same questions in a web form,
+ * prefilled with the claim they were looking at.
+ */
+function askParagraph(claimIds, askText) {
+  const ask = el('p', 'ask');
+  ask.appendChild(document.createTextNode(askText + ' '));
+
+  if (!META.repo_url) {
+    ask.appendChild(document.createTextNode(
+      'Fill in the evidence form under .github/ISSUE_TEMPLATE, or open a PR against claims.json — the standard is in CONTRIBUTING.md.'));
+    return ask;
+  }
+
+  const ids = claimIds.filter(Boolean);
+  const params = new URLSearchParams({ template: 'mechanic-evidence.yml', labels: 'evidence' });
+  if (ids.length) {
+    params.set('claim', ids.join(', '));
+    params.set('title', `[evidence] ${ids.join(', ')}`);
+  }
+  const form = el('a', null, 'Tell us what you know');
+  form.href = `${META.repo_url}/issues/new?${params}`;
+  form.target = '_blank'; form.rel = 'noopener';
+  ask.appendChild(form);
+  ask.appendChild(document.createTextNode(' — a short form, no GitHub experience needed. Or '));
+
+  const pr = el('a', null, 'open a PR against claims.json');
+  pr.href = `${META.repo_url}/blob/main/CONTRIBUTING.md`;
+  pr.target = '_blank'; pr.rel = 'noopener';
+  ask.appendChild(pr);
+  ask.appendChild(document.createTextNode('.'));
+  return ask;
 }
 
 function evidenceLine(e) {
@@ -363,7 +392,7 @@ function claimNote(text, claimKey, askText) {
   if (!claim) return n;
 
   const d = el('details', 'evidence');
-  d.appendChild(el('summary', null, 'Where this comes from'));
+  d.appendChild(el('summary', null, 'Where this comes from, and how to correct it'));
   const box = el('div', 'claim');
   const head = el('div', 'claim-head');
   head.appendChild(el('span', null, claim.assertion ? '' : String(claimKey)));
@@ -375,18 +404,7 @@ function claimNote(text, claimKey, askText) {
   box.appendChild(ul);
   d.appendChild(box);
 
-  const ask = el('p', 'ask');
-  ask.appendChild(document.createTextNode(askText + ' '));
-  if (META.repo_url) {
-    const a = el('a', null, 'Open a PR against claims.json');
-    a.href = `${META.repo_url}/blob/main/CONTRIBUTING.md`;
-    a.target = '_blank'; a.rel = 'noopener';
-    ask.appendChild(a);
-    ask.appendChild(document.createTextNode(' — the evidence standard is in CONTRIBUTING.md.'));
-  } else {
-    ask.appendChild(document.createTextNode('Open a PR against claims.json — the evidence standard is in CONTRIBUTING.md.'));
-  }
-  d.appendChild(ask);
+  d.appendChild(askParagraph([claimKey], askText));
   n.appendChild(d);
   return n;
 }
@@ -489,6 +507,10 @@ function ruleProvenance(rules) {
     p.appendChild(el('span', 'src', src));
     wrap.appendChild(p);
   }
+  if (entries.some(([, c]) => c.status === 'unverified'))
+    wrap.appendChild(askParagraph(
+      entries.filter(([, c]) => c.status === 'unverified').map(([r]) => `stacking-rule/${r}`),
+      'Know whether the game really works this way?'));
   return wrap;
 }
 
