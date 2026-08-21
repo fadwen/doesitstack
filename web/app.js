@@ -1,4 +1,5 @@
 import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA } from './engine.js';
+import { dataAge } from './freshness.js';
 
 const $ = s => document.querySelector(s);
 const el = (t, cls, txt) => { const n = document.createElement(t); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
@@ -35,13 +36,13 @@ async function boot() {
     fetch('data/meta.json').then(r => r.json()),
     fetch('data/index.json').then(r => r.json()),
   ]);
-  $('#build').textContent =
-    `${META.spell_count.toLocaleString()} spells from a spells_us.txt dated ${META.spell_file_date}. Dataset built ${META.built.slice(0, 10)}.`;
+  renderDataAge();
   $('#lvl').value = META.max_level;
   buildFilters();
   for (const side of ['a', 'b']) wirePicker(side);
   $('#swap').onclick = () => { const t = picked.a; picked.a = picked.b; picked.b = t; syncAll(); };
   for (const id of ['#f-buffs', '#f-benef', '#lvl']) $(id).addEventListener('change', refresh);
+  if (META.repo_url) $('#repo-link').href = META.repo_url;
   window.addEventListener('hashchange', fromHash);
   await fromHash();
 }
@@ -73,6 +74,20 @@ function buildFilters() {
   classes.appendChild(mk('Any', -1));
   classes.firstChild.classList.add('on');
   META.classes.forEach((c, i) => classes.appendChild(mk(c, i)));
+}
+
+/** Say where the data came from and how old it is; warn once that matters. */
+function renderDataAge() {
+  $('#build').textContent =
+    `${META.spell_count.toLocaleString()} spells, read from a client spells_us.txt dated ${META.spell_file_date}. `
+    + `This copy was built ${META.built.slice(0, 10)}.`;
+
+  const { level, message } = dataAge(META.spell_file_date);
+  if (!message) return;
+  const box = $('#stale');
+  box.hidden = false;
+  box.className = level === 'stale' ? 'stale bad' : 'stale';
+  box.textContent = message;
 }
 
 // ---------- search ----------------------------------------------------------

@@ -239,7 +239,10 @@ Normal rules. A few things specific to this project:
   install. `tests/engine.test.mjs` needs a built dataset and skips itself without one.
   New engine behaviour needs a fixture test, not only a dataset test.
 - **`dist/` is not committed.** Rebuild after each patch day; `tools/deploy_pages.sh`
-  and `tools/deploy_pages.ps1` push it as an orphan `gh-pages` commit.
+  and `tools/deploy_pages.ps1` push it as an orphan `gh-pages` commit. A hosted copy
+  serves the publisher's spell file, not the visitor's, so a copy left unbuilt gives
+  stale answers with no outward sign — `web/freshness.js` is what tells the reader,
+  and it is not a substitute for redeploying.
 - **Parser changes** should note which field index moved and in which client build.
   The layout has changed several times; `tools/spells.mjs` targets the 166-field format.
 

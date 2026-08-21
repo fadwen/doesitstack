@@ -205,10 +205,18 @@ dbstr_us.txt                       descriptions, categories, stacking group name
 Resources/SpellStackingGroups.txt  spell → stacking group, rank, type
 ```
 
-Nothing is scraped. Lucy is linked from every result so you can check the source,
-but the numbers come out of your own install, which means the site is exactly as
-current as your last patch. The field layout follows
+Nothing is scraped, and Lucy is linked from every result so you can check the source.
+The field layout follows
 [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser).
+
+**Freshness depends on who built the copy you are looking at.** Build it yourself and
+it is exactly as current as your last patch. Visit a hosted copy and you get whatever
+spell file its publisher had at deploy time — the footer names that date, and the page
+warns after about a patch cycle and again once the data is several patches old. Rebuild
+and redeploy after each patch day, or the answers go quietly out of date.
+
+The date shown is the modification time of `spells_us.txt`, which the file itself does
+not carry a version for. Copying the file around can reset it.
 
 ## Build and run
 
