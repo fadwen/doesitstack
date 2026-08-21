@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # claims.json is the file most PRs touch, so check it first and on its own —
+      # a malformed claim should fail with a clear message, not inside a test.
+      - name: Validate claims.json
+        run: npm run claims
+
+      # No EverQuest install here, so the dataset-backed suites skip themselves.
+      # The fixture and claim suites carry the load.
+      - name: Test
+        run: npm test

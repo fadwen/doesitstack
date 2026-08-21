@@ -28,52 +28,43 @@ matter, and the site says both.
 ### Non-cumulative effects
 
 A handful of SPAs land on you together but are not added together; the game keeps the
-larger value. The tool warns when a stacking pair shares one — with different wording
-depending on how well the claim is backed, because the backing genuinely differs.
+larger value. The tool warns when a stacking pair shares one, and shows the evidence
+behind the warning — because the evidence differs sharply between them.
 
-**How the list was built.** `zone/bonuses.cpp` in the EQEmu server accumulates most
-bonuses with `+=`. Seven use a keep-the-larger-magnitude idiom instead: **185**
+Seven SPAs qualify, identified from `zone/bonuses.cpp` in the EQEmu server, where they
+keep the larger magnitude instead of the `+=` an ordinary bonus uses: **185**
 DamageModifier, **186** MinDamageModifier, **459** DamageModifier2, **482**
 Skill_Base_Damage_Mod, **496** Critical_Melee_Damage_Mod_Max, **503**
 Melee_Damage_Position_Mod, **505** Damage_Taken_Position_Mod.
 
-**Where EQEmu gets its own knowledge.** Its code cites real sources in places — the
-RoF2 client itself (`zone/spells.cpp`: *"big ol' list according to the client"*, for the
-stacking ignore list), Daybreak's enumerated SPA list on the official EQ forums
-(`common/spdat.h` header), samanna.net for buff duration formulas, and live-server
-parses by its developers (*"~Kayen confirmed on live 2/2/22"*).
+**Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,963
+spells, exactly 53 descriptions contain the word "non-cumulative", and every one of them
+carries SPA 496; none says it without. EQEmu independently agrees, which corroborates
+but does not establish.
 
-**None of those citations attach to these seven.** Each was introduced by a developer
-asserting the behaviour with no stated source:
+The other six rest on uncited emulator code. 185/186/459 came from a 2016 mackal commit
+whose message body is empty; 496/503/505 from KayenEQ's PR #1454 and 482 from #1474,
+each asserting the behaviour with no source given. Daybreak's own published SPA list
+stops at 471, so it never covered 496 either way. The site marks those six unverified
+and says so in the warning.
 
-| SPA | Introduced |
-| --- | --- |
-| 185, 186, 459 | `6fc5f8fb`, 2016-01-10, mackal — "Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier" |
-| 496, 503, 505 | `8a2a1b15`, 2021-07-14, KayenEQ — PR #1454, *"SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier"* |
-| 482 | `fee8772b`, 2021-07-29, KayenEQ — PR #1474 |
+Two caveats apply to all seven:
 
-Neither PR discussion cites a parse, a forum thread or a test. Daybreak's own SPA list
-stops at 471, so it never covered 496 at all.
-
-**The one thing that is independently confirmed is 496**, and not by EQEmu — by
-Daybreak. Of all 70,963 spells, exactly 53 descriptions contain the word
-"non-cumulative", and every one of them carries SPA 496. None says it without. That is
-the game's own text, shipped in `dbstr_us.txt`, and EQEmu's implementation happens to
-agree with it.
-
-So: 496 is established, and the other six are one project's reading of the mechanic.
-The UI says so.
-
-Two caveats that apply either way:
-
-- The larger value wins **within one bonus bucket**. Spell, AA and worn-item bonuses
-  are summed at use time, so a worn item effect and a buff can still add. Two buffs —
-  the case this tool compares — are both in the spell bucket.
+- The larger value wins **within one bonus bucket**. Spell, AA and worn-item bonuses are
+  summed at use time, so a worn item effect and a buff can still add. Two buffs — the
+  case this tool compares — are both in the spell bucket.
 - 185, 459, 482, 503 and 505 are additive when they arrive as a worn item bonus rather
   than as a buff.
 
-Per-SPA provenance, including the commits above, lives in `tools/spa_meta.json` under
-`non_cumulative`.
+Every claim and its evidence live in [`claims.json`](claims.json). Status is derived
+from evidence, not written by hand, so **adding a primary source removes the hedging on
+the next build with no code change**. If you can settle one of the six, see
+[CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
+
+```bash
+npm run claims     # every claim and its derived status
+npm run verify     # re-runs the machine-checkable evidence against your spell files
+```
 
 ## How the rules work
 
@@ -183,10 +174,15 @@ dist/data/desc/NN.json       descriptions with their #1/%z template tokens resol
 npm test
 ```
 
-The suite pins the engine against known-good pairs (the two spells above, snare vs.
-Spirit of Wolf, a bard song vs. a normal buff, same-spell refresh rules) and runs
-against the real dataset, so it doubles as a check that the parser still lines up
-with the current file format.
+Two layers. `tests/engine.fixtures.test.mjs` and `tests/claims.test.mjs` run on a bare
+clone with no EverQuest install — hand-built fixtures covering slot arbitration, SPA 148
+blocking, stacking groups, the snare and bard rules, plus the claims schema. That is
+what CI runs.
+
+`tests/engine.test.mjs` needs a built dataset and skips itself without one. It pins the
+engine against real spells — the two above, Ensnare vs. Spirit of Wolf, Chant of Battle
+vs. a normal buff — so it doubles as a check that the parser still lines up with the
+current file format.
 
 ### Publishing
 
@@ -203,14 +199,20 @@ regenerated JSON out of the repo's history.
 ## Layout
 
 ```
+claims.json             what this project claims about the game, and the evidence for it
+CONTRIBUTING.md         the evidence standard and the parse protocol
 tools/spells.mjs        spell file parser, duration/value formulas, description tokens,
                         source classification and the spell-reference graph
 tools/build.mjs         dataset + site build
+tools/claims.mjs        claims loader, validator, status derivation
+tools/verify_claims.mjs re-runs machine-checkable evidence against your spell files
+tools/gen_spa_js.mjs    generates web/spa.js from repo files (no game needed)
+tools/gen_spa_meta.mjs  regenerates spa_meta.json from an EQEmu checkout
 tools/serve.mjs         dependency-free static server for dist/
 tools/spa_meta.json     SPA id → name and the stacking ignore list, extracted from EQEmu
 web/engine.js           the stacking rules
 web/app.js              search, pickers, rendering
-tests/                  node:test suite over the built dataset
+tests/                  node:test — fixtures and claims run anywhere, dataset tests skip
 ```
 
 ## Known gaps
@@ -218,11 +220,21 @@ tests/                  node:test suite over the built dataset
 - Caster level is a single input applied to both spells; the game tracks it per buff.
 - Formula 123 (random range) is evaluated at its midpoint.
 - Six of the seven non-cumulative SPAs rest on uncited EQEmu implementation rather than
-  on any primary source. See the section above.
+  on any primary source. See the section above — and `claims.json` for each one.
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max",
   not Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
 - Bard instrument modifiers are not applied to song values.
 - "Item / other" is a residual bucket, not a real source flag — see above.
+
+## Contributing
+
+Bug fixes and features: normal pull request.
+
+Claims about how the game behaves are different — they live in
+[`claims.json`](claims.json) with their evidence, and a PR that settles one is usually a
+ten-line diff and no code. There is an evidence standard, a parse protocol, and an issue
+form for people who would rather not touch JSON. All in
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 

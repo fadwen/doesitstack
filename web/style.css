@@ -75,6 +75,24 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 .dir .why{color:#c9cfdb;font-size:14px}
 
 .note{border-left:3px solid var(--warn);background:#221f16;padding:10px 14px;border-radius:0 8px 8px 0;margin:14px 0;color:#e6dcc2}
+.note p{margin:0}
+.evidence{margin-top:10px;font-size:13px;color:#cfc7ae}
+.evidence summary{cursor:pointer;color:#f2c35c;list-style:revert}
+.evidence summary:hover{text-decoration:underline}
+.evidence .claim{margin:10px 0 0}
+.claim-head{display:flex;gap:8px;align-items:baseline;font-weight:600}
+.evidence ul{margin:4px 0 0;padding-left:18px}
+.evidence li{margin:3px 0;line-height:1.45}
+.strength{display:inline-block;border-radius:3px;padding:0 5px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.05em;border:1px solid currentColor;vertical-align:1px}
+.strength.primary{color:#8ee0b6}
+.strength.supporting{color:#f2c35c}
+.strength.weak{color:#98a0b3}
+.badge.confirmed{color:#8ee0b6;border-color:#2c5d45}
+.badge.unverified{color:#f2c35c;border-color:#5d4d24}
+.badge.disputed{color:#ff7a7a;border-color:#6b2c2c}
+.evidence .src{color:#9a937f}
+.evidence .ask{margin-top:12px;color:#e6dcc2}
 
 table.slots{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}
 table.slots th,table.slots td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}

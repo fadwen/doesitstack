@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file — see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
+  "evidence_strength": {
+    "primary": "Daybreak's own words, or a parse that meets the protocol in CONTRIBUTING.md. Enough on its own.",
+    "supporting": "Independent but second-hand — an emulator implementation, a datamined structure. Corroborates; does not settle.",
+    "weak": "Community consensus with no data behind it. Recorded for context, never load-bearing."
+  },
+  "claims": [
+    {
+      "id": "non-cumulative/496",
+      "type": "non_cumulative",
+      "spa": 496,
+      "spa_name": "Critical_Melee_Damage_Mod_Max",
+      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies — the game does not add them.",
+      "evidence": [
+        {
+          "strength": "primary",
+          "kind": "game-text",
+          "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 — and none says it without.",
+          "source": "dbstr_us.txt, shipped with the live client",
+          "check": { "id": "desc-phrase-implies-spa", "phrase": "non-cumulative", "spa": 496 }
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/185",
+      "type": "non_cumulative",
+      "spa": 185,
+      "spa_name": "DamageModifier",
+      "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') — commit body empty, no source cited"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/186",
+      "type": "non_cumulative",
+      "spa": 186,
+      "spa_name": "MinDamageModifier",
+      "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) — no source cited"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/459",
+      "type": "non_cumulative",
+      "spa": 459,
+      "spa_name": "DamageModifier2",
+      "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) — no source cited"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/482",
+      "type": "non_cumulative",
+      "spa": 482,
+      "spa_name": "Skill_Base_Damage_Mod",
+      "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all — the behaviour is only visible in the code.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) — no source cited"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/503",
+      "type": "non_cumulative",
+      "spa": 503,
+      "spa_name": "Melee_Damage_Position_Mod",
+      "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) — no source cited"
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/505",
+      "type": "non_cumulative",
+      "spa": 505,
+      "spa_name": "Damage_Taken_Position_Mod",
+      "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) — no source cited"
+        }
+      ]
+    }
+  ],
+  "notes": {
+    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs — the case this tool compares — are both in the spell bucket."
+  }
+}

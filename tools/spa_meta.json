@@ -650,50 +650,5 @@
   495,
   511
  ],
- "non_cumulative": {
-  "_what": "SPAs whose spell-buff bonus keeps the larger magnitude instead of summing, so two buffs carrying one both land but only the bigger number counts.",
-  "_how_identified": "zone/bonuses.cpp in the EQEmu server: these use `if (v < 0 && bucket > v) bucket = v; else if (v > 0 && bucket < v) bucket = v` in the spell-bonus path, where an ordinary stacking bonus uses `+=`.",
-  "_provenance": "EQEmu is a corroborating source here, not a root one. Its own code cites the RoF2 client (zone/spells.cpp: 'big ol' list according to the client'), Daybreak's enumerated SPA list on the official EQ forums (spdat.h header comment), samanna.net for buff durations, and live-server parses by its developers. None of those citations attach to these seven SPAs: each was introduced by an EQEmu developer asserting the behaviour without a stated source. The mirrored copy of Daybreak's SPA list stops at 471, so it never covered 496 at all. The one independent confirmation is Daybreak's own shipped spell text: of 70,963 spells, exactly 53 descriptions contain the word 'non-cumulative', and every one of them carries SPA 496 - none without. Treat 496 as established and the other six as one implementation's reading.",
-  "_caveat": "The larger value wins within a single bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than as a buff. Two buffs - the case this tool compares - are both in the spell bucket.",
-  "spas": {
-   "185": {
-    "name": "DamageModifier",
-    "introduced": "6fc5f8fb 2016-01-10 mackal 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier'",
-    "evidence": "eqemu-only"
-   },
-   "186": {
-    "name": "MinDamageModifier",
-    "introduced": "6fc5f8fb 2016-01-10 mackal 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier'",
-    "evidence": "eqemu-only"
-   },
-   "459": {
-    "name": "DamageModifier2",
-    "introduced": "6fc5f8fb 2016-01-10 mackal (implemented da70a45d 2014-06-17 KayenEQ)",
-    "evidence": "eqemu-only"
-   },
-   "482": {
-    "name": "Skill_Base_Damage_Mod",
-    "introduced": "fee8772b 2021-07-29 KayenEQ 'Implemented SPA 482 SE_Skill_Base_Damage_Mod (#1474)'",
-    "evidence": "eqemu-only"
-   },
-   "496": {
-    "name": "Critical_Melee_Damage_Mod_Max",
-    "introduced": "8a2a1b15 2021-07-14 KayenEQ '[Feature] New SPAs pass 1 (#1454)' - \"SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier\"",
-    "evidence": "confirmed by Daybreak spell text (53 descriptions say 'non-cumulative', all carry 496)"
-   },
-   "503": {
-    "name": "Melee_Damage_Position_Mod",
-    "introduced": "8a2a1b15 2021-07-14 KayenEQ '[Feature] New SPAs pass 1 (#1454)'",
-    "evidence": "eqemu-only"
-   },
-   "505": {
-    "name": "Damage_Taken_Position_Mod",
-    "introduced": "8a2a1b15 2021-07-14 KayenEQ '[Feature] New SPAs pass 1 (#1454)'",
-    "evidence": "eqemu-only"
-   }
-  },
-  "confirmed_by_spell_text": [
-   496
-  ]
- }
+ "_source": "SPA id->name and the stacking ignore list, extracted from EQEmu/Server (common/spdat.h SpellEffect namespace and common/spdat.cpp IsEffectIgnoredInStacking). Regenerate with tools/gen_spa_meta.mjs against a local checkout. Claims about how effects behave live in claims.json, not here."
 }

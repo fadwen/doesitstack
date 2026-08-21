@@ -1,0 +1,83 @@
+name: Evidence about a mechanic
+description: You know how something actually behaves, and the site says otherwise or hedges.
+title: "[evidence] "
+labels: ["evidence"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This project marks a claim **unverified** when the only thing behind it is an
+        emulator's source code. If you can settle one, this is the place — or open a PR
+        against `claims.json` directly. The standard is in
+        [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md).
+
+        You do not need code, a parse, or a GitHub account beyond this form. A patch
+        note or a developer quote is often the strongest thing anyone can bring.
+
+  - type: input
+    id: claim
+    attributes:
+      label: Which claim
+      description: The claim id from `claims.json`, or the SPA number, or just describe it.
+      placeholder: non-cumulative/185
+    validations:
+      required: true
+
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: What you found
+      options:
+        - The claim is correct
+        - The claim is wrong
+        - It is more complicated than the claim says
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of evidence
+      description: See CONTRIBUTING.md for what each one means and how much weight it carries.
+      options:
+        - Game text (the client's own spell descriptions or messages)
+        - Developer statement (a named Daybreak/Darkpaw dev)
+        - Patch notes
+        - Parse (an in-game test with numbers)
+        - Emulator implementation (EQEmu or similar)
+        - Community consensus (forum, wiki, Discord — no data)
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Source
+      description: >
+        Specific enough that someone else can check it without asking you: a quote and a
+        link, a patch date, a file and line. "I tested it years ago" is not a source.
+    validations:
+      required: true
+
+  - type: textarea
+    id: parse
+    attributes:
+      label: If this is a parse
+      description: >
+        The full protocol is in CONTRIBUTING.md. Short version — what you cast and in
+        what order, how many swings or casts, the numbers before and after, and what you
+        ruled out (other buffs, gear swaps, AAs, other crit sources).
+      value: |
+        Method:
+        Sample size:
+        Result:
+        Controls:
+        Log excerpt:
+
+  - type: checkboxes
+    id: ack
+    attributes:
+      label: Before submitting
+      options:
+        - label: My source is specific enough for someone else to verify without contacting me.
+          required: true

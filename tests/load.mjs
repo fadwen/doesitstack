@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DATA = path.join(root, 'dist', 'data');
-export const META = JSON.parse(fs.readFileSync(path.join(DATA, 'meta.json'), 'utf8'));
+
+// The dataset is built from a licensed EverQuest install, so it is absent on a
+// fresh clone and in CI. Suites that need it skip instead of failing; the
+// fixture-based suites cover the engine either way.
+export const HAS_DATASET = fs.existsSync(path.join(DATA, 'meta.json'));
+export const SKIP = HAS_DATASET ? {} : { skip: 'no built dataset — run `npm run build` with EverQuest installed' };
+export const META = HAS_DATASET ? JSON.parse(fs.readFileSync(path.join(DATA, 'meta.json'), 'utf8')) : null;
+
 const shards = new Map();
 
 export function spell(id) {

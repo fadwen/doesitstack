@@ -265,25 +265,70 @@ function renderVerdict(a, b, res) {
   v.appendChild(dirs);
 
   // Only meaningful when both buffs actually hold at once.
-  if (res.nonCumulative.length && bothIndependent) {
-    const n = el('div', 'note');
-    const names = [...new Set(res.nonCumulative.map(x => x.name))].join(', ');
-    const spas = [...new Set(res.nonCumulative.map(x => x.spa))];
-    const hedged = spas.filter(s2 => !META.non_cumulative_confirmed.includes(s2));
-    n.textContent = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
-    if (hedged.length)
-      n.textContent += ` Treat that as unverified for SPA ${hedged.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which no source in that project backs up, and Daybreak's own spell text never calls these non-cumulative.`;
-    n.title = 'These effects keep the larger magnitude in the spell bonus bucket instead of summing. '
-            + 'A worn item bonus can behave additively for some of them. '
-            + 'See tools/spa_meta.json for where each one comes from.';
-    v.appendChild(n);
-  }
+  if (res.nonCumulative.length && bothIndependent) v.appendChild(nonCumulativeNote(res.nonCumulative));
   const g = res.xThenY.sharedGroups;
   if (g.length) {
     const n = el('div', 'note');
     n.textContent = `Shared Live stacking group: ${g.map(x => `${x.name} (ranks ${x.rankA} / ${x.rankB})`).join('; ')}. Only one member of a stacking group is ever active.`;
     v.appendChild(n);
   }
+}
+
+/**
+ * Effects that land together but are not added together. The wording tracks the
+ * evidence recorded in claims.json, and the disclosure shows that evidence, so a
+ * reader can judge it — or go settle it.
+ */
+function nonCumulativeNote(overlaps) {
+  const n = el('div', 'note');
+  const names = [...new Set(overlaps.map(x => x.name))].join(', ');
+  const spas = [...new Set(overlaps.map(x => x.spa))];
+  const unverified = spas.filter(s => !META.non_cumulative_confirmed.includes(s));
+
+  let text = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
+  if (unverified.length)
+    text += ` Treat that as unverified for SPA ${unverified.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which nothing in that project backs up, and the game's own spell text never calls these non-cumulative.`;
+  n.appendChild(el('p', null, text));
+
+  const d = el('details', 'evidence');
+  d.appendChild(el('summary', null, 'Where this comes from'));
+  for (const spa of spas) {
+    const claim = META.claims?.[spa];
+    if (!claim) continue;
+    const box = el('div', 'claim');
+    const head = el('div', 'claim-head');
+    head.appendChild(el('span', null, `SPA ${spa}`));
+    head.appendChild(el('span', 'badge ' + claim.status, claim.status));
+    box.appendChild(head);
+    const ul = el('ul');
+    for (const e of claim.evidence) {
+      const li = el('li');
+      li.appendChild(el('span', 'strength ' + e.strength, e.strength));
+      li.appendChild(el('span', null, ` ${e.summary} `));
+      li.appendChild(el('span', 'src', `— ${e.source}`));
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+    d.appendChild(box);
+  }
+  if (META.claim_notes?.bonus_buckets) d.appendChild(el('p', 'src', META.claim_notes.bonus_buckets));
+
+  const ask = el('p', 'ask');
+  ask.appendChild(document.createTextNode(unverified.length
+    ? 'Have a parse, a patch note or a developer statement that settles this? '
+    : 'Think this is wrong? '));
+  if (META.repo_url) {
+    const a = el('a', null, 'Open a PR against claims.json');
+    a.href = `${META.repo_url}/blob/main/CONTRIBUTING.md`;
+    a.target = '_blank'; a.rel = 'noopener';
+    ask.appendChild(a);
+    ask.appendChild(document.createTextNode(' — the evidence standard is in CONTRIBUTING.md.'));
+  } else {
+    ask.appendChild(document.createTextNode('Open a PR against claims.json — the evidence standard is in CONTRIBUTING.md.'));
+  }
+  d.appendChild(ask);
+  n.appendChild(d);
+  return n;
 }
 
 function renderDetail(a, b, res, lvl) {
