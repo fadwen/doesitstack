@@ -29,10 +29,11 @@
     {
      "strength": "supporting",
      "kind": "implementation",
-     "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=.",
+     "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=. Its commit asserted the behaviour with no source cited; that it matches the spell text is what makes it corroboration rather than the basis.",
      "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
     }
-   ]
+   ],
+   "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
   },
   {
    "id": "non-cumulative/185",
