@@ -7,7 +7,7 @@ It works on anything the game treats as a spell — buffs, disciplines, bard son
 AA-granted effects, item clickies, procs — because all of them are rows in the same
 spell table.
 
-<!-- ![screenshot](docs/screenshot.png) -->
+![Does it stack? comparing a berserker AA against a shaman epic click](docs/screenshot.png)
 
 ## Why not just read Lucy?
 
