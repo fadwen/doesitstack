@@ -177,3 +177,12 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 .setchip-name.as-button:hover{text-decoration:underline}
 .saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
 .drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}
+
+/* Two views of the same dataset. The only route between them used to be a link
+   trailing off the end of the tagline, which read as a footnote and wrapped out
+   of sight on a phone — most people never found the second one. */
+.views{display:flex;gap:4px;margin-top:12px;flex-wrap:wrap}
+.view{padding:5px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted);
+  text-decoration:none;font-size:13px;background:var(--panel)}
+.view:hover{background:var(--panel-2);color:var(--ink)}
+.view.on{background:#20364a;border-color:#3d6c94;color:#dbeaf7}

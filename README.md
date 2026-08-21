@@ -1,11 +1,18 @@
 # Does it stack?
 
-A static site that answers one question about EverQuest: **if I already have buff A,
-will buff B land — and what happens to A if it does?**
+A static site that answers what EverQuest's spell file will not tell you plainly: **what
+can actually sit on you at the same time, and what is quietly doing nothing.**
 
 It works on anything the game treats as a spell — buffs, disciplines, bard songs,
-AA-granted effects, item clickies, procs — because all of them are rows in the same
+AA-granted effects, item clickies, procs, auras — because all of them are rows in the same
 spell table.
+
+Two views over the same dataset:
+
+| | |
+| --- | --- |
+| **Compare two** — [`index.html`](web/index.html) | *If I already have buff A, will buff B land, and what happens to A if it does?* The verdict in both casting orders, and the slot-by-slot arbitration behind it. |
+| **Whole buff set** — [`set.html`](web/set.html) | *Given everything I expect to be carrying, what is fighting, and what am I paying for twice?* Conflicting pairs, plus effects several buffs share where only one counts. [More below](#a-whole-buff-set). |
 
 ![Does it stack? comparing a berserker AA against a shaman epic click](docs/screenshot.png)
 
