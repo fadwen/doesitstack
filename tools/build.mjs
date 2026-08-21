@@ -117,9 +117,8 @@ async function main() {
   const nonCumulative = byType(claimsDoc, 'non_cumulative').sort((a, b) => a.spa - b.spa);
   const NON_CUMULATIVE_SPA = nonCumulative.map(c => c.spa);
   const NON_CUMULATIVE_CONFIRMED = nonCumulative.filter(c => c.status === 'confirmed').map(c => c.spa);
-  console.log(`claims: ${nonCumulative.filter(c => c.status === 'confirmed').length} confirmed, `
-            + `${nonCumulative.filter(c => c.status === 'unverified').length} unverified, `
-            + `${nonCumulative.filter(c => c.status === 'disputed').length} disputed`);
+  const tally = claimsDoc.claims.reduce((m, c) => ({ ...m, [c.status]: (m[c.status] || 0) + 1 }), {});
+  console.log('claims: ' + Object.entries(tally).map(([k, v]) => `${v} ${k}`).join(', '));
   const spaNames = Object.fromEntries(Object.entries(spaMeta.spa_names).map(([k, v]) => [k, prettySpa(v)]));
   const meta = {
     built: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
@@ -140,7 +139,7 @@ async function main() {
       const payload = {
         status: c.status,
         assertion: c.assertion,
-        evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source })),
+        evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source, who: e.who })),
       };
       return c.type === 'non_cumulative' ? [[c.spa, payload], [c.id, payload]] : [[c.id, payload]];
     })),

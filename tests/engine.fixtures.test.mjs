@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, calcValue } from '../web/engine.js';
-import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY } from '../web/spa.js';
+import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
   const r = checkBoth(fx('prophetsGift'), fx('savageSpirit'));
@@ -86,12 +86,23 @@ test('a focus SPA on the ignore list never causes a conflict', () => {
   assert.equal(r.contestedFocus, null);
 });
 
-test('a focus SPA missing from the ignore list still arbitrates, but is flagged', () => {
+test('a focus SPA the claim covers is exempt, so two twincast buffs both hold', () => {
+  // The focus stacking claim is corroborated, so 399 is exempted rather than
+  // arbitrated — the verdict changes because the evidence did, not because the
+  // engine was special-cased.
+  assert.ok(IGNORED_BY_CLAIM.includes(399), 'the claim should exempt FcTwincast');
+  assert.equal(FOCUS_CONTESTED.length, 0, 'nothing is left contested while the claim is acted on');
+
   const r = checkStack(fx('twincastB'), fx('twincastA'));   // stronger already up
-  assert.equal(r.code, -1);
-  assert.ok(r.contestedFocus, 'the verdict should be marked contested');
-  assert.equal(r.contestedFocus.spa, 399);
-  assert.ok(FOCUS_CONTESTED.includes(399));
+  assert.equal(r.code, 0, 'they stack');
+  assert.equal(r.contestedFocus, null, 'and there is nothing left to doubt');
+});
+
+test('two stacking twincast buffs are still reported as best-only', () => {
+  // "Twincast does not stack" is about the effect, not the buffs: both hold, but
+  // only the best twincast chance applies to a cast.
+  const o = focusOverlap(fx('twincastA'), fx('twincastB'));
+  assert.deepEqual(o.bestOnly.map(f => f.spa), [399]);
 });
 
 test('an ordinary conflict is not flagged as contested focus', () => {

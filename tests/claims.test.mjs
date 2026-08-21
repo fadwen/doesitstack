@@ -3,8 +3,8 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { load, validate, deriveStatus, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
-import { FOCUS_CONTESTED, FOCUS_BEST_ONLY } from '../web/spa.js';
+import { load, validate, deriveStatus, isActionable, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
+import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
 
 const doc = load();
 
@@ -74,18 +74,54 @@ test('a claim cannot name both a single SPA and a set', () => {
   assert.ok(problems.some(p => p.includes('exactly one')));
 });
 
-test('the focus claims from reader feedback are recorded', () => {
+test('the focus claims are attributed and acted on', () => {
   const bestOnly = doc.claims.find(c => c.type === 'focus_best_only');
   assert.ok(bestOnly, 'the best-only focus claim should exist');
   assert.deepEqual(bestOnly.exceptions, [339, 340, 383]);
-  assert.equal(bestOnly.status, 'unverified');
-  assert.ok(bestOnly.evidence.some(e => e.kind === 'community'), 'credit the reporter');
-  assert.ok(bestOnly.evidence.some(e => e.kind === 'implementation'), 'and corroborate it');
+  assert.equal(bestOnly.status, 'corroborated');
+  const named = bestOnly.evidence.find(e => e.kind === 'practitioner');
+  assert.ok(named, 'a named practitioner report');
+  assert.ok(named.who && named.who.length > 5, 'with the standing that makes it weigh');
+  assert.ok(bestOnly.evidence.some(e => e.kind === 'implementation'), 'and corroboration');
 
   const stacking = doc.claims.find(c => c.type === 'focus_stacking');
-  assert.equal(stacking.status, 'unverified');
-  // The claim covers a category; the build derives which SPAs are actually affected.
+  assert.equal(stacking.status, 'corroborated');
   assert.deepEqual(stacking.spas, [], 'an empty spas array means "the whole category"');
-  assert.ok(FOCUS_CONTESTED.includes(399), 'FcTwincast should come out of that derivation');
-  assert.ok(FOCUS_CONTESTED.length > 5 && FOCUS_BEST_ONLY.length > 20);
+  // Acted on, so the SPAs are exempted rather than left contested.
+  assert.ok(IGNORED_BY_CLAIM.includes(399));
+  assert.equal(FOCUS_CONTESTED.length, 0);
+  assert.ok(FOCUS_BEST_ONLY.length > 20);
+});
+
+test('a practitioner report is strong, but only when it names who', () => {
+  const base = { id: 'focus-stacking/x', type: 'focus_stacking', slug: 'x', spas: [], assertion: 'a'.repeat(20) };
+  const withWho = validate({ version: 1, claims: [{ ...base,
+    evidence: [{ strength: 'strong', kind: 'practitioner', who: 'Someone, class rep', summary: 's', source: 'a post' }] }] });
+  assert.deepEqual(withWho, []);
+
+  const withoutWho = validate({ version: 1, claims: [{ ...base,
+    evidence: [{ strength: 'strong', kind: 'practitioner', summary: 's', source: 'a post' }] }] });
+  assert.ok(withoutWho.some(p => p.includes('who')));
+});
+
+test('an emulator implementation cannot be strong either', () => {
+  const problems = validate({ version: 1, claims: [{ id: 'non-cumulative/1', type: 'non_cumulative', spa: 1,
+    assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'strong', kind: 'implementation', summary: 's', source: 'some code' }] }] });
+  assert.ok(problems.some(p => p.includes('cannot be strong')));
+});
+
+test('status ranks primary above strong above the rest', () => {
+  assert.equal(deriveStatus({ evidence: [{ strength: 'weak' }] }), 'unverified');
+  assert.equal(deriveStatus({ evidence: [{ strength: 'supporting' }] }), 'unverified');
+  assert.equal(deriveStatus({ evidence: [{ strength: 'strong' }] }), 'corroborated');
+  assert.equal(deriveStatus({ evidence: [{ strength: 'strong' }, { strength: 'primary' }] }), 'confirmed');
+  assert.equal(deriveStatus({ evidence: [{ strength: 'strong' }, { strength: 'weak', refutes: true }] }), 'disputed');
+});
+
+test('only confirmed and corroborated claims are acted on', () => {
+  assert.equal(isActionable({ evidence: [{ strength: 'strong' }] }), true);
+  assert.equal(isActionable({ evidence: [{ strength: 'primary' }] }), true);
+  assert.equal(isActionable({ evidence: [{ strength: 'supporting' }] }), false);
+  assert.equal(isActionable({ evidence: [{ strength: 'weak' }] }), false);
 });

@@ -90,12 +90,15 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 .strength{display:inline-block;border-radius:3px;padding:0 5px;font-size:10.5px;text-transform:uppercase;
   letter-spacing:.05em;border:1px solid currentColor;vertical-align:1px}
 .strength.primary{color:#8ee0b6}
+.strength.strong{color:#9fd0ff}
 .strength.supporting{color:#f2c35c}
 .strength.weak{color:#98a0b3}
 .badge.confirmed{color:#8ee0b6;border-color:#2c5d45}
+.badge.corroborated{color:#9fd0ff;border-color:#2f4a63}
 .badge.unverified{color:#f2c35c;border-color:#5d4d24}
 .badge.disputed{color:#ff7a7a;border-color:#6b2c2c}
 .evidence .src{color:#9a937f}
+.evidence .who{color:#cfd8e6;font-style:italic}
 .evidence .ask{margin-top:12px;color:#e6dcc2}
 
 table.slots{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}

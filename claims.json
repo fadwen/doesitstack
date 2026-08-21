@@ -2,9 +2,10 @@
  "version": 1,
  "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
  "evidence_strength": {
-  "primary": "Daybreak's own words, or a parse that meets the protocol in CONTRIBUTING.md. Enough on its own.",
-  "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; does not settle.",
-  "weak": "Community consensus with no data behind it. Recorded for context, never load-bearing."
+  "primary": "Daybreak's own words \u2014 game text, a patch note, a named developer \u2014 or a parse that meets the protocol in CONTRIBUTING.md. Settles a claim.",
+  "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and attributed.",
+  "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; never settles.",
+  "weak": "An unattributed community claim with no data and no name behind it. Recorded for context, never load-bearing."
  },
  "claims": [
   {
@@ -137,15 +138,16 @@
    "assertion": "When more than one focus effect could apply to the same cast, only the best one applies \u2014 they do not add. The exceptions are the proc-type foci (339 TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc), which fire independently and can all land on one cast.",
    "evidence": [
     {
-     "strength": "weak",
-     "kind": "community",
-     "summary": "Reported in feedback on the project: 'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
-     "source": "Reader feedback to fadwen on the doesitstack announcement, 2026-08-21"
+     "strength": "strong",
+     "kind": "practitioner",
+     "who": "Sancus \u2014 wizard class representative, and in Realm of Insanity",
+     "summary": "'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
+     "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21"
     },
     {
      "strength": "supporting",
      "kind": "implementation",
-     "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three exceptions exactly.",
+     "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three named exceptions exactly.",
      "source": "EQEmu/Server zone/spell_effects.cpp Mob::GetFocusEffect and zone/bonuses.cpp:4157,4167"
     }
    ]
@@ -158,22 +160,23 @@
    "assertion": "Focus effects stack regardless of slot conflicts. Most focus SPAs are already exempt from slot arbitration, but some are missing from the client-derived ignore list the engine uses, so the tool may report a conflict between two focus buffs that in fact coexist.",
    "evidence": [
     {
-     "strength": "weak",
-     "kind": "community",
-     "summary": "Reported in feedback on the project: focus SPAs (the Fc_ entries in Daybreak's enumerated SPA list) stack regardless of slot conflicts.",
-     "source": "Reader feedback to fadwen on the doesitstack announcement, 2026-08-21, citing https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/"
+     "strength": "strong",
+     "kind": "practitioner",
+     "who": "Sancus \u2014 wizard class representative, and in Realm of Insanity",
+     "summary": "Focus SPAs \u2014 the Fc_ entries in Daybreak's enumerated SPA list \u2014 stack regardless of slot conflicts.",
+     "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21, citing Daybreak's enumerated SPA list at https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/"
     },
     {
      "strength": "supporting",
      "kind": "implementation",
-     "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is clearly meant to be exempt and the remaining 13 look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
+     "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is plainly meant to be exempt and the rest look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
      "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking and IsFocusLimit"
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "Counter-evidence for part of the set: 399 FcTwincast sits below the ignore list's ceiling of SPA 512, so the client had it and did not exempt it \u2014 consistent with the long-standing player report that twincast effects do not stack with each other. Treating the whole category as exempt without checking would trade one wrong answer for another.",
-     "source": "EQEmu/Server common/spdat.cpp; the ignore list extends to SPA 512, well past the RoF2 client it is derived from"
+     "strength": "weak",
+     "kind": "community",
+     "summary": "The folk belief that twincast effects 'do not stack' looked like a counterexample for SPA 399, since it sits below the ignore list's ceiling. It is not: two twincast buffs do both hold, and only the best twincast chance applies to a cast \u2014 which is the focus_best_only rule, not a stacking conflict. Recorded because the distinction is the thing people get wrong.",
+     "source": "Long-standing player report, reconciled against the focus_best_only claim"
     }
    ],
    "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The build derives the set, currently 13 SPAs, so it tracks spa_meta.json rather than freezing a list."

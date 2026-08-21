@@ -49,8 +49,16 @@ you both benefits, and the tool says so. The exceptions are the proc-type foci �
 TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc — which fire independently and can
 all land on one cast.
 
-Both are `unverified`: a knowledgeable reader plus corroborating emulator code, but no
-primary source. If you can settle either, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Both are `corroborated` — reported by Sancus, wizard class representative and in Realm
+of Insanity, with EQEmu's implementation agreeing. That is strong enough for the engine
+to act on: the affected SPAs are exempted from arbitration and the verdicts changed
+accordingly. They are not `confirmed`, which is reserved for Daybreak's own words or a
+parse, so the site attributes rather than asserts. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+This is also the answer to "twincast doesn't stack". Two twincast buffs *do* both hold;
+what does not double is the effect. The buffs stack, the focus is best-only, and
+conflating those two is what makes the mechanic confusing.
 
 ### Non-cumulative effects
 

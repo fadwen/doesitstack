@@ -24,9 +24,10 @@ other six rest on a reading of the EQEmu server's code, where the behaviour was
 committed with no source cited. That is worth something — EQEmu developers test against
 live servers — but it is not the same as knowing.
 
-So the site says which is which, and the wording comes from the evidence rather than
-from anyone's confidence. **Add a primary source to a claim and the hedging disappears
-on the next build.** No code change, no UI change. That is the whole design.
+So the site says which is which, and both the wording *and the verdicts* come from the
+evidence rather than from anyone's confidence. **Add a source and the next build changes
+what the site says — and, where the claim can affect an answer, what it answers.** No
+code change, no UI change. That is the whole design.
 
 ## What counts as evidence
 
@@ -35,13 +36,54 @@ stranger can check it.
 
 | Strength | Kinds | What it means |
 | --- | --- | --- |
-| **primary** | `game-text`, `dev-statement`, `patch-notes`, `parse` | Daybreak's own words, or a measurement that meets the protocol below. Settles a claim on its own. |
+| **primary** | `game-text`, `dev-statement`, `patch-notes`, `parse` | Daybreak's own words, or a measurement that meets the protocol below. Settles a claim. |
+| **strong** | `practitioner`, `dev-statement`, `patch-notes`, `parse` | A named person with standing in the game reporting first-hand behaviour. Acted on, and attributed. |
 | **supporting** | `implementation` | Independent but second-hand — an emulator's code, a datamined structure. Corroborates. Never settles. |
-| **weak** | `community` | Forum, wiki or Discord consensus with no data behind it. Recorded for context, never load-bearing. |
+| **weak** | `community` | An unattributed claim with no data and no name behind it. Recorded for context, never load-bearing. |
 
-`implementation` evidence **cannot** be marked primary. The validator rejects it. This
-is deliberate: an emulator is someone else's reading of the game, and treating it as
-proof is exactly the mistake this file exists to prevent.
+`implementation` evidence **cannot** be primary or strong. The validator rejects it.
+That is deliberate: an emulator is someone else's reading of the game, and treating it
+as proof is the mistake this file exists to prevent.
+
+### practitioner
+
+The people who actually know. A class representative, a raid guild's mechanics lead, a
+known theorycrafter, a Daybreak CSR — someone whose day-to-day is this system and whose
+name can be checked. Reporting what they have seen the game do.
+
+This is not the same as a forum consensus, and lumping the two together as "community"
+was wrong: a class rep describing their own class's signature mechanic is worth more
+than an emulator's uncited implementation, not less. It is also not the same as
+Daybreak's own words — testimony can be misremembered, and mechanics change — so it
+gets its own tier rather than being called primary.
+
+A `practitioner` entry needs a **`who`** field naming the person and the standing that
+makes the report weigh. The validator enforces it, and the site prints it:
+
+```json
+{
+  "strength": "strong",
+  "kind": "practitioner",
+  "who": "Sancus — wizard class representative, and in Realm of Insanity",
+  "summary": "Focus SPAs stack regardless of slot conflicts.",
+  "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21"
+}
+```
+
+### What each status does
+
+| Status | Reached by | Effect |
+| --- | --- | --- |
+| `confirmed` | any primary evidence | Stated plainly. The engine acts on it. |
+| `corroborated` | any strong evidence | Stated with attribution. The engine acts on it. |
+| `unverified` | only supporting or weak | Flagged to the reader. The engine does **not** act on it. |
+| `disputed` | any entry with `"refutes": true` | Surfaced as contested. |
+
+"The engine acts on it" is literal for claims that can change a verdict. The focus
+stacking claim is one: while it was `unverified` the engine still arbitrated those SPAs
+and marked the verdict doubtful; once a class rep's report made it `corroborated`, the
+SPAs became exempt and the verdicts changed. Nothing in the engine was special-cased —
+`tools/gen_spa_js.mjs` reads the status and emits a different table.
 
 ### game-text
 

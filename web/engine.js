@@ -15,7 +15,7 @@
 // slot arbitration: two spells in the same stacking group never coexist.
 
 import {
-  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA,
+  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, IGNORED_BY_CLAIM,
   FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED,
 } from './spa.js';
 
@@ -39,7 +39,10 @@ const slotSpan = (a, b) => Math.max(a.slots?.length || 0, b.slots?.length || 0, 
 const ST_GROUP_TELEPORT = 0x03, ST_AE_BARD = 0x28, ST_GROUP = 0x29;
 const BARD_INDEX = 7;
 
-const ignored = new Set(IGNORED_IN_STACKING);
+// The client-derived list, plus whatever a claim with real evidence behind it says
+// should also be exempt. Evidence changing a verdict is the point; see claims.json.
+const ignored = new Set([...IGNORED_IN_STACKING, ...IGNORED_BY_CLAIM]);
+const ignoredByClaim = new Set(IGNORED_BY_CLAIM);
 const focusSpa = new Set(FOCUS_SPA);
 const focusBestOnly = new Set(FOCUS_BEST_ONLY);
 const focusContested = new Set(FOCUS_CONTESTED);
@@ -176,6 +179,8 @@ export function checkStack(a, b, opts = {}) {
     // A verdict resting on a focus SPA that the client-derived ignore list omits.
     // Focus effects are widely reported to stack regardless of slot, so this answer
     // may be wrong — see the focus_stacking claim in claims.json.
+    // Empty once the focus stacking claim becomes actionable — at that point those
+    // SPAs are exempted outright rather than arbitrated under a doubt flag.
     contestedFocus: code !== 0 && decidedBy != null && focusContested.has(decidedBy)
       ? { spa: decidedBy, name: spaName(decidedBy) } : null,
     sharedGroups: sharedStackingGroups(a, b),
@@ -282,8 +287,11 @@ export function checkStack(a, b, opts = {}) {
       continue;
     }
     if (ignored.has(e1)) {
-      slots.push({ ...row, kind: 'slot', outcome: 'ignored',
-        detail: `Slot ${i + 1}: ${spaName(e1)} is on the client's ignore list — it never causes a stacking conflict.` });
+      const viaClaim = ignoredByClaim.has(e1);
+      slots.push({ ...row, kind: 'slot', outcome: 'ignored', viaClaim,
+        detail: viaClaim
+          ? `Slot ${i + 1}: ${spaName(e1)} is a focus effect, exempt from slot arbitration — see the focus stacking claim.`
+          : `Slot ${i + 1}: ${spaName(e1)} is on the client's ignore list — it never causes a stacking conflict.` });
       continue;
     }
     if ((e1 === SPA.ArmorClass || e1 === SPA.ACv2) && slotOf(b, i).base1 < 0) {

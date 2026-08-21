@@ -2,12 +2,15 @@
 // each with the evidence behind it.
 //
 // A claim's status is derived from its evidence, never written by hand:
-//   confirmed   at least one primary source and nothing refuting it
-//   disputed    a refuting source exists
-//   unverified  only supporting or weak sources
+//   confirmed     a primary source — Daybreak's own words, or a parse
+//   corroborated  a strong source — a named practitioner with standing in the game
+//   unverified    only supporting or weak sources
+//   disputed      something refutes it
 //
-// That derivation is the point of the file. Adding a primary source to a claim
-// upgrades what the site tells people, with no code change anywhere else.
+// That derivation is the point of the file. Adding evidence to a claim changes what
+// the site tells people with no code change anywhere else — and for claims the
+// engine can act on, it changes the verdicts too. `confirmed` and `corroborated`
+// are both acted on; `unverified` is flagged to the reader but not acted on.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,15 +19,30 @@ import { fileURLToPath } from 'node:url';
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 export const CLAIMS_PATH = path.join(ROOT, 'claims.json');
 
-export const STRENGTHS = ['primary', 'supporting', 'weak'];
-export const KINDS = ['game-text', 'dev-statement', 'patch-notes', 'parse', 'implementation', 'community'];
+export const STRENGTHS = ['primary', 'strong', 'supporting', 'weak'];
+export const KINDS = [
+  'game-text', 'dev-statement', 'patch-notes', 'parse',
+  'practitioner',   // a named person with standing: class rep, raid mechanics lead, known theorycrafter
+  'implementation', 'community',
+];
+
+// Which kinds may carry which strength. An emulator's source is never better than
+// corroboration, and an unattributed forum post is never better than weak — those
+// two rules are the point of the table.
+const PRIMARY_KINDS = ['game-text', 'dev-statement', 'patch-notes', 'parse'];
+const STRONG_KINDS  = ['dev-statement', 'patch-notes', 'parse', 'practitioner'];
 export const TYPES = ['non_cumulative', 'focus_best_only', 'focus_stacking'];
 
 export function deriveStatus(claim) {
   if (claim.evidence.some(e => e.refutes)) return 'disputed';
   if (claim.evidence.some(e => e.strength === 'primary')) return 'confirmed';
+  if (claim.evidence.some(e => e.strength === 'strong')) return 'corroborated';
   return 'unverified';
 }
+
+/** Statuses the engine is allowed to change its behaviour on. */
+export const ACTIONABLE = ['confirmed', 'corroborated'];
+export const isActionable = (claim) => ACTIONABLE.includes(claim.status ?? deriveStatus(claim));
 
 /** Structural validation. Returns a list of human-readable problems. */
 export function validate(doc) {
@@ -61,8 +79,12 @@ export function validate(doc) {
       if (!KINDS.includes(e.kind)) fail(ew, `kind must be one of ${KINDS.join(', ')}`);
       if (!e.summary) fail(ew, 'missing summary');
       if (!e.source) fail(ew, 'missing source — say where this came from, specifically enough to check');
-      if (e.strength === 'primary' && !['game-text', 'dev-statement', 'patch-notes', 'parse'].includes(e.kind))
+      if (e.strength === 'primary' && !PRIMARY_KINDS.includes(e.kind))
         fail(ew, `kind "${e.kind}" cannot be primary — see CONTRIBUTING.md`);
+      if (e.strength === 'strong' && !STRONG_KINDS.includes(e.kind))
+        fail(ew, `kind "${e.kind}" cannot be strong — see CONTRIBUTING.md`);
+      if (e.kind === 'practitioner' && !e.who)
+        fail(ew, 'a practitioner report needs "who" — the name and the standing that makes it weigh');
       if (e.kind === 'parse') {
         for (const f of ['method', 'sample_size', 'result'])
           if (!e[f]) fail(ew, `a parse needs "${f}" — see the parse protocol in CONTRIBUTING.md`);

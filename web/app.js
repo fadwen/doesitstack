@@ -308,13 +308,7 @@ function nonCumulativeNote(overlaps) {
     head.appendChild(el('span', 'badge ' + claim.status, claim.status));
     box.appendChild(head);
     const ul = el('ul');
-    for (const e of claim.evidence) {
-      const li = el('li');
-      li.appendChild(el('span', 'strength ' + e.strength, e.strength));
-      li.appendChild(el('span', null, ` ${e.summary} `));
-      li.appendChild(el('span', 'src', `— ${e.source}`));
-      ul.appendChild(li);
-    }
+    for (const e of claim.evidence) ul.appendChild(evidenceLine(e));
     box.appendChild(ul);
     d.appendChild(box);
   }
@@ -338,6 +332,15 @@ function nonCumulativeNote(overlaps) {
   return n;
 }
 
+function evidenceLine(e) {
+  const li = el('li');
+  li.appendChild(el('span', 'strength ' + e.strength, e.strength));
+  li.appendChild(el('span', null, ` ${e.summary} `));
+  if (e.who) li.appendChild(el('span', 'who', `— ${e.who} `));
+  li.appendChild(el('span', 'src', `— ${e.source}`));
+  return li;
+}
+
 /** Shared scaffolding for the caveat boxes: text, evidence disclosure, invitation. */
 function claimNote(text, claimKey, askText) {
   const n = el('div', 'note');
@@ -354,13 +357,7 @@ function claimNote(text, claimKey, askText) {
   box.appendChild(head);
   if (claim.assertion) box.appendChild(el('p', 'src', claim.assertion));
   const ul = el('ul');
-  for (const e of claim.evidence) {
-    const li = el('li');
-    li.appendChild(el('span', 'strength ' + e.strength, e.strength));
-    li.appendChild(el('span', null, ` ${e.summary} `));
-    li.appendChild(el('span', 'src', `— ${e.source}`));
-    ul.appendChild(li);
-  }
+  for (const e of claim.evidence) ul.appendChild(evidenceLine(e));
   box.appendChild(ul);
   d.appendChild(box);
 
@@ -395,7 +392,8 @@ function contestedFocusNote(contested) {
 function focusBestOnlyNote(focus) {
   const names = focus.bestOnly.map(f => f.name).join(', ');
   let text = `Both carry ${names}, a focus effect. They stack as buffs, but only the best focus applies to any one cast — `
-           + `two of them do not add up.`;
+           + `two of them do not add up. This is the distinction behind "twincast does not stack": the buffs do both hold, `
+           + `it is the effect that does not double.`;
   if (focus.procs.length)
     text += ` (${focus.procs.map(f => f.name).join(', ')} is proc-type and does fire independently.)`;
   return claimNote(text, 'focus-best-only/all-focus-spas', 'Can you confirm or refute this?');
