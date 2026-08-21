@@ -250,7 +250,7 @@ ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
 | | |
 | --- | --- |
 | **Spell** | scribed by a class at a normal level |
-| **Discipline** | flagged as a combat skill |
+| **Discipline** | flagged as a combat skill in the spell file |
 | **Song** | usable by bards, not a combat skill |
 | **AA** | granted by an alternate ability — the class level reads 254 |
 | **Item** | an item casts it — click, proc, worn, focus, bard, mount, blessing or familiar |
@@ -263,6 +263,26 @@ ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
 clicky; an AA effect can also be a proc; *Steelskin* is a click on some items and a proc
 on others. So items show as extra tags beside the source badge, never instead of it —
 676 scribed spells, 32 AAs and 25 songs carry one.
+
+### Disciplines the level table forgot
+
+A combat skill only reached the **Discipline** label through the scribed check — "a class
+learns this at a normal level". **120 rows** carry the file's combat-skill flag but no class
+level at all, so they fell past every check into the residual, and the site called something
+the file plainly labels a discipline *Unattributed*. Among them: *Berserking Discipline*,
+*Concentration Discipline*, *Final Stand Discipline Rk. III*.
+
+The flag is now a last resort before the residual — below every other check, so a
+discipline that something else already explains keeps that explanation. Disbelieving the
+file about what a row *is* was the bug; the flag is as much a fact as the level table.
+
+It does **not** invent class levels. Those 120 still carry none, so a class filter will not
+surface them — the file does not say who gets them, and guessing from a same-named sibling
+would be name-matching, which this project has already rejected once for item mapping.
+
+Two unrelated lines can also share a name. *Berserking Discipline* exists twice: **10923–5**
+with BER 75, and **14189–91** with no levels and a different recast timer. Both are real
+rows in the file, both now read as disciplines, and a search shows all six.
 
 ### Auras
 

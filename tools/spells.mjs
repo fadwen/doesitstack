@@ -432,7 +432,7 @@ function linkAndClassify(spells, byId) {
   for (const sp of spells) sp.kind = classify(sp, referenced);
 }
 
-function classify(sp, referenced) {
+export function classify(sp, referenced) {
   const scribed = sp.levels.some(l => l > 0 && l < LEVEL_AA);
   if (scribed) {
     if (sp.is_skill) return 'discipline';
@@ -448,6 +448,13 @@ function classify(sp, referenced) {
   if (isAuraEffect(sp)) return 'aura';
   if (referenced.has(sp.id)) return 'triggered';
   if (sp.pcnpc === 2) return 'npc';
+  // Last resort before the residual: the file flags this as a combat skill, and
+  // that is an explanation even when the level table records no class for it.
+  // 120 rows are in that state — Berserking Discipline, Concentration
+  // Discipline, Final Stand Rk. III — and calling something the file plainly
+  // labels a discipline "unattributed" is the tool disbelieving its own source.
+  // Below the checks above so a discipline something else explains keeps that.
+  if (sp.is_skill) return 'discipline';
   return 'item';   // provisional — see applyItemSources
 }
 

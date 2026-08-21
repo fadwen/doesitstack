@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration } from '../web/engine.js';
-import { isAuraEffect, SPELL_REF_FIELDS } from '../tools/spells.mjs';
+import { isAuraEffect, classify, SPELL_REF_FIELDS } from '../tools/spells.mjs';
 import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
@@ -459,4 +459,39 @@ test('an aura is linked to the effect it applies', () => {
   // other reference SPA which uses a base field. Missing that left the effect an
   // orphan with no class levels, so no class search could reach it.
   assert.deepEqual(SPELL_REF_FIELDS[351], ['max']);
+});
+
+
+// --- disciplines the level table forgot ---------------------------------------
+//
+// classify() only reached 'discipline' via the scribed check, so a combat skill
+// with no class level recorded fell all the way through to the residual — and
+// the site called something the spell file plainly labels a discipline
+// "Unattributed". 120 rows were in that state.
+
+const skill = (o) => ({
+  id: 1, name: 'Berserking Discipline', pcnpc: 0, is_skill: true, dur_calc: 0,
+  levels: new Array(16).fill(255), ...o,
+});
+
+test('a combat skill with no class level is still a discipline', () => {
+  assert.equal(classify(skill({}), new Set()), 'discipline');
+});
+
+test('a combat skill a class actually learns is unaffected', () => {
+  const lv = new Array(16).fill(255); lv[15] = 75;      // BER 75
+  assert.equal(classify(skill({ levels: lv }), new Set()), 'discipline');
+});
+
+test('anything that already had an explanation keeps it', () => {
+  // The flag is a last resort, not an override: a discipline something else
+  // accounts for should still say what accounts for it.
+  assert.equal(classify(skill({ id: 7 }), new Set([7])), 'triggered');
+  assert.equal(classify(skill({ pcnpc: 2 }), new Set()), 'npc');
+  assert.equal(classify(skill({ dur_calc: 51 }), new Set()), 'aura');
+});
+
+test('a spell that is not a combat skill still falls to the residual', () => {
+  assert.equal(classify(skill({ is_skill: false }), new Set()), 'item',
+    'provisional — applyItemSources turns an unexplained one into "other"');
 });
