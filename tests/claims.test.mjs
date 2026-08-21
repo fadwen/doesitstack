@@ -93,15 +93,31 @@ test('the focus claims are attributed and acted on', () => {
   assert.ok(FOCUS_BEST_ONLY.length > 20);
 });
 
-test('a practitioner report is strong, but only when it names who', () => {
+test('a practitioner report needs a name to credit and a standing to justify it', () => {
   const base = { id: 'focus-stacking/x', type: 'focus_stacking', slug: 'x', spas: [], assertion: 'a'.repeat(20) };
-  const withWho = validate({ version: 1, claims: [{ ...base,
-    evidence: [{ strength: 'strong', kind: 'practitioner', who: 'Someone, class rep', summary: 's', source: 'a post' }] }] });
-  assert.deepEqual(withWho, []);
+  const ev = extra => ({ version: 1, claims: [{ ...base,
+    evidence: [{ strength: 'strong', kind: 'practitioner', summary: 's', source: 'a post', ...extra }] }] });
 
-  const withoutWho = validate({ version: 1, claims: [{ ...base,
-    evidence: [{ strength: 'strong', kind: 'practitioner', summary: 's', source: 'a post' }] }] });
-  assert.ok(withoutWho.some(p => p.includes('who')));
+  assert.deepEqual(validate(ev({ who: 'Someone', standing: 'class rep for wizards' })), []);
+  assert.ok(validate(ev({ standing: 'class rep' })).some(p => p.includes('who')));
+  assert.ok(validate(ev({ who: 'Someone' })).some(p => p.includes('standing')));
+});
+
+test('the credit line is a name, not a biography', () => {
+  const problems = validate({ version: 1, claims: [{ id: 'focus-stacking/x', type: 'focus_stacking', slug: 'x',
+    spas: [], assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'strong', kind: 'practitioner', who: 'Someone, class representative and raid lead of a guild',
+                 standing: 'as stated', summary: 's', source: 'a post' }] }] });
+  assert.ok(problems.some(p => p.includes('biography')));
+});
+
+test('standing stays in the repo and is never shipped to the page', () => {
+  const named = doc.claims.flatMap(c => c.evidence).filter(e => e.kind === 'practitioner');
+  assert.ok(named.length > 0);
+  for (const e of named) {
+    assert.ok(e.standing, 'recorded for reviewers');
+    assert.ok(!e.who.includes(e.standing), 'but kept out of the credit line');
+  }
 });
 
 test('an emulator implementation cannot be strong either', () => {

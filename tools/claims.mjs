@@ -83,8 +83,15 @@ export function validate(doc) {
         fail(ew, `kind "${e.kind}" cannot be primary — see CONTRIBUTING.md`);
       if (e.strength === 'strong' && !STRONG_KINDS.includes(e.kind))
         fail(ew, `kind "${e.kind}" cannot be strong — see CONTRIBUTING.md`);
-      if (e.kind === 'practitioner' && !e.who)
-        fail(ew, 'a practitioner report needs "who" — the name and the standing that makes it weigh');
+      if (e.kind === 'practitioner') {
+        // `who` is the credit line the site prints — a name, nothing more.
+        // `standing` is what justifies the strong tier, and stays in the repo for
+        // whoever reviews the claim later. Splitting them keeps the page readable
+        // without losing the reason the evidence was rated the way it was.
+        if (!e.who) fail(ew, 'a practitioner report needs "who" — the name to credit');
+        if (!e.standing) fail(ew, 'a practitioner report needs "standing" — why this person\'s report weighs');
+        if (e.who && e.who.length > 40) fail(ew, '"who" is a credit line, not a biography — put the detail in "standing"');
+      }
       if (e.kind === 'parse') {
         for (const f of ['method', 'sample_size', 'result'])
           if (!e[f]) fail(ew, `a parse needs "${f}" — see the parse protocol in CONTRIBUTING.md`);

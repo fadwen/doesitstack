@@ -57,18 +57,29 @@ than an emulator's uncited implementation, not less. It is also not the same as
 Daybreak's own words — testimony can be misremembered, and mechanics change — so it
 gets its own tier rather than being called primary.
 
-A `practitioner` entry needs a **`who`** field naming the person and the standing that
-makes the report weigh. The validator enforces it, and the site prints it:
+A `practitioner` entry needs two fields, and the split matters:
+
+- **`who`** — the credit line, a name and nothing more. This is what the site prints.
+- **`standing`** — why the report weighs. This stays in `claims.json` for whoever
+  reviews the claim later and is never shipped to the page.
+
+Credit belongs on the page; credentials do not. Nobody reading a stacking answer needs
+someone's guild affiliation recited at them, but the person weighing the evidence in six
+months does need to know why it was rated `strong`.
 
 ```json
 {
   "strength": "strong",
   "kind": "practitioner",
-  "who": "Sancus — wizard class representative, and in Realm of Insanity",
+  "who": "Sancus",
+  "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class.",
   "summary": "Focus SPAs stack regardless of slot conflicts.",
-  "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21"
+  "source": "Feedback on the project, 2026-08-21"
 }
 ```
+
+The validator enforces both, and rejects a `who` longer than 40 characters — that is the
+signal you are writing a biography where the standing field belongs.
 
 ### What each status does
 

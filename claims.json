@@ -3,7 +3,7 @@
  "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
  "evidence_strength": {
   "primary": "Daybreak's own words \u2014 game text, a patch note, a named developer \u2014 or a parse that meets the protocol in CONTRIBUTING.md. Settles a claim.",
-  "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and attributed.",
+  "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and credited by name; the standing that justifies the rating is recorded here rather than shown on the site.",
   "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; never settles.",
   "weak": "An unattributed community claim with no data and no name behind it. Recorded for context, never load-bearing."
  },
@@ -140,9 +140,10 @@
     {
      "strength": "strong",
      "kind": "practitioner",
-     "who": "Sancus \u2014 wizard class representative, and in Realm of Insanity",
+     "who": "Sancus",
      "summary": "'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
-     "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21"
+     "source": "Feedback on the project, 2026-08-21",
+     "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
     },
     {
      "strength": "supporting",
@@ -162,9 +163,10 @@
     {
      "strength": "strong",
      "kind": "practitioner",
-     "who": "Sancus \u2014 wizard class representative, and in Realm of Insanity",
+     "who": "Sancus",
      "summary": "Focus SPAs \u2014 the Fc_ entries in Daybreak's enumerated SPA list \u2014 stack regardless of slot conflicts.",
-     "source": "Feedback to fadwen on the doesitstack announcement, 2026-08-21, citing Daybreak's enumerated SPA list at https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/"
+     "source": "Feedback on the project, 2026-08-21, citing Daybreak's enumerated SPA list",
+     "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
     },
     {
      "strength": "supporting",

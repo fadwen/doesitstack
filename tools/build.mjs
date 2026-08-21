@@ -139,6 +139,8 @@ async function main() {
       const payload = {
         status: c.status,
         assertion: c.assertion,
+        // `standing` is deliberately not shipped — it justifies the rating for a
+        // reviewer reading claims.json, it is not a credential to parade on the page.
         evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source, who: e.who })),
       };
       return c.type === 'non_cumulative' ? [[c.spa, payload], [c.id, payload]] : [[c.id, payload]];

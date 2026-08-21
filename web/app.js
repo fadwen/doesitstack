@@ -336,8 +336,7 @@ function evidenceLine(e) {
   const li = el('li');
   li.appendChild(el('span', 'strength ' + e.strength, e.strength));
   li.appendChild(el('span', null, ` ${e.summary} `));
-  if (e.who) li.appendChild(el('span', 'who', `— ${e.who} `));
-  li.appendChild(el('span', 'src', `— ${e.source}`));
+  li.appendChild(el('span', 'src', e.who ? `— ${e.who}, ${e.source}` : `— ${e.source}`));
   return li;
 }
 
