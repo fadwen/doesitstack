@@ -3,6 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { load, validate, deriveStatus, isActionable, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
 import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
 
@@ -140,4 +141,45 @@ test('only confirmed and corroborated claims are acted on', () => {
   assert.equal(isActionable({ evidence: [{ strength: 'primary' }] }), true);
   assert.equal(isActionable({ evidence: [{ strength: 'supporting' }] }), false);
   assert.equal(isActionable({ evidence: [{ strength: 'weak' }] }), false);
+});
+
+
+// --- the engine's own rules -------------------------------------------------
+
+test('every rule the engine can cite is registered as a claim', async () => {
+  const engine = await readFile(new URL('../web/engine.js', import.meta.url), 'utf8');
+  const cited = new Set([...engine.matchAll(/done\(-?[01], '([a-z0-9-]+)'/g)].map(m => m[1]));
+  const covered = new Set(doc.claims.filter(c => c.type === 'stacking_rule').flatMap(c => c.engine_rules || []));
+  const missing = [...cited].filter(r => !covered.has(r));
+  assert.deepEqual(missing, [], `these rules decide verdicts with no claim behind them: ${missing.join(', ')}`);
+});
+
+test('rule claims name a slug, not a SPA', () => {
+  for (const c of doc.claims.filter(c => c.type === 'stacking_rule')) {
+    assert.ok(c.slug, `${c.id} needs a slug`);
+    assert.equal(c.spa, undefined);
+    assert.equal(c.spas, undefined);
+  }
+  const problems = validate({ version: 1, claims: [{ id: 'stacking-rule/x', type: 'stacking_rule', slug: 'x', spa: 1,
+    assertion: 'a'.repeat(20), evidence: [{ strength: 'supporting', kind: 'implementation', summary: 's', source: 'code' }] }] });
+  assert.ok(problems.some(p => p.includes('not a SPA')));
+});
+
+test('the rule nearly every verdict rests on is honest about its provenance', () => {
+  const core = doc.claims.find(c => c.slug === 'slot-arbitration');
+  assert.ok(core);
+  assert.equal(core.status, 'unverified');
+  assert.ok(core.evidence.every(e => e.kind === 'implementation'));
+});
+
+test('evidence cannot be rated above its kind ceiling', () => {
+  const mk = (kind, strength) => validate({ version: 1, claims: [{ id: 'non-cumulative/1', type: 'non_cumulative',
+    spa: 1, assertion: 'a'.repeat(20), evidence: [{ strength, kind, summary: 's', source: 'x', who: 'N', standing: 'S' }] }] });
+  assert.ok(mk('implementation', 'primary').some(p => p.includes('at best it is supporting')));
+  assert.ok(mk('implementation', 'strong').some(p => p.includes('at best it is supporting')));
+  assert.ok(mk('community', 'supporting').some(p => p.includes('at best it is weak')));
+  assert.ok(mk('practitioner', 'primary').some(p => p.includes('at best it is strong')));
+  // downgrading is always fine
+  assert.deepEqual(mk('game-text', 'supporting'), []);
+  assert.deepEqual(mk('practitioner', 'strong'), []);
 });

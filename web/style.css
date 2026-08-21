@@ -110,6 +110,9 @@ table.slots tr.ok td{background:#1a231e}
 .blank{color:#59607080;font-style:italic}
 h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .trace li{margin:4px 0;color:#c9cfdb}
+.provenance{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
+.provenance p{margin:6px 0;line-height:1.5}
+.provenance .src{color:#7d8494}
 .empty{color:var(--muted);padding:30px 0}
 .foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px;padding-bottom:40px}
 code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:1px 5px;border-radius:4px}

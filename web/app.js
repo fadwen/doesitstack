@@ -445,6 +445,36 @@ function renderDetail(a, b, res, lvl) {
   ul.appendChild(el('li', null, `Result casting ${b.name} onto ${a.name}: ${res.xThenY.reason} (rule: ${res.xThenY.rule})`));
   ul.appendChild(el('li', null, `Result casting ${a.name} onto ${b.name}: ${res.yThenX.reason} (rule: ${res.yThenX.rule})`));
   d.appendChild(ul);
+
+  const provenance = ruleProvenance([res.xThenY.rule, res.yThenX.rule]);
+  if (provenance) d.appendChild(provenance);
+}
+
+/**
+ * Where the rule that decided this verdict comes from. Most of them are EQEmu's
+ * reading of the game rather than anything Daybreak has stated, and saying so is
+ * the honest version of a footer that used to claim the engine mirrored the client.
+ */
+function ruleProvenance(rules) {
+  const seen = new Set(), entries = [];
+  for (const r of rules) {
+    const claim = META.claims?.[`rule:${r}`];
+    if (!claim || seen.has(r)) continue;
+    seen.add(r);
+    entries.push([r, claim]);
+  }
+  if (!entries.length) return null;
+
+  const wrap = el('div', 'provenance');
+  for (const [rule, claim] of entries) {
+    const p = el('p');
+    p.appendChild(el('span', 'badge ' + claim.status, claim.status));
+    p.appendChild(document.createTextNode(` The ${rule.replace(/-/g, ' ')} rule: ${claim.assertion} `));
+    const src = claim.evidence.map(e => e.source).join('; ');
+    p.appendChild(el('span', 'src', src));
+    wrap.appendChild(p);
+  }
+  return wrap;
 }
 
 function slotCell(sp, i, lvl) {

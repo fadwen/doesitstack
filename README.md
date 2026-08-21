@@ -129,11 +129,36 @@ On top of that sit the special cases this engine implements:
 | Group vs. single | The single-target version of a line will not replace the group version |
 
 The engine in [`web/engine.js`](web/engine.js) is a port of `Mob::CheckStackConflict`
-from the [EQEmu server](https://github.com/EQEmu/Server) (`zone/spells.cpp`), which
-mirrors the RoF2 client. Server-side inputs that spell data alone cannot know —
-existing spell bonuses, Screech and buff-stacker state, resurrection sickness, NPC
-DoT ownership — are left out; every rule that made it in is commented with the case
-it came from.
+from the [EQEmu server](https://github.com/EQEmu/Server) (`zone/spells.cpp`).
+Server-side inputs that spell data alone cannot know — existing spell bonuses, Screech
+and buff-stacker state, resurrection sickness, NPC DoT ownership — are left out; every
+rule that made it in is commented with the case it came from.
+
+### Source of truth
+
+**Daybreak, not EQEmu.** That ordering matters, and this project got it wrong at first.
+
+Daybreak is authoritative: the client's own files, its patch notes, its developers.
+EQEmu is a volunteer reimplementation targeting the 2013 RoF2 client. It is the most
+complete public account of these rules and the reason this project could be written at
+all — but it is someone's reading of the game, and this repo has already found four
+places where it diverges from live:
+
+- Its `EFFECT_COUNT` caps at twelve slots. Live spells run to 67, and reading only the
+  first twelve changed thousands of verdicts.
+- Its stacking ignore list omits focus effects that do stack, and its tail past RoF2 is
+  self-described as guesswork.
+- Its non-cumulative SPA handling was committed with no source cited, and six of those
+  seven claims still have nothing behind them.
+- Its `IsFocusEffect` mapping is right where a name-based reading of Daybreak's own SPA
+  list would have been wrong — a reminder it cuts both ways.
+
+So `implementation` evidence can never be rated above `supporting`. It corroborates; it
+never settles. Every rule the engine applies is registered in
+[`claims.json`](claims.json) with its provenance, most of them `unverified`, and a
+verdict shows where the rule that decided it came from. That is the honest position,
+not a gap to paper over — and it is what makes the rules correctable by anyone who
+knows better.
 
 ## Searching
 
@@ -280,7 +305,9 @@ form for people who would rather not touch JSON. All in
 
 ## Credits
 
-- [EQEmu/Server](https://github.com/EQEmu/Server) — the stacking algorithm
+- [EQEmu/Server](https://github.com/EQEmu/Server) — the stacking algorithm this engine
+  is ported from. Corroborating, not authoritative; see Source of truth above.
+- Sancus — the focus-effect behaviour, and the slot-count bug
 - [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) — spell file field layout
 - [Lucy](https://lucy.allakhazam.com/) — the reference every EverQuest player already trusts
 

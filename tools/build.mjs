@@ -143,7 +143,12 @@ async function main() {
         // reviewer reading claims.json, it is not a credential to parade on the page.
         evidence: c.evidence.map(e => ({ strength: e.strength, kind: e.kind, summary: e.summary, source: e.source, who: e.who })),
       };
-      return c.type === 'non_cumulative' ? [[c.spa, payload], [c.id, payload]] : [[c.id, payload]];
+      if (c.type === 'non_cumulative') return [[c.spa, payload], [c.id, payload]];
+      // Rule claims are also keyed by the rule name the engine reports, so a verdict
+      // can show where the rule that decided it came from.
+      if (c.type === 'stacking_rule')
+        return [[c.id, payload], ...(c.engine_rules || []).map(r => [`rule:${r}`, payload])];
+      return [[c.id, payload]];
     })),
     claim_notes: claimsDoc.notes || {},
     repo_url: repoUrl(),

@@ -41,9 +41,21 @@ stranger can check it.
 | **supporting** | `implementation` | Independent but second-hand — an emulator's code, a datamined structure. Corroborates. Never settles. |
 | **weak** | `community` | An unattributed claim with no data and no name behind it. Recorded for context, never load-bearing. |
 
-`implementation` evidence **cannot** be primary or strong. The validator rejects it.
-That is deliberate: an emulator is someone else's reading of the game, and treating it
-as proof is the mistake this file exists to prevent.
+Each kind has a ceiling and may be rated at it or below — a data file that only implies
+a behaviour is weaker than one that states it. Nothing may be rated above its ceiling,
+and the validator enforces that.
+
+`implementation` tops out at `supporting`. That is the important one: **Daybreak is the
+source of truth, not EQEmu.** EQEmu is a volunteer reimplementation of a 2013 client. It
+is the most complete public account of these rules and the reason this project exists,
+and it has been right about things a first reading of Daybreak's own SPA list would have
+got wrong — but it has also been found diverging from live four times in this repo's
+short history. It corroborates. It never settles.
+
+That applies to the engine itself. Every rule it applies is registered in `claims.json`
+as a `stacking_rule` claim with its provenance, and most of them are `unverified` —
+including `slot-arbitration`, the rule nearly every verdict rests on. Those are the most
+valuable claims in the file to settle.
 
 ### practitioner
 

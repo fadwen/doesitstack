@@ -1,6 +1,6 @@
 {
  "version": 1,
- "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md. Evidence strength drives the wording the site shows, so adding a source is the whole change; no UI edit needed.",
+ "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. Daybreak is the source of truth \u2014 the client's own files, its patch notes, its developers. EQEmu is the most complete public implementation of these rules and the reason this project exists, but it is a volunteer reimplementation of a 2013 client: it corroborates, it never settles. Most of the engine's rules are therefore unverified, which is the honest position rather than a gap to paper over. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md.",
  "evidence_strength": {
   "primary": "Daybreak's own words \u2014 game text, a patch note, a named developer \u2014 or a parse that meets the protocol in CONTRIBUTING.md. Settles a claim.",
   "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and credited by name; the standing that justifies the rating is recorded here rather than shown on the site.",
@@ -182,6 +182,205 @@
     }
    ],
    "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The build derives the set, currently 13 SPAs, so it tracks spa_meta.json rather than freezing a list."
+  },
+  {
+   "id": "stacking-rule/slot-arbitration",
+   "type": "stacking_rule",
+   "slug": "slot-arbitration",
+   "assertion": "Two buffs conflict only where the same SPA sits in the same slot index, and an incoming spell must be at least as strong on every shared slot or it is refused outright.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "The core of CheckStackConflict: a slot-by-slot loop comparing effect ids at matching indexes, rejecting the incoming spell the moment any shared slot is weaker. This is the rule almost every verdict rests on, and nothing outside EQEmu establishes it.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "weaker-slot",
+    "overwrite",
+    "independent"
+   ]
+  },
+  {
+   "id": "stacking-rule/ignore-list",
+   "type": "stacking_rule",
+   "slug": "ignore-list",
+   "assertion": "84 SPAs \u2014 focus effects, counters, vision, limits \u2014 never cause a stacking conflict.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "EQEmu's IsEffectIgnoredInStacking, whose comment says the list was read out of the client: 'big ol' list according to the client, wasn't that nice!'. The tail past RoF2 is self-described as guesswork: 'lets assume these should go here.'",
+     "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking"
+    }
+   ]
+  },
+  {
+   "id": "stacking-rule/stacking-group",
+   "type": "stacking_rule",
+   "slug": "stacking-group",
+   "assertion": "Two spells sharing a Live stacking group never coexist; the higher rank wins, and a type 6 group will not be overwritten.",
+   "evidence": [
+    {
+     "strength": "strong",
+     "kind": "game-text",
+     "summary": "Daybreak ships Resources/SpellStackingGroups.txt with the client, mapping spells to a group, a rank and a type. The file's existence and structure are Daybreak's own; that the client uses it to prevent coexistence follows from its name and contents, but is not stated anywhere.",
+     "source": "Resources/SpellStackingGroups.txt, shipped with the live client"
+    },
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "The rank-wins and type-6 semantics are rumstil/eqspellparser's reading of the same file, not a documented rule.",
+     "source": "rumstil/eqspellparser core/SpellParser.cs"
+    }
+   ],
+   "engine_rules": [
+    "stacking-group"
+   ]
+  },
+  {
+   "id": "stacking-rule/same-spell",
+   "type": "stacking_rule",
+   "slug": "same-spell",
+   "assertion": "Recasting a spell refreshes it at equal or higher caster level, and is refused at a lower one.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "CheckStackConflict's same-id branch, with exceptions for stackable DoTs, Mana Burn, Eye of Zomm and Improved Taunt.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "same-spell"
+   ]
+  },
+  {
+   "id": "stacking-rule/bard-song",
+   "type": "stacking_rule",
+   "slug": "bard-song",
+   "assertion": "A bard song and a non-song beneficial spell always stack.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "An explicit early return in CheckStackConflict when exactly one of the pair is a bard song and neither is detrimental.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "bard-song"
+   ]
+  },
+  {
+   "id": "stacking-rule/stacking-commands",
+   "type": "stacking_rule",
+   "slug": "stacking-commands",
+   "assertion": "SPA 148 blocks, and SPA 149 overwrites, a spell whose named slot holds a named effect below a threshold.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "game-text",
+     "summary": "The SPAs and their operands are in the client's own spell data \u2014 2,142 slots across the file encode a target slot in base2 and a threshold in max \u2014 so the mechanism plainly exists. How the client acts on it is not stated.",
+     "source": "spells_us.txt, live client"
+    },
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "The block/overwrite semantics, and the 2018 change letting detrimental spells bypass SPA 148, are EQEmu's.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "spa-148",
+    "spa-149"
+   ]
+  },
+  {
+   "id": "stacking-rule/complete-heal",
+   "type": "stacking_rule",
+   "slug": "complete-heal",
+   "assertion": "A Complete Heal buff never stacks or overwrites.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "An unconditional block in CheckStackConflict whenever both spells carry SPA 101 in the same slot.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "complete-heal"
+   ]
+  },
+  {
+   "id": "stacking-rule/snare-vs-movement",
+   "type": "stacking_rule",
+   "slug": "snare-vs-movement",
+   "assertion": "A snare already in place refuses an incoming movement buff, but a snare cast onto an existing buff simply lands.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "A signed comparison on SPA 3 inside the slot loop. The asymmetry is deliberate in the code and unexplained.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "snare"
+   ]
+  },
+  {
+   "id": "stacking-rule/dot-vs-regen",
+   "type": "stacking_rule",
+   "slug": "dot-vs-regen",
+   "assertion": "A damage-over-time effect will not overwrite regeneration, but blocks a regeneration spell cast after it.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "A branch on SPA 0 where both spells have a duration, keyed on which of the pair is detrimental.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "dot-blocks-regen"
+   ]
+  },
+  {
+   "id": "stacking-rule/single-vs-group",
+   "type": "stacking_rule",
+   "slug": "single-vs-group",
+   "assertion": "The single-target version of a spell line will not replace the group version already on you.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "The final check in CheckStackConflict, applied when every slot matches and every value is equal.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "single-vs-group"
+   ]
+  },
+  {
+   "id": "stacking-rule/mana-burn",
+   "type": "stacking_rule",
+   "slug": "mana-burn",
+   "assertion": "A Mana Burn spell never stacks with itself.",
+   "evidence": [
+    {
+     "strength": "supporting",
+     "kind": "implementation",
+     "summary": "A dedicated branch in CheckStackConflict, separate from the ordinary same-spell handling. The code carries its own doubt: 'mana burn spells we need to use the stacking command blocks live actually checks those first, we should probably rework to that too'.",
+     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+    }
+   ],
+   "engine_rules": [
+    "mana-burn"
+   ]
   }
  ],
  "notes": {
