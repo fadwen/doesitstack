@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spell, index, byName, META, ROW } from './load.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, calcValue, nonCumulativeOverlap } from '../web/engine.js';
+import { NON_CUMULATIVE_SPA } from '../web/spa.js';
 
 const SAVAGE_SPIRIT_17 = 70855;   // Berserker AA "Savage Spirit" rank 17
 const PROPHETS_GIFT    = 6273;    // Shaman epic 2.0 click
@@ -110,4 +111,24 @@ test('the search index carries a class mask that matches the level list', () => 
 test('every indexed spell has a known kind', () => {
   const kinds = new Set(META.kinds);
   for (const r of index()) assert.ok(kinds.has(META.kinds[r[ROW.kind]]), `bad kind on spell ${r[0]}`);
+});
+
+
+// --- non-cumulative effects -------------------------------------------------
+
+test('the non-cumulative list matches what EQEmu treats as highest-wins', () => {
+  // zone/bonuses.cpp keeps the larger magnitude for these instead of summing
+  assert.deepEqual(NON_CUMULATIVE_SPA, [185, 186, 459, 482, 496, 503, 505]);
+});
+
+test('SPA 496 is flagged when two stacking buffs both carry it', () => {
+  const overlap = nonCumulativeOverlap(spell(PROPHETS_GIFT), spell(SAVAGE_SPIRIT_17));
+  assert.equal(overlap.length, 1);
+  assert.equal(overlap[0].spa, 496);
+  assert.equal(overlap[0].slotA, 9);    // slot 10 on the shaman click
+  assert.equal(overlap[0].slotB, 1);    // slot 2 on the AA
+});
+
+test('an unrelated pair is not flagged as non-cumulative', () => {
+  assert.equal(nonCumulativeOverlap(spell(278), spell(700)).length, 0);
 });

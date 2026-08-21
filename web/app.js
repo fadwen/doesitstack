@@ -264,10 +264,17 @@ function renderVerdict(a, b, res) {
   }
   v.appendChild(dirs);
 
-  if (res.nonCumulative.length) {
+  // Only meaningful when both buffs actually hold at once.
+  if (res.nonCumulative.length && bothIndependent) {
     const n = el('div', 'note');
     const names = [...new Set(res.nonCumulative.map(x => x.name))].join(', ');
-    n.textContent = `Both carry ${names}, which the game treats as non-cumulative: the two buffs coexist, but only the larger value applies. Stacking here does not mean the numbers add.`;
+    const spas = [...new Set(res.nonCumulative.map(x => x.spa))];
+    const hedged = spas.filter(s2 => !META.non_cumulative_confirmed.includes(s2));
+    n.textContent = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
+    if (hedged.length)
+      n.textContent += ` (Read that as likely rather than certain for SPA ${hedged.join(', ')}: it comes from how the EQEmu server accumulates the bonus, and the live spell text does not say so outright.)`;
+    n.title = 'These effects keep the larger magnitude in the spell bonus bucket instead of summing. '
+            + 'A worn item bonus can behave additively for some of them.';
     v.appendChild(n);
   }
   const g = res.xThenY.sharedGroups;

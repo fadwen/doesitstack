@@ -338,7 +338,12 @@ export function sharedStackingGroups(a, b) {
   return out;
 }
 
-/** Slots that land but whose effect the game does not add together. */
+/**
+ * Slots that land but whose effect the game does not add together — it keeps the
+ * larger value. Derived from EQEmu's bonus accumulation (see tools/spa_meta.json
+ * for the provenance note); the wording is confirmed by the live spell text for
+ * SPA 496, whose descriptions say "non-cumulative" outright.
+ */
 export function nonCumulativeOverlap(a, b) {
   const out = [];
   for (let i = 0; i < EFFECT_COUNT; i++) {

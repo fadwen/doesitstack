@@ -649,5 +649,21 @@
   493,
   495,
   511
- ]
+ ],
+ "non_cumulative": {
+  "_source": "EQEmu zone/bonuses.cpp \u2014 SPAs whose spell-buff bonus keeps the larger magnitude instead of summing (the `if (effect_value < 0 && bucket > effect_value) bucket = effect_value; else if (effect_value > 0 && bucket < effect_value) bucket = effect_value;` idiom), rather than the `+=` used by ordinary stacking bonuses. Cross-checked against the live spell text: of 70,963 spells, exactly 53 descriptions say 'non-cumulative', and every one of them carries SPA 496.",
+  "_caveat": "The larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time, and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs both land in the spell bucket, which is the case this tool compares.",
+  "spas": {
+   "185": "DamageModifier",
+   "186": "MinDamageModifier",
+   "459": "DamageModifier2",
+   "482": "Skill_Base_Damage_Mod",
+   "496": "Critical_Melee_Damage_Mod_Max",
+   "503": "Melee_Damage_Position_Mod",
+   "505": "Damage_Taken_Position_Mod"
+  },
+  "confirmed_by_spell_text": [
+   496
+  ]
+ }
 }
