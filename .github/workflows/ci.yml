@@ -33,6 +33,7 @@ jobs:
         run: npm run gen && node -e "import('./web/spa.js').then(m => { if (!m.FOCUS_BEST_ONLY) { console.error('spa.js is missing its exports'); process.exit(1); } console.log('spa.js ok'); })"
 
       # No EverQuest install here, so the dataset-backed suites skip themselves.
-      # The fixture and claim suites carry the load.
+      # The fixture and claim suites carry the load. `npm run verify:data`, which
+      # proves the dataset matches the spell file, needs the game and runs locally.
       - name: Test
         run: npm test

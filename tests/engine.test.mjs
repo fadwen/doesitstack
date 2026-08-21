@@ -114,6 +114,39 @@ test('the search index carries a class mask that matches the level list', SKIP, 
   assert.equal(r[ROW.levels], 'BER 254');
 });
 
+test('a spell matches a third-party dump of it, field for field', SKIP, () => {
+  // Sancus posted Aria of Kenburk Rk. III from his own client. Checking against a
+  // reading nobody here produced is the only external confirmation available that
+  // the field offsets are right — everything else in this repo shares assumptions.
+  const s = spell(71931);
+  assert.equal(s.name, 'Aria of Kenburk Rk. III');
+  assert.equal(s.levels[7], 126);          // Classes: BRD/126
+  assert.equal(s.mana, 373);               // Mana: 373
+  assert.equal(s.range, 100);              // Range: 100'
+  assert.equal(s.ae_range, 60);            // AE Range: 60'
+  assert.equal(s.cast_ms, 3000);           // Casting: 3s
+  assert.equal(s.duration, 2);             // Duration: 12s+ (2 ticks)
+  assert.equal(META.targets[s.target], 'Caster Group');
+  assert.equal(s.beneficial, true);        // Resist: Beneficial
+  assert.equal(s.slots.length, 22);        // 22 listed slots
+
+  const at = i => s.slots[i - 1];
+  assert.deepEqual([at(1).spa, at(1).base1], [124, 47]);   // 1: Increase Spell Damage by 47% (v124)
+  assert.deepEqual([at(2).spa, at(2).base1], [119, 25]);   // 2: Increase Melee Haste by 25% (v119)
+  assert.deepEqual([at(4).spa, at(4).base1], [134, 130]);  // 4: Limit Max Level: 130
+  assert.deepEqual([at(10).spa, at(10).base1], [364, 40]); // 10: Triple Attack by 40%
+  assert.deepEqual([at(11).spa, at(11).base1], [279, 6]);  // 11: Flurry by 6%
+  assert.deepEqual([at(12).spa, at(12).base1], [280, 37]); // 12: Pet Flurry by 37%
+  assert.deepEqual([at(14).spa, at(14).base1], [302, 8]);  // 14: Increase Spell Damage by 8% (v302)
+});
+
+test('target names are the ones players use, not the server enum', SKIP, () => {
+  // EQEmu calls target type 3 ST_GroupTeleport; every player-facing source calls it
+  // Caster Group, and it is the target type on ordinary group buffs.
+  assert.equal(META.targets[3], 'Caster Group');
+  assert.equal(spell(71931).target, 3);
+});
+
 test('the dataset is built at the level cap', SKIP, () => {
   assert.equal(META.max_level, MAX_PLAYER_LEVEL);
   // Nothing in the file needs a level between the cap and the 250 marker used for

@@ -52,13 +52,20 @@ export const GROUP_REF_SPAS = new Set([470, 471]);
 
 export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'triggered', 'npc'];
 
+// Target names as players and Lucy use them, not as EQEmu's server enum names them.
+// The distinction is not cosmetic: EQEmu calls type 3 ST_GroupTeleport, which reads as
+// a port spell, where every player-facing source calls it Caster Group — and it is the
+// target type on ordinary group buffs like Aria of Kenburk. Source:
+// rumstil/eqspellparser SpellTarget, which is what Lucy's presentation follows.
 export const TARGET_NAMES = {
-  0:'Target AE',1:'Single',2:'Self',3:'Group Teleport',4:'AE PC v1',5:'Single',6:'Self',8:'Targeted AE',
-  9:'Animal',10:'Undead',11:'Summoned',13:'Life Tap',14:'Pet',15:'Corpse',16:'Plant',17:'Giant',18:'Dragon',
-  20:'Targeted AE Tap',24:'Undead AE',25:'Summoned AE',32:'AE Target Hate List',33:'Hate List',
-  34:'LDoN Chest',35:'Muramite',36:'PC AE',37:'NPC AE',38:'Summoned Pet',39:'Group v1',40:'AE Bard',
-  41:'Group v2',42:'Directional AE',43:'Group Client and Pet',44:'Beam',45:'Ring',46:"Target's Target",
-  47:'Pet Master',50:'Target AE No Pets',
+  1:'Line of Sight', 2:'Caster AE', 3:'Caster Group', 4:'Caster PB', 5:'Single', 6:'Self',
+  8:'Target AE', 9:'Animal', 10:'Undead', 11:'Summoned', 13:'Lifetap', 14:'Pet', 15:'Corpse',
+  16:'Plant', 17:'Giant', 18:'Dragon', 20:'Target AE Lifetap', 21:'Target AE Undead',
+  25:'Target AE Summoned', 32:'Hate List', 33:'Hate List', 34:'Chest', 35:'Special Muramites',
+  36:'Caster PB Players', 37:'Caster PB NPC', 38:'Pet', 39:'No Pets', 40:'Caster AE Players',
+  41:'Target Group', 42:'Directional AE', 43:'Single in Group', 44:'Frontal AE',
+  45:'Target Ring AE', 46:"Target's Target", 47:'Pet Owner', 50:'Target AE No Players or Pets',
+  51:'Single Ally or Self', 52:"Single Ally or Target's Target",
 };
 
 export const RESIST_NAMES = {
@@ -139,6 +146,7 @@ function parseSpellLine(f, level) {
     crit_override: int(f[F.CRIT_OVERRIDE]),
     max_targets: int(f[F.MAX_TARGETS]),
     range: int(f[F.RANGE]),
+    ae_range: int(f[F.AERANGE]),
     ae_duration: int(f[F.AEDURATION]),
     cat_ids: [0, 1, 2].map(i => int(f[F.CAT + i])),
     pcnpc: int(f[F.PCNPC_ONLY]),

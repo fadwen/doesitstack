@@ -11,7 +11,8 @@
     "pretest": "node tools/gen_spa_js.mjs",
     "test": "node --test",
     "verify": "node tools/verify_claims.mjs",
-    "claims": "node -e \"import('./tools/claims.mjs').then(m=>{const d=m.load();for(const c of d.claims)console.log(c.status.padEnd(11),c.id,'-',c.evidence.length,'evidence');})\""
+    "claims": "node -e \"import('./tools/claims.mjs').then(m=>{const d=m.load();for(const c of d.claims)console.log(c.status.padEnd(11),c.id,'-',c.evidence.length,'evidence');})\"",
+    "verify:data": "node tools/verify_dataset.mjs"
   },
   "engines": {
     "node": ">=20"

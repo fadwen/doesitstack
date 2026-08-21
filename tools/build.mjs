@@ -31,6 +31,7 @@ function compact(sp) {
     resist: sp.resist, duration: sp.duration, dur_calc: sp.dur_calc, dur_cap: sp.dur_cap,
     mana: sp.mana, endurance: sp.endurance, cast_ms: sp.cast_ms, recast_ms: sp.recast_ms,
     icon: sp.icon, group_id: sp.group_id, rank: sp.rank, is_skill: sp.is_skill,
+    range: sp.range, ae_range: sp.ae_range,
     unstackable_dot: sp.unstackable_dot, song_window: sp.song_window, timer: sp.timer,
     kind: sp.kind,
     slots: sp.slots.map(s => s && [s.spa, s.base1, s.base2, s.calc, s.max]),

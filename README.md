@@ -96,8 +96,9 @@ the next build with no code change**. If you can settle one of the six, see
 [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
 ```bash
-npm run claims     # every claim and its derived status
-npm run verify     # re-runs the machine-checkable evidence against your spell files
+npm run claims       # every claim and its derived status
+npm run verify       # re-runs the machine-checkable evidence against your spell files
+npm run verify:data  # re-parses the spell file and diffs it against the built dataset
 ```
 
 ## How the rules work
@@ -208,6 +209,31 @@ Resources/SpellStackingGroups.txt  spell → stacking group, rank, type
 Nothing is scraped, and Lucy is linked from every result so you can check the source.
 The field layout follows
 [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser).
+
+### What comes from where
+
+Worth being precise, because the two are easy to conflate:
+
+| | Source |
+| --- | --- |
+| Every spell value — name, class levels, slots, SPA ids, base/limit/max, formulas, durations, mana, targets, stacking groups, descriptions | **The client's own files.** Nothing else. |
+| Field offsets in `spells_us.txt` | [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) |
+| Labels for SPA ids and target types | eqspellparser and EQEmu enum names |
+| The value shown per slot, and duration in ticks | Local base/max/calc run through EQEmu's and eqspellparser's formula tables |
+| The stacking rules | EQEmu — see Source of truth above |
+
+`tools/spells.mjs` imports nothing but Node built-ins: no part of the parser consults
+EQEmu. `npm run verify:data` proves the result, re-reading the file with a separate
+parser that has its own field offsets and comparing every spell in the built dataset —
+2.5 million values, and it exits non-zero on a single mismatch.
+
+The labels are the weak spot. They are third-party naming, not Daybreak's, and one of
+them was wrong until a reader's spell dump caught it: EQEmu calls target type 3
+`ST_GroupTeleport`, which reads as a port spell, where it is in fact the target type on
+ordinary group buffs and everyone else calls it Caster Group. SPA names are still
+EQEmu's enum names; Daybreak publishes its own
+[enumerated SPA list](https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/),
+and replacing the table with it is an open job.
 
 **Freshness depends on who built the copy you are looking at.** Build it yourself and
 it is exactly as current as your last patch. Visit a hosted copy and you get whatever

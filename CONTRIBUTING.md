@@ -192,6 +192,7 @@ Then:
 npm run claims           # shows every claim and its derived status
 npm test                 # validates claims.json among other things
 npm run verify           # re-runs machine-checkable evidence (needs EverQuest installed)
+npm run verify:data      # diffs the built dataset against the spell file (needs EverQuest)
 ```
 
 Open the PR. The template asks for the same fields as above.
@@ -245,6 +246,13 @@ Normal rules. A few things specific to this project:
   and it is not a substitute for redeploying.
 - **Parser changes** should note which field index moved and in which client build.
   The layout has changed several times; `tools/spells.mjs` targets the 166-field format.
+  Run `npm run verify:data` after any of them — it re-reads the file with a second
+  parser that keeps its own offsets, so the two disagreeing is the signal. Update both
+  or the check is worthless.
+- **Spell values come from the client's files and nothing else.** `tools/spells.mjs`
+  imports only Node built-ins, and it should stay that way. Labels for SPA and target
+  ids are third-party naming and are the weak spot — a correction there, sourced from
+  Daybreak's own SPA list, is welcome.
 
 ## Regenerating the SPA tables
 
