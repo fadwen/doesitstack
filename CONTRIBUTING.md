@@ -1,5 +1,8 @@
 # Contributing
 
+Working with an AI coding agent? [AGENTS.md](AGENTS.md) is the short version of the
+constraints — this document is the reasoning behind them.
+
 Two kinds of change land here, and they work differently.
 
 **Code** — parser, engine, UI, build. Normal pull request. `npm test` has to pass.

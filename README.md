@@ -305,6 +305,7 @@ keeps fifty-odd megabytes of regenerated JSON out of the repo's history.
 ```
 claims.json                        what this project claims about the game, and the evidence
 CONTRIBUTING.md                    the evidence standard and the parse protocol
+AGENTS.md                          the same constraints, short, for AI coding agents
 tools/reference/                   primary sources, kept verbatim (Daybreak's SPA list)
 tools/spells.mjs                   spell file parser, formulas, description tokens,
                                    source classification, spell-reference graph
