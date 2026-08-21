@@ -57,6 +57,24 @@ function compact(sp) {
 
 const writeJson = (file, obj) => fs.writeFileSync(file, JSON.stringify(obj));
 
+/**
+ * The public address of this copy, for canonical links, share cards and the
+ * sitemap — derived rather than hardcoded, so a fork does not advertise this
+ * repo's URL as its own. Trailing slash included; callers append a filename.
+ *
+ * Returns null when there is no remote to derive it from, and the tags that
+ * depend on it are then dropped rather than shipped pointing nowhere.
+ */
+function siteUrl(repo) {
+  const m = repo && /^https:\/\/github\.com\/([^/]+)\/(.+)$/.exec(repo);
+  if (!m) return null;
+  const [, owner, name] = m;
+  // A repo literally named <owner>.github.io is served at the domain root.
+  return name.toLowerCase() === `${owner.toLowerCase()}.github.io`
+    ? `https://${owner.toLowerCase()}.github.io/`
+    : `https://${owner.toLowerCase()}.github.io/${name}/`;
+}
+
 /** Where this checkout came from, so the site can link people at the source. */
 function repoUrl() {
   try {
@@ -198,9 +216,29 @@ async function main() {
   // engine.js imports these as a module rather than fetching them; generated from
   // repo files only, so a clone without the game can still run the tests.
   generateSpaJs();
+
+  // Text assets carry {{SITE_URL}} / {{BUILD_DATE}} placeholders so the address
+  // is not baked into the repo. With no remote to derive one from, any line that
+  // needs it is dropped — a canonical link pointing at someone else's site is
+  // worse than no canonical link.
+  const site = arg('site-url', siteUrl(meta.repo_url));
+  const stamp = meta.built.slice(0, 10);
+  const fill = (text) => (site
+    ? text.replaceAll('{{SITE_URL}}', site)
+    : text.split('\n').filter(l => !l.includes('{{SITE_URL}}')).join('\n')
+  ).replaceAll('{{BUILD_DATE}}', stamp);
+
   for (const name of fs.readdirSync(path.join(ROOT, 'web'))) {
-    if (/\.(html|css|js)$/.test(name)) fs.copyFileSync(path.join(ROOT, 'web', name), path.join(out, name));
+    const from = path.join(ROOT, 'web', name), to = path.join(out, name);
+    if (/\.(html|xml|txt)$/.test(name)) {
+      // sitemap.xml is meaningless without an address; skip it rather than ship an empty one.
+      if (!site && /\.(xml)$/.test(name)) continue;
+      fs.writeFileSync(to, fill(fs.readFileSync(from, 'utf8')));
+    } else if (/\.(css|js|png|svg|ico|webp)$/.test(name)) {
+      fs.copyFileSync(from, to);
+    }
   }
+  console.log(site ? `site url ${site}` : 'no git remote — canonical, share-card and sitemap links omitted');
 
   let total = 0;
   const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e =>

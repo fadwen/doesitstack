@@ -1,0 +1,6 @@
+# Everything here is public and static. The spell data itself is fetched as JSON
+# by the page, so a crawler sees the shell rather than 70,000 spells.
+User-agent: *
+Allow: /
+
+Sitemap: {{SITE_URL}}sitemap.xml

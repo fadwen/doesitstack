@@ -442,6 +442,23 @@ CI runs, on Linux and Windows.
 against real spells and cross-checks one against a third-party dump of it, so it doubles
 as a check that the field offsets still line up with the current file format.
 
+### Discoverability
+
+Both pages carry a canonical link, Open Graph and Twitter card tags, a 1200×630 share
+card, and `WebApplication` structured data, plus a `robots.txt` and a `sitemap.xml`.
+
+The address in all of those is a **`{{SITE_URL}}` placeholder** filled in at build time from
+the git remote — a fork should not advertise this repo's URL as its own. With no remote to
+derive one from, the lines that need it are dropped and the sitemap is skipped, because a
+canonical link pointing at somebody else's site is worse than none. `--site-url` overrides
+it for a custom domain.
+
+**What this cannot do:** the spell data is fetched as JSON after the page loads, so a
+crawler indexes the shell, not 70,963 spells. Searches for a specific spell name will not
+find this site. Closing that would mean pre-rendering a static page per spell, which is a
+different project — and pairs are not an option at all, since 70,963 spells is 2.5 billion
+of them.
+
 ### Publishing
 
 ```bash
@@ -478,6 +495,8 @@ web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
 web/saved.js                       named sets in browser storage, pure and testable
 web/freshness.js                   how stale the shipped data is
+web/og.png                         1200x630 share card
+web/robots.txt, web/sitemap.xml    crawl metadata, address filled in at build time
 tests/                             node:test — fixtures and claims run anywhere
 ```
 
