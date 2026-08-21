@@ -4,7 +4,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
-import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue } from '../web/engine.js';
+import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration } from '../web/engine.js';
+import { isAuraEffect, SPELL_REF_FIELDS } from '../tools/spells.mjs';
 import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 test('the same effect in different slots does not conflict', () => {
@@ -430,4 +431,32 @@ test('the set view never scores a set', () => {
 test('an empty or single-spell set is not an error', () => {
   assert.equal(analyzeSet([]).allHold, true);
   assert.equal(analyzeSet([setSpell(1, 'Alone', [1, 1])]).focusBestOnly.length, 0);
+});
+
+
+// --- auras ------------------------------------------------------------------
+//
+// An aura effect holds while the aura applying it holds, which duration formula
+// 51 expresses by giving no tick count at all. Read naively that is "instant",
+// which hid every aura behind the "only effects with a duration" filter — the
+// exact thing a raid stands in.
+
+test('the aura duration formula yields no tick count, and says so rather than guessing', () => {
+  // Not folded into formula 50: claiming 72000 ticks would invent a duration the
+  // file does not give. Callers are meant to read the aura flag instead.
+  assert.equal(calcDuration(51, 0, 130), 0);
+  assert.equal(calcDuration(50, 0, 130), 72000, 'the real permanent formula is unchanged');
+});
+
+test('an aura effect is recognised by its duration formula', () => {
+  assert.equal(isAuraEffect({ dur_calc: 51 }), true);
+  assert.equal(isAuraEffect({ dur_calc: 50 }), false);
+  assert.equal(isAuraEffect({ dur_calc: 0 }), false);
+});
+
+test('an aura is linked to the effect it applies', () => {
+  // Spawn Interactive Object carries the applied spell in `max`, unlike every
+  // other reference SPA which uses a base field. Missing that left the effect an
+  // orphan with no class levels, so no class search could reach it.
+  assert.deepEqual(SPELL_REF_FIELDS[351], ['max']);
 });

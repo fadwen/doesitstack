@@ -25,7 +25,18 @@ export const LUCY = id => `https://lucy.allakhazam.com/spell.html?id=${id}&sourc
 // it rather than shipping a second download to look it up.
 export const LUCY_ITEM = id => `https://lucy.allakhazam.com/item.html?id=${id}`;
 
-export const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16, F_STACKGRP = 32;
+export const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16,
+             F_STACKGRP = 32, F_AURA = 64;
+
+/**
+ * Does this sit on you, rather than firing and being done?
+ *
+ * Not just `duration > 0`. An aura effect holds for as long as the aura applying
+ * it holds, which duration formula 51 expresses by giving no tick count at all —
+ * so Aura of Kenburk Effect reads as duration 0 and a plain duration test hides
+ * the thing a raid actually stands in.
+ */
+export const lasts = r => r[row.duration] > 0 || !!(r[row.flags] & F_AURA);
 
 /** Column positions in a data/index.json row. */
 export const row = {
@@ -36,7 +47,7 @@ export const row = {
 // Labels for the `kind` a spell was classified into at build time.
 export const KIND_LABEL = {
   spell: 'Spell', discipline: 'Discipline', song: 'Song', aa: 'AA',
-  item: 'Item', triggered: 'Triggered', npc: 'NPC', other: 'Unattributed',
+  item: 'Item', aura: 'Aura', triggered: 'Triggered', npc: 'NPC', other: 'Unattributed',
 };
 export const KIND_HELP = {
   spell: 'Scribed into a spellbook by a class at a normal level.',
@@ -44,6 +55,7 @@ export const KIND_HELP = {
   song: 'Usable by bards and not a combat skill.',
   aa: 'Granted by an alternate ability (the class level reads 254).',
   item: 'An item casts this — a click, proc, worn or focus effect. Named items come from a community database, not your client files.',
+  aura: 'Applied by an aura you are standing in. It holds for as long as the aura does rather than for a number of ticks, which is why it shows no duration.',
   triggered: 'Fired by another spell as a side effect, recourse or proc rather than cast directly.',
   npc: 'Flagged in the spell file as castable by NPCs only, and no known item grants it.',
   other: 'No class learns it, nothing in the spell file triggers it, and no item in the item database casts it. Unexplained rather than absent — the item data lags new content, so recent effects can land here for a while.',
@@ -133,7 +145,7 @@ export function search(q, f) {
   const clsBit = f.cls >= 0 ? (1 << f.cls) : 0;
   const out = [];
   for (const r of INDEX) {
-    if (f.buffsOnly && r[row.duration] <= 0) continue;
+    if (f.buffsOnly && !lasts(r)) continue;
     if (f.benefOnly && !(r[row.flags] & F_BENEFICIAL)) continue;
     if (f.kinds && !f.kinds.has(META.kinds[r[row.kind]])) continue;
     // a class matches either by learning the spell or by triggering it

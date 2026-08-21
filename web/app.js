@@ -3,6 +3,7 @@ import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, load as loadData,
+  F_AURA, lasts,
 } from './data.js';
 
 let META, INDEX;
@@ -10,7 +11,7 @@ const picked = { a: null, b: null };
 
 // Which source buckets the pair tool shows by default. Triggered and NPC are the
 // two a player is not choosing between, so they start off.
-const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'other'];
+const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura', 'other'];
 
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 
@@ -163,7 +164,8 @@ function rerunSearch(side) {
     b.appendChild(head);
     const bits = [`#${r[row.id]}`];
     if (r[row.levels]) bits.push(r[row.levels].split('|').slice(0, 4).join(', '));
-    if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
+    if (r[row.flags] & F_AURA) bits.push('aura');
+    else if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
     if (r[row.category]) bits.push(r[row.category]);
     b.appendChild(el('div', 'meta', bits.join(' · ')));
     b.onmousedown = e => e.preventDefault();
@@ -198,7 +200,10 @@ async function fromHash() {
 }
 
 // ---------- rendering -------------------------------------------------------
-const durText = t => t <= 0 ? 'instant' : t >= 72000 ? 'permanent' : `${t} tick${t === 1 ? '' : 's'} (${fmtTime(t * 6)})`;
+const durText = (t, aura) => aura ? 'while the aura holds'
+  : t <= 0 ? 'instant'
+  : t >= 72000 ? 'permanent'
+  : `${t} tick${t === 1 ? '' : 's'} (${fmtTime(t * 6)})`;
 function fmtTime(sec) {
   const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
   return h ? `${h}h ${m}m` : m ? `${m}m${s ? ' ' + s + 's' : ''}` : `${s}s`;
@@ -213,7 +218,7 @@ function spellCard(sp) {
   h.appendChild(badge);
   c.appendChild(h);
   const sub = el('div', 'sub');
-  const bits = [`#${sp.id}`, META.targets[sp.target] || `target ${sp.target}`, durText(sp.duration)];
+  const bits = [`#${sp.id}`, META.targets[sp.target] || `target ${sp.target}`, durText(sp.duration, sp.aura)];
   const lv = META.classes.map((c2, i) => sp.levels[i] < 255 ? `${c2} ${sp.levels[i]}` : null).filter(Boolean);
   if (lv.length) bits.push(lv.slice(0, 5).join(', '));
   sub.textContent = bits.join(' · ') + ' · ';

@@ -9,13 +9,13 @@ import { analyzeSet, calcValue, slotOf } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, LUCY, F_BENEFICIAL, row,
-  KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData,
+  KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
 } from './data.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 
 let META, INDEX;
 const chosen = [];                                     // spells, in the order added
-const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'other'];
+const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura', 'other'];
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 const MAX_SET = 100;                                   // far past a real buff bar
 
@@ -123,7 +123,8 @@ function rerunSearch() {
     b.appendChild(head);
     const bits = [`#${r[row.id]}`];
     if (r[row.levels]) bits.push(r[row.levels].split('|').slice(0, 4).join(', '));
-    if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
+    if (r[row.flags] & F_AURA) bits.push('aura');
+    else if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
     b.appendChild(el('div', 'meta', bits.join(' · ')));
     b.onmousedown = e => e.preventDefault();
     b.onclick = () => { box.hidden = true; $('#q').value = ''; add(r[row.id]); };

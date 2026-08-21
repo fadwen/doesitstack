@@ -46,11 +46,16 @@ export const SPELL_REF_FIELDS = {
   374:['base2'], 377:['base1'], 383:['base2'], 386:['base1'], 387:['base1'], 406:['base1'],
   407:['base1'], 419:['base1'], 427:['base1'], 429:['base1'], 442:['base1'], 443:['base1'],
   453:['base1'], 454:['base1'], 475:['base2'], 476:['base2'], 481:['base2'],
+  // Spawn Interactive Object carries the spell the aura applies in `max`, not in
+  // a base field like every other reference. Without it the effect a raid buff
+  // actually puts on you looks like an orphan: Aura of Kenburk Effect has no
+  // class levels of its own, so nothing explained it and no class search found it.
+  351:['max'],
 };
 // These trigger "the best rank in a spell group" rather than a specific spell.
 export const GROUP_REF_SPAS = new Set([470, 471]);
 
-export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'triggered', 'npc', 'other'];
+export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura', 'triggered', 'npc', 'other'];
 
 // Target names as players and Lucy use them, not as EQEmu's server enum names them.
 // The distinction is not cosmetic: EQEmu calls type 3 ST_GroupTeleport, which reads as
@@ -102,10 +107,19 @@ export function calcDuration(calc, cap, level = MAX_PLAYER_LEVEL) {
     case 15: v = (level * 5 + 50) * 2; break;
     case 50: v = 72000; break;
     case 3600: v = 3600; break;
+    // 51 is the aura formula. It is not a tick count — the effect holds while
+    // the aura that applies it holds — so there is no honest number to return
+    // and callers should read `aura` instead. Deliberately not folded into 50:
+    // claiming 72000 ticks would be inventing a duration the file does not give.
+    case 51: v = 0; break;
     default: v = cap;
   }
   return cap > 0 && v > cap ? cap : v;
 }
+
+/** Duration formula 51: holds while the aura applying it holds. */
+export const AURA_DURATION_CALC = 51;
+export const isAuraEffect = sp => sp.dur_calc === AURA_DURATION_CALC;
 
 function parseSpellLine(f, level) {
   const s = {
@@ -426,6 +440,12 @@ function classify(sp, referenced) {
     return 'spell';
   }
   if (sp.levels.some(l => l === LEVEL_AA)) return 'aa';
+  // Above 'triggered' on purpose. An aura effect *is* triggered — by the aura
+  // that applies it — but "triggered" is a bucket a player has no reason to
+  // browse, and these are things a raid deliberately stands in. Calling them
+  // what they are keeps them in front of you. Below the class checks, so an
+  // effect a class actually grants keeps that as its origin.
+  if (isAuraEffect(sp)) return 'aura';
   if (referenced.has(sp.id)) return 'triggered';
   if (sp.pcnpc === 2) return 'npc';
   return 'item';   // provisional — see applyItemSources
