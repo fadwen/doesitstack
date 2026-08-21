@@ -2,7 +2,7 @@ import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA
 import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
-  KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, search, spellById, load as loadData,
+  KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, load as loadData,
 } from './data.js';
 
 let META, INDEX;
@@ -43,18 +43,21 @@ function buildFilters() {
     kinds.appendChild(b);
   }
   const classes = $('#classes');
+  // Keyed by class index, not by position: the chips are no longer in class-index
+  // order, so "which chip is lit" cannot be derived from where it sits.
+  const chips = new Map();
   const mk = (label, idx) => {
     const b = el('button', 'chip' + (active.cls === idx ? ' on' : ''), label);
     b.onclick = () => {
       active.cls = active.cls === idx ? -1 : idx;
-      [...classes.children].forEach((c, i) => c.classList.toggle('on', i === (active.cls < 0 ? 0 : active.cls + 1)));
+      for (const [i, node] of chips) node.classList.toggle('on', i === active.cls);
       refresh();
     };
-    return b;
+    chips.set(idx, b);
+    classes.appendChild(b);
   };
-  classes.appendChild(mk('Any', -1));
-  classes.firstChild.classList.add('on');
-  META.classes.forEach((c, i) => classes.appendChild(mk(c, i)));
+  mk('Any', -1);
+  for (const { label, idx } of orderClasses(META.classes)) mk(label, idx);
 }
 
 /** Say where the data came from and how old it is; warn once that matters. */

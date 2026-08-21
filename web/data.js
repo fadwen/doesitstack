@@ -150,3 +150,18 @@ export function search(q, f) {
   });
   return out.slice(0, 60);
 }
+
+/**
+ * The class filter chips, in display order.
+ *
+ * META.classes stays in the game's own class-index order, because that index is
+ * the bit position in the class mask on every index row — reordering it would
+ * silently mismatch every class search. So only the display order changes here,
+ * and each chip carries its own index rather than being identified by where it
+ * sits, which is what a position-based highlight got wrong.
+ */
+export function orderClasses(names) {
+  return names
+    .map((label, idx) => ({ label, idx }))
+    .sort((a, b) => b.label.localeCompare(a.label));
+}

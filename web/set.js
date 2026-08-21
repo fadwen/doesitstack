@@ -9,7 +9,7 @@ import { analyzeSet, calcValue, slotOf } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, LUCY, F_BENEFICIAL, row,
-  KIND_LABEL, kindHelp, search, spellById, load as loadData,
+  KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData,
 } from './data.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 
@@ -68,17 +68,21 @@ function buildFilters() {
     kinds.appendChild(b);
   }
   const classes = $('#classes');
+  // Keyed by class index, not by position: the chips are no longer in class-index
+  // order, so "which chip is lit" cannot be derived from where it sits.
+  const chips = new Map();
   const mk = (label, idx) => {
     const b = el('button', 'chip' + (active.cls === idx ? ' on' : ''), label);
     b.onclick = () => {
       active.cls = active.cls === idx ? -1 : idx;
-      [...classes.children].forEach((c, i) => c.classList.toggle('on', i === (active.cls < 0 ? 0 : active.cls + 1)));
+      for (const [i, node] of chips) node.classList.toggle('on', i === active.cls);
       rerunSearch();
     };
+    chips.set(idx, b);
     classes.appendChild(b);
   };
   mk('Any', -1);
-  META.classes.forEach((c, i) => mk(c, i));
+  for (const { label, idx } of orderClasses(META.classes)) mk(label, idx);
 }
 
 function wirePicker() {
