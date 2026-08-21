@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { spell } from './load.mjs';
+import { spell, index, byName, META, ROW } from './load.mjs';
 import { checkStack, checkBoth, isBardSong, isGroupSpell, calcValue, nonCumulativeOverlap } from '../web/engine.js';
 
 const SAVAGE_SPIRIT_17 = 70855;   // Berserker AA "Savage Spirit" rank 17
@@ -65,4 +65,49 @@ test('every spell is self-consistent (no crashes, verdict always set)', () => {
     assert.ok(['independent', 'overwrite', 'blocked'].includes(r.verdict));
     assert.ok(typeof r.reason === 'string' && r.reason.length > 0);
   }
+});
+
+
+// --- where an effect comes from --------------------------------------------
+
+test('effects are classified by source', () => {
+  const kindOf = id => spell(id).kind;
+  assert.equal(kindOf(278), 'spell');          // Spirit of Wolf, scribed
+  assert.equal(kindOf(700), 'song');           // Chant of Battle, bard
+  assert.equal(kindOf(68190), 'discipline');   // Roiling Rage, berserker disc
+  assert.equal(kindOf(SAVAGE_SPIRIT_17), 'aa');
+  assert.equal(kindOf(PROPHETS_GIFT), 'item'); // shaman epic click — no class can learn it
+});
+
+test('an AA-granted effect is marked by its class level of 254', () => {
+  const s = spell(SAVAGE_SPIRIT_17);
+  assert.equal(s.levels[15], 254);             // BER
+  assert.ok(s.levels.every(l => l === 255 || l === 254));
+});
+
+test('a discipline is a combat skill with a real class level', () => {
+  const s = spell(68190);
+  assert.equal(s.is_skill, true);
+  assert.ok(s.levels.some(l => l > 0 && l < 254));
+});
+
+test('triggered side effects borrow the class levels of what triggers them', () => {
+  const s = spell(2463);                       // Siphon Strength Recourse
+  assert.equal(s.kind, 'triggered');
+  assert.ok(s.levels.every(l => l === 255), 'it has no class levels of its own');
+  assert.ok(s.ext_levels && s.ext_levels.some(l => l < 255), 'but it borrows some');
+});
+
+test('the search index carries a class mask that matches the level list', () => {
+  const rows = byName(/^Savage Spirit XVII$/);
+  assert.equal(rows.length, 1);
+  const r = rows[0];
+  assert.equal(META.kinds[r[ROW.kind]], 'aa');
+  assert.equal(r[ROW.classMask], 1 << 15);     // berserker only
+  assert.equal(r[ROW.levels], 'BER 254');
+});
+
+test('every indexed spell has a known kind', () => {
+  const kinds = new Set(META.kinds);
+  for (const r of index()) assert.ok(kinds.has(META.kinds[r[ROW.kind]]), `bad kind on spell ${r[0]}`);
 });

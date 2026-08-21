@@ -54,6 +54,40 @@ existing spell bonuses, Screech and buff-stacker state, resurrection sickness, N
 DoT ownership — are left out; every rule that made it in is commented with the case
 it came from.
 
+## Searching
+
+The search box filters by name or spell id, narrowed by two things:
+
+**Class** — the sixteen classes, matching either a spell the class can learn or one it
+only ever reaches by triggering. Side-effect spells usually carry no class levels of
+their own, so the build borrows the levels of whatever triggers them; that is why a
+ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
+
+**Source** — where the effect comes from:
+
+| | |
+| --- | --- |
+| **Spell** | scribed by a class at a normal level |
+| **Discipline** | flagged as a combat skill |
+| **Song** | usable by bards, not a combat skill |
+| **AA** | granted by an alternate ability — the class level reads 254 |
+| **Item / other** | see below |
+| **Triggered** | fired by another spell as a proc, recourse or side effect |
+| **NPC** | flagged castable by NPCs only |
+
+### On "Item / other"
+
+**The client's spell files do not record which item grants an effect.** Items live
+server-side; nothing in `spells_us.txt` links a clicky to its item. So this bucket is a
+residual — everything no class can learn, nothing else in the file triggers, and that
+is not flagged NPC-only. Clickies, procs and worn effects land there, which is what
+you want, but so do NPC spells that simply lack the NPC flag. Roughly 27,000 rows.
+
+Pairing it with **Beneficial only** and **Only effects with a duration** gets close to
+"things an item can put on me". Treat the label as a deduction, not a fact, and follow
+the Lucy link when it matters — Lucy has an item database and can tell you the real
+source.
+
 ## Data
 
 Everything comes from the four spell files that ship with the live client:
@@ -119,7 +153,8 @@ regenerated JSON out of the repo's history.
 ## Layout
 
 ```
-tools/spells.mjs        spell file parser, duration/value formulas, description tokens
+tools/spells.mjs        spell file parser, duration/value formulas, description tokens,
+                        source classification and the spell-reference graph
 tools/build.mjs         dataset + site build
 tools/serve.mjs         dependency-free static server for dist/
 tools/spa_meta.json     SPA id → name and the stacking ignore list, extracted from EQEmu
@@ -137,6 +172,7 @@ tests/                  node:test suite over the built dataset
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max",
   not Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
 - Bard instrument modifiers are not applied to song values.
+- "Item / other" is a residual bucket, not a real source flag — see above.
 
 ## Credits
 

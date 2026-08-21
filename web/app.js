@@ -9,7 +9,26 @@ const shardCache = new Map(), descCache = new Map();
 const picked = { a: null, b: null };
 
 const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16, F_STACKGRP = 32;
-const row = { id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6 };
+const row = { id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6,
+              kind: 7, classMask: 8, extMask: 9 };
+
+// Labels for the `kind` a spell was classified into at build time.
+const KIND_LABEL = {
+  spell: 'Spell', discipline: 'Discipline', song: 'Song', aa: 'AA',
+  item: 'Item / other', triggered: 'Triggered', npc: 'NPC',
+};
+const KIND_HELP = {
+  spell: 'Scribed into a spellbook by a class at a normal level.',
+  discipline: 'A combat skill — flagged as a discipline in the spell file.',
+  song: 'Usable by bards and not a combat skill.',
+  aa: 'Granted by an alternate ability (the class level reads 254).',
+  item: 'No class can learn it and nothing in the spell file triggers it — clickies, procs and worn effects land here, but so do NPC spells. The client files do not record which item grants an effect, so this bucket is a deduction rather than a fact.',
+  triggered: 'Fired by another spell as a side effect, recourse or proc rather than cast directly.',
+  npc: 'Flagged in the spell file as castable by NPCs only.',
+};
+const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item'];
+
+const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 
 async function boot() {
   [META, INDEX] = await Promise.all([
@@ -19,11 +38,41 @@ async function boot() {
   $('#build').textContent =
     `${META.spell_count.toLocaleString()} spells from a spells_us.txt dated ${META.spell_file_date}. Dataset built ${META.built.slice(0, 10)}.`;
   $('#lvl').value = META.max_level;
+  buildFilters();
   for (const side of ['a', 'b']) wirePicker(side);
   $('#swap').onclick = () => { const t = picked.a; picked.a = picked.b; picked.b = t; syncAll(); };
-  for (const id of ['#f-buffs', '#f-player', '#lvl']) $(id).addEventListener('change', () => { rerunSearch('a'); rerunSearch('b'); render(); });
+  for (const id of ['#f-buffs', '#f-benef', '#lvl']) $(id).addEventListener('change', refresh);
   window.addEventListener('hashchange', fromHash);
   await fromHash();
+}
+
+const refresh = () => { rerunSearch('a'); rerunSearch('b'); render(); };
+
+function buildFilters() {
+  const kinds = $('#kinds');
+  for (const k of META.kinds) {
+    const b = el('button', 'chip' + (active.kinds.has(k) ? ' on' : ''), KIND_LABEL[k] || k);
+    b.title = KIND_HELP[k] || '';
+    b.onclick = () => {
+      active.kinds.has(k) ? active.kinds.delete(k) : active.kinds.add(k);
+      b.classList.toggle('on');
+      refresh();
+    };
+    kinds.appendChild(b);
+  }
+  const classes = $('#classes');
+  const mk = (label, idx) => {
+    const b = el('button', 'chip' + (active.cls === idx ? ' on' : ''), label);
+    b.onclick = () => {
+      active.cls = active.cls === idx ? -1 : idx;
+      [...classes.children].forEach((c, i) => c.classList.toggle('on', i === (active.cls < 0 ? 0 : active.cls + 1)));
+      refresh();
+    };
+    return b;
+  };
+  classes.appendChild(mk('Any', -1));
+  classes.firstChild.classList.add('on');
+  META.classes.forEach((c, i) => classes.appendChild(mk(c, i)));
 }
 
 // ---------- search ----------------------------------------------------------
@@ -33,11 +82,15 @@ function matches(r, q) {
 }
 
 function filtered(q) {
-  const buffsOnly = $('#f-buffs').checked, playerOnly = $('#f-player').checked;
+  const buffsOnly = $('#f-buffs').checked, benefOnly = $('#f-benef').checked;
+  const clsBit = active.cls >= 0 ? (1 << active.cls) : 0;
   const out = [];
   for (const r of INDEX) {
     if (buffsOnly && r[row.duration] <= 0) continue;
-    if (playerOnly && !r[row.levels]) continue;
+    if (benefOnly && !(r[row.flags] & F_BENEFICIAL)) continue;
+    if (!active.kinds.has(META.kinds[r[row.kind]])) continue;
+    // a class matches either by learning the spell or by triggering it
+    if (clsBit && !((r[row.classMask] | r[row.extMask]) & clsBit)) continue;
     if (!matches(r, q)) continue;
     out.push(r);
     if (out.length >= 400) break;
@@ -78,12 +131,14 @@ function rerunSearch(side) {
   if (!hits.length) { box.hidden = true; return; }
   for (const r of hits) {
     const b = el('button');
-    b.appendChild(el('div', null, r[row.name]));
+    const kind = META.kinds[r[row.kind]];
+    const head = el('div', 'row1');
+    head.appendChild(el('span', null, r[row.name]));
+    head.appendChild(el('span', 'badge ' + kind, KIND_LABEL[kind] || kind));
+    b.appendChild(head);
     const bits = [`#${r[row.id]}`];
     if (r[row.levels]) bits.push(r[row.levels].split('|').slice(0, 4).join(', '));
     if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
-    if (r[row.flags] & F_SKILL) bits.push('disc');
-    else if (r[row.flags] & F_SONG) bits.push('song');
     if (r[row.category]) bits.push(r[row.category]);
     b.appendChild(el('div', 'meta', bits.join(' · ')));
     b.onmousedown = e => e.preventDefault();
@@ -151,11 +206,14 @@ function fmtTime(sec) {
 
 function spellCard(sp) {
   const c = el('div', 'card');
-  c.appendChild(el('h3', null, sp.name));
+  const h = el('div', 'row1');
+  h.appendChild(el('h3', null, sp.name));
+  const badge = el('span', 'badge ' + sp.kind, KIND_LABEL[sp.kind] || sp.kind);
+  badge.title = KIND_HELP[sp.kind] || '';
+  h.appendChild(badge);
+  c.appendChild(h);
   const sub = el('div', 'sub');
   const bits = [`#${sp.id}`, META.targets[sp.target] || `target ${sp.target}`, durText(sp.duration)];
-  if (sp.is_skill) bits.push('discipline');
-  else if (isBardSong(sp)) bits.push('bard song');
   const lv = META.classes.map((c2, i) => sp.levels[i] < 255 ? `${c2} ${sp.levels[i]}` : null).filter(Boolean);
   if (lv.length) bits.push(lv.slice(0, 5).join(', '));
   sub.textContent = bits.join(' · ') + ' · ';

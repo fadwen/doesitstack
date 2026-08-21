@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadAll, CLASSES, TARGET_NAMES, RESIST_NAMES, isBardSong, isGroupSpell } from './spells.mjs';
+import { loadAll, CLASSES, KINDS, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -54,11 +54,14 @@ function compact(sp) {
     mana: sp.mana, endurance: sp.endurance, cast_ms: sp.cast_ms, recast_ms: sp.recast_ms,
     icon: sp.icon, group_id: sp.group_id, rank: sp.rank, is_skill: sp.is_skill,
     unstackable_dot: sp.unstackable_dot, song_window: sp.song_window, timer: sp.timer,
+    kind: sp.kind,
     slots: sp.slots.map(s => s && [s.spa, s.base1, s.base2, s.calc, s.max]),
   };
   if (sp.extra) rec.extra = sp.extra;
   if (sp.categories.length) rec.categories = sp.categories;
   if (sp.stacking.length) rec.stacking = sp.stacking;
+  if (sp.ext_levels.some(l => l < 255)) rec.ext_levels = sp.ext_levels;
+  if (sp.refs.length) rec.refs = sp.refs.slice(0, 12);
   return rec;
 }
 
@@ -96,9 +99,12 @@ async function main() {
   for (const [b, payload] of shards) writeJson(path.join(dataDir, 'spells', `${b}.json`), payload);
   for (const [b, payload] of descs) writeJson(path.join(dataDir, 'desc', `${b}.json`), payload);
 
-  // Search index: [id, name, target, flags, duration_ticks, "BER 254|SHM 70", category]
+  // Search index, one row per spell:
+  //   [id, name, target, flags, duration_ticks, "BER 254|SHM 70", category,
+  //    kind, class bitmask, borrowed-class bitmask]
   // flags bit 0 beneficial, 1 combat skill (discipline), 2 bard song, 3 song window,
   //       4 group spell, 5 has a Live stacking group
+  // The borrowed mask covers classes that reach the spell only by triggering it.
   const index = spells.map(sp => [
     sp.id, sp.name, sp.target,
     (sp.beneficial ? 1 : 0) | (sp.is_skill ? 2 : 0) | (isBardSong(sp) ? 4 : 0) |
@@ -106,6 +112,9 @@ async function main() {
     sp.duration,
     CLASSES.map((c, i) => sp.levels[i] < 255 ? `${c} ${sp.levels[i]}` : null).filter(Boolean).join('|'),
     sp.categories[0] || '',
+    KINDS.indexOf(sp.kind),
+    classMask(sp.levels),
+    classMask(sp.ext_levels),
   ]);
   writeJson(path.join(dataDir, 'index.json'), index);
 
@@ -118,6 +127,7 @@ async function main() {
     bucket: BUCKET,
     max_level: level,
     classes: CLASSES,
+    kinds: KINDS,
     targets: TARGET_NAMES,
     resists: RESIST_NAMES,
     spa_names: spaNames,

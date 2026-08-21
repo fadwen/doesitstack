@@ -16,7 +16,15 @@ export function spell(id) {
            slots: (rec.slots || []).map(s => s && { spa: s[0], base1: s[1], base2: s[2], calc: s[3], max: s[4] }) };
 }
 
-export function byName(re) {
-  const index = JSON.parse(fs.readFileSync(path.join(DATA, 'index.json'), 'utf8'));
-  return index.filter(r => re.test(r[1]));
+let indexCache = null;
+export function index() {
+  if (!indexCache) indexCache = JSON.parse(fs.readFileSync(path.join(DATA, 'index.json'), 'utf8'));
+  return indexCache;
 }
+
+export function byName(re) {
+  return index().filter(r => re.test(r[1]));
+}
+
+export const ROW = { id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6,
+                     kind: 7, classMask: 8, extMask: 9 };

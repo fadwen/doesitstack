@@ -19,13 +19,31 @@ const F = {
   SKILL: 32, ZONETYPE: 33, LEVELS: 36, CANCEL_ON_SIT: 56, ICON: 75, RESIST_MOD: 78,
   UNSTACKABLE_DOT: 79, RECOURSE: 81, SONG_WINDOW: 84, DESC_ID: 85, CAT: 86, HATE_MOD: 92,
   ENDURANCE: 96, TIMER: 97, IS_SKILL: 98, HATE_OVERRIDE: 99, MAX_HITS_TYPE: 101, MAX_HITS: 102,
-  MGB: 110, NO_DISPEL: 111, NOT_FOCUSABLE: 122, DURATION_FROZEN: 125, STACKS_WITH_SELF: 128,
+  PCNPC_ONLY: 108, MGB: 110, NO_DISPEL: 111, NOT_FOCUSABLE: 122, DURATION_FROZEN: 125, STACKS_WITH_SELF: 128,
   NO_BUFF_BLOCK: 130, SPELL_GROUP: 132, SPELL_GROUP_RANK: 133, CRIT_OVERRIDE: 141,
   MAX_TARGETS: 142, PERSIST_AFTER_DEATH: 148, NO_REMOVE: 156, SPELL_SUBGROUP: 160, NO_OVERWRITE: 161,
 };
 
 // EQEmu SpellTargetType
 export const ST_GROUP_TELEPORT = 0x03, ST_AE_BARD = 0x28, ST_GROUP = 0x29;
+
+// A class level of 254 means "granted by an AA", 255 means the class cannot use it.
+export const LEVEL_AA = 254, LEVEL_NONE = 255;
+
+// SPAs that carry another spell's id, and which field holds it. Extracted from
+// the [Spell N] references in eqspellparser's slot descriptions, so this is the
+// same set that tool links on.
+export const SPELL_REF_FIELDS = {
+  85:['base1'], 194:['base2'], 201:['base1'], 289:['base1'], 323:['base1'], 333:['base1'],
+  339:['base2'], 340:['base2'], 360:['base2'], 361:['base2'], 365:['base2'], 373:['base1'],
+  374:['base2'], 377:['base1'], 383:['base2'], 386:['base1'], 387:['base1'], 406:['base1'],
+  407:['base1'], 419:['base1'], 427:['base1'], 429:['base1'], 442:['base1'], 443:['base1'],
+  453:['base1'], 454:['base1'], 475:['base2'], 476:['base2'], 481:['base2'],
+};
+// These trigger "the best rank in a spell group" rather than a specific spell.
+export const GROUP_REF_SPAS = new Set([470, 471]);
+
+export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'triggered', 'npc'];
 
 export const TARGET_NAMES = {
   0:'Target AE',1:'Single',2:'Self',3:'Group Teleport',4:'AE PC v1',5:'Single',6:'Self',8:'Targeted AE',
@@ -116,7 +134,9 @@ function parseSpellLine(f, level) {
     range: int(f[F.RANGE]),
     ae_duration: int(f[F.AEDURATION]),
     cat_ids: [0, 1, 2].map(i => int(f[F.CAT + i])),
+    pcnpc: int(f[F.PCNPC_ONLY]),
     desc: '', land_self: '', categories: [], stacking: [], slots: [],
+    refs: [], ext_levels: new Array(16).fill(255), kind: 'item',
   };
   s.duration = calcDuration(s.dur_calc, s.dur_cap, level);
 
@@ -205,6 +225,7 @@ export async function loadAll(eqDir, level = 125) {
     }
   }
 
+  linkAndClassify(spells, byId);
   for (const sp of spells) sp.desc = prepareDesc(sp, byId, level);
   return { spells, byId };
 }
@@ -331,6 +352,72 @@ export function prepareDesc(sp, byId, level = 125) {
   text = text.replace(/\{39\}(\d+)/g, 'target type $1').replace(/\{4[45]\}(\d+)/g, '[$1]');
   return text.replace(/<br>/gi, ' ').trim();
 }
+
+// ---------------------------------------------------------------------------
+// Where an effect comes from
+//
+// The client's spell files say nothing about items, so "item" here is a
+// residual: a player-facing effect with no class levels that nothing else in
+// the file triggers. In practice that is dominated by clickies, procs and worn
+// effects, but it is a deduction, not a field in the data.
+// ---------------------------------------------------------------------------
+
+function linkAndClassify(spells, byId) {
+  const byGroup = new Map();
+  for (const sp of spells) {
+    if (!sp.group_id) continue;
+    if (!byGroup.has(sp.group_id)) byGroup.set(sp.group_id, []);
+    byGroup.get(sp.group_id).push(sp.id);
+  }
+
+  const referenced = new Set();
+  for (const sp of spells) {
+    const linked = new Set();
+    if (sp.recourse && byId.has(sp.recourse)) linked.add(sp.recourse);
+    for (const sl of sp.slots) {
+      if (!sl) continue;
+      for (const field of SPELL_REF_FIELDS[sl.spa] || []) {
+        const id = sl[field];
+        if (id > 0 && byId.has(id)) linked.add(id);
+      }
+      if (GROUP_REF_SPAS.has(sl.spa)) for (const id of byGroup.get(sl.base2) || []) linked.add(id);
+    }
+    linked.delete(sp.id);
+    sp.refs = [...linked];
+    for (const id of sp.refs) referenced.add(id);
+  }
+
+  // A side effect usually has no class levels of its own, which would make it
+  // invisible to a class search. Lend it the levels of whatever triggers it.
+  for (const sp of spells) {
+    if (!sp.refs.length) continue;
+    for (const id of sp.refs) {
+      const target = byId.get(id);
+      if (!target || target.levels.some(l => l < LEVEL_NONE)) continue;
+      for (let i = 0; i < 16; i++)
+        if (target.ext_levels[i] === LEVEL_NONE && sp.levels[i] < LEVEL_NONE)
+          target.ext_levels[i] = sp.levels[i];
+    }
+  }
+
+  for (const sp of spells) sp.kind = classify(sp, referenced);
+}
+
+function classify(sp, referenced) {
+  const scribed = sp.levels.some(l => l > 0 && l < LEVEL_AA);
+  if (scribed) {
+    if (sp.is_skill) return 'discipline';
+    if (sp.levels[7] < LEVEL_AA) return 'song';
+    return 'spell';
+  }
+  if (sp.levels.some(l => l === LEVEL_AA)) return 'aa';
+  if (referenced.has(sp.id)) return 'triggered';
+  if (sp.pcnpc === 2) return 'npc';
+  return 'item';
+}
+
+export const classMask = levels =>
+  levels.reduce((m, l, i) => l < LEVEL_NONE ? m | (1 << i) : m, 0);
 
 export const isBardSong = sp => sp.levels[7] < 255 && !sp.is_skill;
 export const isGroupSpell = sp => sp.target === ST_GROUP || sp.target === ST_AE_BARD || sp.target === ST_GROUP_TELEPORT;

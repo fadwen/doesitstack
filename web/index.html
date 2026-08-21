@@ -34,9 +34,19 @@
   </section>
 
   <section class="filters">
-    <label><input type="checkbox" id="f-buffs" checked> Only effects with a duration</label>
-    <label><input type="checkbox" id="f-player"> Only player-usable</label>
-    <label class="lvl">Caster level <input type="number" id="lvl" min="1" max="130" value="125"></label>
+    <div class="frow">
+      <span class="flabel">Source</span>
+      <div class="chips" id="kinds"></div>
+    </div>
+    <div class="frow">
+      <span class="flabel">Class</span>
+      <div class="chips" id="classes"></div>
+    </div>
+    <div class="frow opts">
+      <label><input type="checkbox" id="f-buffs" checked> Only effects with a duration</label>
+      <label><input type="checkbox" id="f-benef"> Beneficial only</label>
+      <label class="lvl">Caster level <input type="number" id="lvl" min="1" max="130" value="125"></label>
+    </div>
   </section>
 
   <section id="verdict" class="verdict" hidden></section>
