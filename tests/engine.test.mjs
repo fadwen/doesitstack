@@ -114,6 +114,15 @@ test('the search index carries a class mask that matches the level list', SKIP, 
   assert.equal(r[ROW.levels], 'BER 254');
 });
 
+test('real spells carry more than twelve slots, and arbitration sees them', SKIP, () => {
+  const aria = spell(71931);                       // Aria of Kenburk Rk. III
+  assert.equal(aria.slots.length, 22);
+  // ranks of one line whose shared effects sit past slot 12
+  const a = spell(2740), b = spell(3250);          // Celestial Regeneration I and II
+  assert.ok(Math.max(a.slots.length, b.slots.length) > 12);
+  assert.notEqual(checkStack(a, b).code, 0, 'two ranks of a line must not read as independent');
+});
+
 test('every indexed spell has a known kind', SKIP, () => {
   const kinds = new Set(META.kinds);
   for (const r of index()) assert.ok(kinds.has(META.kinds[r[ROW.kind]]), `bad kind on spell ${r[0]}`);

@@ -28,7 +28,13 @@ export const SPA = {
 
 const SPELL_EYE_OF_ZOMM = 331;
 const SPELL_MANA_BURN   = 2751;
-const EFFECT_COUNT      = 12;
+
+// EQEmu's EFFECT_COUNT is a hard 12, because that is what the RoF2 client held.
+// Live spells carry far more — modern bard songs run past 20, and the longest in
+// the current file has 67 — so arbitration has to walk however many slots the two
+// spells actually have or it silently ignores everything past the twelfth.
+const LEGACY_EFFECT_COUNT = 12;
+const slotSpan = (a, b) => Math.max(a.slots?.length || 0, b.slots?.length || 0, LEGACY_EFFECT_COUNT);
 
 const ST_GROUP_TELEPORT = 0x03, ST_AE_BARD = 0x28, ST_GROUP = 0x29;
 const BARD_INDEX = 7;
@@ -161,6 +167,7 @@ const spaName = spa => SPA_NAMES[spa] || `SPA ${spa}`;
 export function checkStack(a, b, opts = {}) {
   const levelA = opts.levelA ?? 125;
   const levelB = opts.levelB ?? 125;
+  const n = slotSpan(a, b);
   const slots = [];
   const caveats = [];
   const done = (code, rule, reason, decidedBy = null) => ({
@@ -217,7 +224,7 @@ export function checkStack(a, b, opts = {}) {
   // client skips the 148/149 command checks.
   let effectMatch = true;
   if (a.id !== b.id) {
-    for (let i = 0; i < EFFECT_COUNT; i++) {
+    for (let i = 0; i < n; i++) {
       if (spaOf(a, i) !== spaOf(b, i) || spaOf(a, i) === SPA.ManaBurn) { effectMatch = false; break; }
     }
   } else if (hasEffect(a, SPA.ManaBurn)) {
@@ -226,7 +233,7 @@ export function checkStack(a, b, opts = {}) {
 
   // --- SPA 148 (block) / SPA 149 (overwrite) commands ----------------------
   if (!effectMatch) {
-    for (let i = 0; i < EFFECT_COUNT; i++) {
+    for (let i = 0; i < n; i++) {
       const sa = slotOf(a, i), sb = slotOf(b, i);
 
       if (sb && sb.spa === SPA.StackingOverwrite) {
@@ -260,7 +267,7 @@ export function checkStack(a, b, opts = {}) {
   const aDet = isDetrimental(a), bDet = isDetrimental(b);
   let willOverwrite = false, valuesEqual = true, lastConflictSpa = null;
 
-  for (let i = 0; i < EFFECT_COUNT; i++) {
+  for (let i = 0; i < n; i++) {
     if (isBlankSlot(a, i) || isBlankSlot(b, i)) continue;
     const e1 = spaOf(a, i), e2 = spaOf(b, i);
     const row = { slot: i, spaA: e1, spaB: e2, nameA: spaName(e1), nameB: spaName(e2) };
@@ -360,10 +367,11 @@ export function sharedStackingGroups(a, b) {
  */
 export function nonCumulativeOverlap(a, b) {
   const out = [];
-  for (let i = 0; i < EFFECT_COUNT; i++) {
+  const lenA = a.slots?.length || 0, lenB = b.slots?.length || 0;
+  for (let i = 0; i < lenA; i++) {
     const sa = slotOf(a, i);
     if (!sa || !NON_CUMULATIVE_SPA.includes(sa.spa)) continue;
-    for (let j = 0; j < EFFECT_COUNT; j++) {
+    for (let j = 0; j < lenB; j++) {
       const sb = slotOf(b, j);
       if (sb && sb.spa === sa.spa && i !== j) out.push({ spa: sa.spa, name: spaName(sa.spa), slotA: i, slotB: j });
     }

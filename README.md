@@ -95,10 +95,14 @@ npm run verify     # re-runs the machine-checkable evidence against your spell f
 
 ## How the rules work
 
-EverQuest arbitrates buffs slot by slot. Each spell has twelve effect slots; two
-spells conflict only where the **same** SPA (spell effect) sits in the **same** slot
-index. When they do conflict, the incoming spell has to be at least as strong on
-*every* shared slot or it is refused outright.
+EverQuest arbitrates buffs slot by slot: two spells conflict only where the **same**
+SPA (spell effect) sits in the **same** slot index. When they do conflict, the incoming
+spell has to be at least as strong on *every* shared slot or it is refused outright.
+
+Slot counts are not capped at twelve. That is a RoF2-era limit that EQEmu still carries
+as `EFFECT_COUNT`, and live spells long outgrew it — Aria of Kenburk Rk. III has 22
+slots, 2,612 spells in the current file have more than twelve, and the longest has 67.
+The engine walks whatever the two spells actually have.
 
 On top of that sit the special cases this engine implements:
 
@@ -109,6 +113,7 @@ On top of that sit the special cases this engine implements:
 | Ignore list | 84 SPAs (focus effects, counters, vision, limits…) never cause a conflict |
 | Focus effects | Reported to stack regardless of slot; verdicts resting on an unexempted one are flagged doubtful |
 | Blank slots | SPA 254, and SPA 10 spacers with base 0, are invisible to arbitration |
+| Slot count | Whatever the spells carry, not EQEmu's RoF2-era cap of twelve |
 | Bard songs | A song and a non-song beneficial spell always stack |
 | Negative AC | AC debuffs skip arbitration, so things like Sun's Corona and Glacier Breath coexist |
 | Snare vs. run speed | A snare already in place refuses a movement buff |

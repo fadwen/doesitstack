@@ -69,6 +69,18 @@ export const FIXTURES = {
   procFocusA: make({ id: 900012, name: 'Test Proc Focus A', slots: [slot(383, 5, 12345)] }),
   procFocusB: make({ id: 900013, name: 'Test Proc Focus B', slots: [slot(1, 50), slot(383, 9, 12346)] }),
 
+  // Live spells are not capped at twelve slots. Modern bard songs run past twenty
+  // (Aria of Kenburk Rk. III has 22) and the longest in the current file has 67.
+  // These two collide only at slot 16, which a twelve-slot engine cannot see.
+  longSongA: make({
+    id: 900014, name: 'Test Long Song A',
+    slots: [...Array(15).fill(null).map((_, i) => slot(137 + i)), slot(1, 100)],
+  }),
+  longSongB: make({
+    id: 900015, name: 'Test Long Song B',
+    slots: [...Array(15).fill(null).map((_, i) => slot(200 + i)), slot(1, 250)],
+  }),
+
   // Two members of one Live stacking group.
   stackGroupLow:  make({ id: 900006, name: 'Test Group Rank 1', slots: [slot(2, 50)],
                          stacking: [{ group: 4242, group_name: 'Test Stacking Group', rank: 1, type: 1 }] }),

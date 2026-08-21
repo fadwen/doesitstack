@@ -122,3 +122,33 @@ test('checkBoth surfaces the focus overlap alongside the verdicts', () => {
   assert.ok(r.focus);
   assert.equal(r.focus.bestOnly.length, 1);
 });
+
+
+// --- spells with more than twelve slots -------------------------------------
+
+test('a conflict past slot 12 is still found', () => {
+  const a = fx('longSongA'), b = fx('longSongB');
+  assert.equal(a.slots.length, 16);
+  assert.ok(a.slots.slice(0, 12).every((s, i) => s.spa !== b.slots[i].spa),
+    'the first twelve slots must not conflict, or the test proves nothing');
+
+  const r = checkStack(a, b);          // b is stronger at slot 16
+  assert.equal(r.code, 1, 'slot 16 should decide this');
+  assert.equal(r.decidedBy, 1);
+  assert.equal(checkStack(b, a).code, -1);
+});
+
+test('a twelve-slot view of the same pair would miss it', () => {
+  const trunc = sp => ({ ...sp, slots: sp.slots.slice(0, 12) });
+  assert.equal(checkStack(trunc(fx('longSongA')), trunc(fx('longSongB'))).code, 0);
+});
+
+test('non-cumulative overlap is found past slot 12 too', () => {
+  const a = fx('longSongA'), b = fx('longSongB');
+  a.slots[20] = { spa: 496, base1: 100, base2: -1, calc: 100, max: 0 };
+  b.slots[13] = { spa: 496, base1: 300, base2: -1, calc: 100, max: 0 };
+  const o = nonCumulativeOverlap(a, b);
+  assert.equal(o.length, 1);
+  assert.equal(o[0].slotA, 20);
+  assert.equal(o[0].slotB, 13);
+});

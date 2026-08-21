@@ -410,7 +410,9 @@ function renderDetail(a, b, res, lvl) {
   const bySlot = new Map();
   for (const s of res.xThenY.slots) if (s.kind === 'slot') bySlot.set(s.slot, s);
 
-  for (let i = 0; i < 12; i++) {
+  // Live spells run well past twelve slots; show every slot either one uses.
+  const span = Math.max(a.slots?.length || 0, b.slots?.length || 0);
+  for (let i = 0; i < span; i++) {
     const sa = slotOf(a, i), sb = slotOf(b, i);
     if (!sa && !sb) continue;
     const tr = el('tr');

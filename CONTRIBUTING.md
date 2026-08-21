@@ -164,7 +164,9 @@ Normal rules. A few things specific to this project:
 - **The engine is a port, not an invention.** `web/engine.js` follows EQEmu's
   `Mob::CheckStackConflict`. If you change a rule, say which upstream code or which
   observed behaviour you are matching, in the commit message. Divergence may well be
-  right — EQEmu is not the game — but it should be deliberate and written down.
+  right — EQEmu is not the game — but it should be deliberate and written down. The
+  slot count is one such deliberate divergence: EQEmu caps at twelve because RoF2 did,
+  and live spells go far past that, so the engine walks the real slot arrays instead.
 - **Every rule carries the case it came from.** Comments in the engine name the
   scenario, not the mechanism. Keep that.
 - **Tests must run without the game.** `tests/engine.fixtures.test.mjs` and
