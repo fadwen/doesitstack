@@ -49,10 +49,28 @@ test('the engine imposes no slot ceiling', async () => {
 test('generated and licensed files are not committed', async (t) => {
   const files = tracked();
   if (!files) return t.skip('git not available, so there is no index to inspect');
-  const banned = [/^dist\//, /^web\/spa\.js$/, /spells_us\.txt$/, /dbstr_us\.txt$/, /spells_us_str\.txt$/, /SpellStackingGroups\.txt$/];
+  const banned = [/^dist\//, /^web\/spa\.js$/, /spells_us\.txt$/, /dbstr_us\.txt$/, /spells_us_str\.txt$/, /SpellStackingGroups\.txt$/,
+                  /^vendor\//, /items\.txt$/, /itemlist\.txt$/];
   for (const f of files)
     for (const b of banned)
       assert.ok(!b.test(f), `${f} should not be committed`);
+});
+
+test('only the fetch script touches the network', async () => {
+  // The build must stay offline and deterministic: CI never depends on a third
+  // party being up, and two builds from the same inputs produce the same dist.
+  for (const f of ['tools/build.mjs', 'tools/items.mjs', 'tools/spells.mjs', 'tools/verify_dataset.mjs']) {
+    const src = await read(f);
+    assert.doesNotMatch(src, /\bnode:https?\b|\bfetch\s*\(/, `${f} must not make network calls — that belongs in tools/fetch_items.mjs`);
+  }
+});
+
+test('the item parser resolves dump columns by name', async () => {
+  // Positional parsing of a third-party dump reads the wrong field the moment a
+  // column is added or moved, and does it silently.
+  const src = await read('tools/items.mjs');
+  assert.match(src, /resolveColumns/);
+  assert.match(src, /missing expected column/);
 });
 
 test('the verbatim reference is intact', async () => {

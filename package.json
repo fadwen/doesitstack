@@ -5,6 +5,7 @@
   "description": "EverQuest buff stacking checker \u2014 a static site built from the live client's own spell files",
   "type": "module",
   "scripts": {
+    "fetch": "node tools/fetch_items.mjs",
     "gen": "node tools/gen_spa_js.mjs",
     "build": "node tools/gen_spa_js.mjs && node tools/build.mjs",
     "serve": "npm run build && node tools/serve.mjs",

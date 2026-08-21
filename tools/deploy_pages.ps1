@@ -6,6 +6,11 @@ param([string]$Remote = "origin")
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 
+# Refresh the item database first. A failure here is not fatal: the build falls
+# back to whatever vendor\items.txt is already on disk, or to no item tags at all.
+node tools\fetch_items.mjs
+if ($LASTEXITCODE -ne 0) { Write-Warning "item fetch failed - building with the item data already on disk" }
+
 node tools\build.mjs --out dist
 New-Item -ItemType File -Path dist\.nojekyll -Force | Out-Null   # Pages would otherwise skip data\
 

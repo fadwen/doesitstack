@@ -7,6 +7,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REMOTE="${1:-origin}"
 
+# Refresh the item database first. A failure here is not fatal: the build falls
+# back to whatever vendor/items.txt is already on disk, or to no item tags at all.
+node tools/fetch_items.mjs || echo "item fetch failed - building with the item data already on disk" >&2
+
 node tools/build.mjs --out dist
 touch dist/.nojekyll                      # GitHub Pages would otherwise skip data/
 

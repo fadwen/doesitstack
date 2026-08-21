@@ -50,7 +50,7 @@ export const SPELL_REF_FIELDS = {
 // These trigger "the best rank in a spell group" rather than a specific spell.
 export const GROUP_REF_SPAS = new Set([470, 471]);
 
-export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'triggered', 'npc'];
+export const KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'triggered', 'npc', 'other'];
 
 // Target names as players and Lucy use them, not as EQEmu's server enum names them.
 // The distinction is not cosmetic: EQEmu calls type 3 ST_GroupTeleport, which reads as
@@ -428,7 +428,44 @@ function classify(sp, referenced) {
   if (sp.levels.some(l => l === LEVEL_AA)) return 'aa';
   if (referenced.has(sp.id)) return 'triggered';
   if (sp.pcnpc === 2) return 'npc';
-  return 'item';
+  return 'item';   // provisional — see applyItemSources
+}
+
+/**
+ * Fold item -> spell relationships into the dataset.
+ *
+ * Item data is additive, not a classification: a scribed spell can also sit on
+ * a clicky, an AA effect can also be a proc, and one spell can be reached more
+ * than one way at once. So every spell that an item casts gets `sp.items`,
+ * whatever its `kind` already was.
+ *
+ * The one place `kind` does change is the residual. Without item data, 'item'
+ * is a deduction — "no class learns it and nothing here triggers it, so it is
+ * probably a clicky". With item data we can say which of those are actually
+ * cast by an item ('item') and which remain unexplained ('other'), and we can
+ * correct the `pcnpc === 2` NPC guess for effects an item demonstrably grants.
+ *
+ * Called with no item data this is a no-op, and 'item' keeps its older, looser
+ * meaning — the site labels the bucket accordingly.
+ *
+ * @param {object[]} spells
+ * @param {Map<number, object>|null} bySpell  from tools/items.mjs
+ */
+export function applyItemSources(spells, bySpell) {
+  if (!bySpell) return { tagged: 0, reclassified: 0 };
+  let tagged = 0, reclassified = 0;
+  for (const sp of spells) {
+    const e = bySpell.get(sp.id);
+    if (e) { sp.items = e; tagged++; }
+    // 'item' and 'npc' are exactly the outcomes decided after the triggered
+    // check, so these are the only two the item data can speak to.
+    if (sp.kind === 'item' || sp.kind === 'npc') {
+      const next = e ? 'item' : (sp.pcnpc === 2 ? 'npc' : 'other');
+      if (next !== sp.kind) reclassified++;
+      sp.kind = next;
+    }
+  }
+  return { tagged, reclassified };
 }
 
 export const classMask = levels =>

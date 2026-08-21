@@ -3,7 +3,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dataAge, PATCH_CYCLE_DAYS, STALE_DAYS } from '../web/freshness.js';
+import { dataAge, itemDataAge, PATCH_CYCLE_DAYS, STALE_DAYS } from '../web/freshness.js';
 
 const at = (fileDate, days) => dataAge(fileDate, Date.parse(`${fileDate}T00:00:00Z`) + days * 86400000);
 
@@ -40,4 +40,35 @@ test('a malformed date is not reported as ancient', () => {
   const r = dataAge('not-a-date', Date.now());
   assert.equal(r.message, null);
   assert.equal(r.level, 'fresh');
+});
+
+// ---------------------------------------------------------------------------
+// Item data ages on a different clock: it moves when a player submits a find,
+// not when Daybreak patches, so weeks of lag is normal and months is not.
+
+const ITEM_NOW = Date.parse('2026-08-21T00:00:00Z');
+
+test('recent item data says nothing', () => {
+  assert.equal(itemDataAge('2026-08-09', ITEM_NOW).message, null);
+  assert.equal(itemDataAge('2026-08-09', ITEM_NOW).level, 'fresh');
+});
+
+test('item data is allowed to lag further than the spell file before it complains', () => {
+  // 70 days would already be "aging" for a spell file; for item data it is only
+  // just past normal, and the wording says missing rather than wrong.
+  const item = itemDataAge('2026-06-12', ITEM_NOW);
+  assert.equal(item.level, 'aging');
+  assert.match(item.message, /may not be tagged yet/);
+  assert.equal(dataAge('2026-06-12', ITEM_NOW).level, 'aging');
+});
+
+test('a long-silent item source is called out as such', () => {
+  const r = itemDataAge('2025-06-01', ITEM_NOW);
+  assert.equal(r.level, 'stale');
+  assert.match(r.message, /not come from the client files/);
+});
+
+test('a missing item date degrades quietly', () => {
+  assert.equal(itemDataAge(null, ITEM_NOW).message, null);
+  assert.equal(itemDataAge('', ITEM_NOW).message, null);
 });

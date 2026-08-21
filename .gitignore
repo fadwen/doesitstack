@@ -3,3 +3,4 @@ web/spa.js
 node_modules/
 __pycache__/
 *.pyc
+vendor/

@@ -35,3 +35,41 @@ export function dataAge(spellFileDate, now = Date.now()) {
            + 'Spells added or changed since will be missing or stale.',
   };
 }
+
+// ---------------------------------------------------------------------------
+// Item data ages on its own clock.
+//
+// Item -> spell relationships come from a community dump built by players
+// running a collector, so it moves when someone loots something, not when
+// Daybreak patches. Weeks of lag on the newest tier is normal and not a
+// problem; months of silence means the source has gone quiet.
+
+export const ITEM_LAG_DAYS = 60;
+export const ITEM_STALE_DAYS = 180;
+
+/**
+ * @param {string|null} updated  newest row timestamp in the item dump (ISO date)
+ * @param {number} now           epoch ms, injected so this is testable
+ * @returns {{days:number, level:'fresh'|'aging'|'stale', message:string|null}}
+ */
+export function itemDataAge(updated, now = Date.now()) {
+  const parsed = Date.parse(`${updated}T00:00:00Z`);
+  if (!Number.isFinite(parsed)) return { days: NaN, level: 'fresh', message: null };
+
+  const days = Math.floor((now - parsed) / 86400000);
+  if (days < ITEM_LAG_DAYS) return { days, level: 'fresh', message: null };
+
+  if (days >= ITEM_STALE_DAYS) {
+    const months = Math.floor(days / 30);
+    return {
+      days, level: 'stale',
+      message: `The item database has not been updated in about ${months} months, so item tags `
+             + 'are missing for anything added since. Which items grant an effect is the only '
+             + 'part of this site that does not come from the client files.',
+    };
+  }
+  return {
+    days, level: 'aging',
+    message: `The item database is ${days} days old, so recent items may not be tagged yet.`,
+  };
+}

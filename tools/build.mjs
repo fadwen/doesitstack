@@ -4,6 +4,10 @@
 //   node tools/build.mjs                       auto-detect the EverQuest install
 //   node tools/build.mjs --eq-dir "C:/..."     point at it explicitly
 //   node tools/build.mjs --out dist --level 125
+//   node tools/build.mjs --items vendor/items.txt   item -> spell relationships
+//
+// The build never touches the network. `npm run fetch` is what downloads the
+// item dump; if vendor/items.txt is absent the build simply carries no item tags.
 //
 // Outputs:
 //   dist/index.html, app.js, engine.js, spa.js, style.css
@@ -16,7 +20,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadAll, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
+import { loadAll, applyItemSources, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
+import { loadItems, defaultItemFile, REL } from './items.mjs';
 import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs } from './gen_spa_js.mjs';
 import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
@@ -42,6 +47,10 @@ function compact(sp) {
   if (sp.stacking.length) rec.stacking = sp.stacking;
   if (sp.ext_levels.some(l => l < 255)) rec.ext_levels = sp.ext_levels;
   if (sp.refs.length) rec.refs = sp.refs.slice(0, 12);
+  // [relationship bitmask, total item count, [[item id, item name, rel index], ...]]
+  // Only a handful of named items ride along; the count carries the rest. The
+  // bitmask is duplicated into the search index so filtering needs no shard.
+  if (sp.items) rec.it = [sp.items.mask, sp.items.count, sp.items.items.map(([id, name, rel]) => [id, name, REL.indexOf(rel)])];
   return rec;
 }
 
@@ -72,6 +81,20 @@ async function main() {
   const { spells } = await loadAll(eqDir, level);
   console.log(`parsed ${spells.length} spells in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
+  // Item -> spell relationships. The client files do not record these, so they
+  // come from a community dump that the repo never commits. Intersecting on the
+  // spell ids we actually have is what makes stale item data degrade into fewer
+  // tags instead of tags pointing at spells this build does not know about.
+  const itemFile = arg('items', defaultItemFile(ROOT));
+  const items = await loadItems(itemFile, new Set(spells.map(sp => sp.id)));
+  if (items) {
+    const { tagged, reclassified } = applyItemSources(spells, items.bySpell);
+    console.log(`items: ${tagged} spells tagged from ${items.itemCount} items ` +
+                `(${reclassified} reclassified, ${items.dropped} dropped as unknown, dump updated ${items.updated})`);
+  } else {
+    console.log(`items: ${path.relative(ROOT, itemFile)} not found — building without item tags (npm run fetch)`);
+  }
+
   const dataDir = path.join(out, 'data');
   fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dataDir, 'spells'), { recursive: true });
@@ -92,7 +115,7 @@ async function main() {
 
   // Search index, one row per spell:
   //   [id, name, target, flags, duration_ticks, "BER 254|SHM 70", category,
-  //    kind, class bitmask, borrowed-class bitmask]
+  //    kind, class bitmask, borrowed-class bitmask, item relationship bitmask]
   // flags bit 0 beneficial, 1 combat skill (discipline), 2 bard song, 3 song window,
   //       4 group spell, 5 has a Live stacking group
   // The borrowed mask covers classes that reach the spell only by triggering it.
@@ -106,6 +129,7 @@ async function main() {
     KINDS.indexOf(sp.kind),
     classMask(sp.levels),
     classMask(sp.ext_levels),
+    sp.items ? sp.items.mask : 0,
   ]);
   writeJson(path.join(dataDir, 'index.json'), index);
 
@@ -126,6 +150,16 @@ async function main() {
     built: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     spell_file_date: fs.statSync(path.join(eqDir, 'spells_us.txt')).mtime.toISOString().slice(0, 10),
     spell_count: spells.length,
+    // null when the build ran without item data, so the UI can say "unknown"
+    // rather than "no item casts this".
+    items: items && {
+      source: 'https://items.sodeq.org/',
+      rel: REL,
+      updated: items.updated,       // newest row in the dump — the data's real age
+      fetched: items.fetched,       // when we last pulled it
+      item_count: items.itemCount,
+      spell_count: items.spellCount,
+    },
     bucket: BUCKET,
     max_level: level,
     classes: CLASSES,

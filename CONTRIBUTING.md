@@ -282,13 +282,19 @@ otherwise.
 
 Saves someone repeating the work:
 
-- **Linking effects to the items that grant them.** Lucy's `itemlist.txt.gz` is
-  `id,name,lucylink` only — no effect columns. The data is on Lucy's per-item pages,
-  128,083 of them. Name-matching spells against items hits 3.1% of the "Item / other"
-  bucket and skews towards `Spell: <name>` scrolls, which are the wrong relationship.
-  The EQEmu/PEQ items table does carry click/proc/worn/focus effects, but lags live
-  badly on modern gear; it would be partial coverage presented as a source label, which
-  is worse than the honest residual. Open if someone finds a current, complete mapping.
+- **Linking effects to the items that grant them** — *solved, but note what did not
+  work.* [SoDeq](https://items.sodeq.org/) publishes an item dump with real
+  click/proc/worn/focus columns, and that is where item tags now come from. What failed
+  first: Lucy's `itemlist.txt.gz` is `id,name,lucylink` only, no effect columns, and its
+  third field is the item id templated into a URL on all 134,079 rows — no information,
+  so item links are built rather than looked up. Name-matching spells against items hits
+  3.1% and skews to `Spell: <name>` scrolls, which *teach* a spell rather than cast it.
+  The EQEmu/PEQ items table has the right columns but lags live badly on modern gear.
+
+- **Closing the remaining "Unattributed" bucket.** 17,656 rows that no class learns,
+  nothing in the spell file triggers, and no item in the dump casts. Some are new
+  content the item collectors have not reached yet; the rest is unknown. A plausible
+  guess dressed as a source label is worse than the honest gap — bring evidence.
 
 ## Ground rules
 

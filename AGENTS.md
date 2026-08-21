@@ -7,6 +7,7 @@ Short version of things that are easy to get wrong here. The reasoning is in
 
 ```bash
 npm test             # runs anywhere — no EverQuest install needed
+npm run fetch        # item database; the ONLY command that touches the network
 npm run build        # needs the game files
 npm run verify:data  # diffs the built dataset against the spell file
 npm run verify       # re-runs machine-checkable claim evidence
@@ -32,12 +33,26 @@ reformatted copy is a second-hand reading of a primary source.
 **`tools/spells.mjs` imports only Node built-ins.** Spell values come from the client's
 files and nothing else. Keep it that way; a test enforces it.
 
+**The build never touches the network.** Only `tools/fetch_items.mjs` does. `npm run
+build` must stay offline and deterministic — CI cannot depend on a third party being up,
+and two builds from the same inputs must produce the same `dist/`. A test enforces it.
+
+**Third-party dump columns are resolved by name.** `tools/items.mjs` reads 9 of the item
+dump's 315 columns by header name, never by position, and throws on a column it cannot
+find. Positional parsing of someone else's export is wrong the moment they add a field,
+and wrong silently.
+
+**Item tags are additive, not a classification.** A spell can be scribed *and* be a
+clicky; an AA can also be a proc; one spell can be a click on one item and a proc on
+another. Never let an item relationship overwrite a `kind` the spell file already
+justifies — the only bucket item data may reclassify is the residual.
+
 **No slot caps.** EverQuest allows up to 100 effect slots. Any constant that limits
 iteration to 12, 40 or any other number is a bug — that exact mistake silently corrupted
 thousands of verdicts once already.
 
-**Do not commit `dist/`, `web/spa.js`, or any game data file.** They are generated or
-licensed. `dist/` deploys as an orphan `gh-pages` commit.
+**Do not commit `dist/`, `web/spa.js`, `vendor/`, or any game data file.** They are
+generated, licensed or third party. `dist/` deploys as an orphan `gh-pages` commit.
 
 **Assume Windows.** Contributors run EverQuest, so they run Windows. Do not rely on
 shell glob expansion, POSIX-only paths, or `file://${process.argv[1]}` — all three have
@@ -60,5 +75,5 @@ broken this repo before.
 ## What is deliberately unfinished
 
 Read the "Known gaps" section of the README before proposing to fix something. Several
-gaps are open on purpose — the "Item / other" residual and the unverified stacking rules
+gaps are open on purpose — the "Unattributed" residual and the unverified stacking rules
 in particular. Closing them with a plausible guess is worse than leaving them.

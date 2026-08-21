@@ -188,34 +188,50 @@ ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
 | **Discipline** | flagged as a combat skill |
 | **Song** | usable by bards, not a combat skill |
 | **AA** | granted by an alternate ability — the class level reads 254 |
-| **Item / other** | see below |
+| **Item** | an item casts it — click, proc, worn, focus, bard, mount, blessing or familiar |
 | **Triggered** | fired by another spell as a proc, recourse or side effect |
-| **NPC** | flagged castable by NPCs only |
+| **NPC** | flagged castable by NPCs only, and no known item grants it |
+| **Unattributed** | nothing explains it — see below |
 
-### On "Item / other"
+**Source is one label, but the item tag is not.** A spell can be scribed *and* sit on a
+clicky; an AA effect can also be a proc; *Steelskin* is a click on some items and a proc
+on others. So items show as extra tags beside the source badge, never instead of it —
+676 scribed spells, 32 AAs and 25 songs carry one.
+
+### Where item tags come from
+
+**The client's spell files do not record which item grants an effect.** Items live
+server-side; nothing in `spells_us.txt` links a clicky to its item. Every other fact on
+this site is read from your own client files — this one cannot be, so it comes from the
+[SoDeq item database](https://items.sodeq.org/), a community dump built by players
+running an item collector.
+
+That buys 10,675 spells tagged with the item that casts them, and lets the site tell
+apart three things the old **Item / other** bucket ran together:
+
+- **Item** — an item demonstrably casts it. 9,686 rows.
+- **NPC** — flagged NPC-only *and* no item grants it. The item data corrected 249 of
+  these, about 28% of the old bucket, that a player can in fact click off an item.
+- **Unattributed** — no class learns it, nothing in the file triggers it, no item casts
+  it. 17,656 rows. Unexplained rather than absent: the item data lags new content, so
+  recent effects land here for a while.
+
+The dump is regenerated daily but updates when a player submits a find, not when
+Daybreak patches, so the newest tier is the part most likely to be missing. The footer
+names the date and the page says so once the lag gets long. `npm run fetch` pulls it;
+the build never touches the network, and without the file it simply produces no tags.
+
+**Lucy's item dump is not part of this.** Its `itemlist.txt.gz` is `id,name,lucylink` —
+no click, proc, worn or focus columns — and the third field is the item id templated
+into a URL, identical on all 134,079 rows, so the item links here are built rather than
+looked up. Matching spell names against item names does not substitute: 3.1% hit rate,
+skewed to `Spell: <name>` scrolls, which *teach* a spell rather than cast it.
 
 **The client's spell files do not record which item grants an effect.** Items live
 server-side; nothing in `spells_us.txt` links a clicky to its item. So this bucket is a
-residual — everything no class can learn, nothing else in the file triggers, and that is
-not flagged NPC-only. Clickies, procs and worn effects land there, which is what you
-want, but so do NPC spells that simply lack the NPC flag. Roughly 27,000 rows.
-
-Pairing it with **Beneficial only** and **Only effects with a duration** gets close to
-"things an item can put on me". Treat the label as a deduction, not a fact, and follow
-the Lucy link when it matters — Lucy has an item database and can tell you the real
-source.
-
-**Lucy's public item dump does not close this**, in case the thought occurs. Its
-`itemlist.txt.gz` is `id,name,lucylink` and nothing else — 128,083 items, no click,
-proc, worn or focus columns. The effects are on Lucy's per-item pages, which would mean
-fetching all 128,083 of them, and that is not something this project is going to do.
-Matching spell names against item names is not a substitute either: it hits 3.1% of the
-bucket, and the matches skew towards `Spell: <name>` scrolls — the item that *teaches* a
-spell, not one that casts it.
-
 ## Data files
 
-Everything comes from the four spell files that ship with the live client:
+Every spell value comes from the four files that ship with the live client:
 
 ```
 spells_us.txt                      the spell table itself (166 caret-delimited fields)
@@ -224,7 +240,20 @@ dbstr_us.txt                       descriptions, categories, stacking group name
 Resources/SpellStackingGroups.txt  spell → stacking group, rank, type
 ```
 
-Nothing is scraped, and Lucy is linked from every result so you can check the source.
+One thing is not in them, because it is not in the client at all:
+
+```
+vendor/items.txt                   which item casts which spell — items.sodeq.org
+```
+
+Optional, gitignored, and fetched by `npm run fetch` rather than by the build. Its 315
+columns are read **by name**, so the collector adding or reordering columns cannot shift
+the data underneath us; a *renamed* column is a hard build failure rather than silently
+wrong tags. Only spells present in the current spell file get tagged, which is what makes
+stale item data produce fewer tags instead of tags pointing nowhere.
+
+Nothing is scraped, and Lucy is linked from every result — and from every named item —
+so you can check the source.
 
 SPA names are Daybreak's own, which they were not until recently: of the 420 SPAs the
 spell file uses, **282 were being displayed under an EQEmu enum identifier no player
@@ -250,11 +279,16 @@ redeploy after each patch day, or the answers go quietly out of date.
 The date shown is the modification time of `spells_us.txt`, which the file itself does
 not carry a version for. Copying the file around can reset it.
 
+Item data ages on its own clock and the footer stamps it separately. The dump carries a
+per-row timestamp, so its age is the newest row in it rather than when it was downloaded
+— a re-fetch that changes nothing does not make it look fresher than it is.
+
 ## Build and run
 
 Node 20+ is the only prerequisite — no dependencies to install.
 
 ```bash
+npm run fetch                 # item database — downloads only if it changed (~8 MB)
 npm run build                 # auto-detects the usual Windows install paths
 node tools/build.mjs --eq-dir "C:/Users/Public/Daybreak Game Company/Installed Games/EverQuest"
 
@@ -266,12 +300,18 @@ The build writes `dist/`:
 ```
 dist/index.html, app.js, engine.js, spa.js, freshness.js, style.css
 dist/data/meta.json          SPA names, ignore list, claims, build stamp
-dist/data/index.json         one small row per spell — feeds the search box (~750 KB gzipped)
+dist/data/index.json         one small row per spell — feeds the search box (~775 KB gzipped)
 dist/data/spells/NN.json     full records, sharded by id; only the two you pick get fetched
 dist/data/desc/NN.json       descriptions with their #1/%z template tokens resolved
 ```
 
 `dist/` is deliberately not committed. Re-run the build after each patch day.
+
+`npm run fetch` is the only command that touches the network, and it is separate from the
+build on purpose: `npm run build` is offline and deterministic, so CI never depends on a
+third party being up and two builds from the same inputs produce the same `dist/`. The
+fetch sends `If-None-Match` / `If-Modified-Since`, so an unchanged dump costs one request
+instead of 8 MB. It is safe to skip — the build says so and carries on without tags.
 
 ### Tests
 
@@ -317,6 +357,8 @@ tools/verify_dataset.mjs           diffs the built dataset against the spell fil
 tools/gen_spa_js.mjs               generates web/spa.js from repo files (no game needed)
 tools/gen_spa_meta.mjs             regenerates spa_meta.json from an EQEmu checkout
 tools/spa_meta.json                stacking ignore list and focus lists, from EQEmu
+tools/items.mjs                    item → spell relationships, parsed by column name
+tools/fetch_items.mjs              the only thing here that touches the network
 tools/serve.mjs                    dependency-free static server for dist/
 web/engine.js                      the stacking rules
 web/app.js                         search, pickers, rendering
@@ -336,7 +378,11 @@ tests/                             node:test — fixtures and claims run anywher
   valuable contribution here.
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max", not
   Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
-- "Item / other" is a residual bucket, not a real source flag — see above.
+- **Unattributed** is still a residual — 17,656 rows nothing explains. The item
+  database shrank the old "Item / other" bucket by a third; the rest is genuinely
+  unaccounted for, and calling it "probably a clicky" would be a guess.
+- Item tags depend on a community dump that lags new content by weeks and is the only
+  data here not read from the client's own files.
 - Formula 123 (random range) is evaluated at its midpoint.
 - Bard instrument modifiers are not applied to song values.
 - SPAs past 528 have no published name and fall back to EQEmu's or their number.
@@ -357,6 +403,8 @@ parse protocol are in [CONTRIBUTING.md](CONTRIBUTING.md) for anyone who wants th
 
 ## Credits
 
+- **[SoDeq](https://items.sodeq.org/)** — the item database behind every item tag, and
+  the item collector contributors who keep it current. Code copyright Kyle Smith.
 - **Daybreak Game Company** — the client files everything here is read from, and the
   published SPA list that names it
 - **Sancus** — focus effect behaviour, the slot-count limit, and the SPA list

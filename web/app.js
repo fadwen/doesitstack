@@ -1,9 +1,13 @@
 import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA } from './engine.js';
-import { dataAge } from './freshness.js';
+import { dataAge, itemDataAge } from './freshness.js';
 
 const $ = s => document.querySelector(s);
 const el = (t, cls, txt) => { const n = document.createElement(t); if (cls) n.className = cls; if (txt != null) n.textContent = txt; return n; };
 const LUCY = id => `https://lucy.allakhazam.com/spell.html?id=${id}&source=Live`;
+// Lucy's own item export stores this link verbatim, and it is the item id
+// templated in with no exceptions across all 134,079 of its rows — so we build
+// it rather than shipping a second download to look it up.
+const LUCY_ITEM = id => `https://lucy.allakhazam.com/item.html?id=${id}`;
 
 let META, INDEX;
 const shardCache = new Map(), descCache = new Map();
@@ -11,23 +15,50 @@ const picked = { a: null, b: null };
 
 const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16, F_STACKGRP = 32;
 const row = { id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6,
-              kind: 7, classMask: 8, extMask: 9 };
+              kind: 7, classMask: 8, extMask: 9, itemRel: 10 };
+
+// How an item grants a spell. Additive, not a classification: a scribed spell
+// can also be a clicky, and one spell can be several of these at once.
+const REL_LABEL = {
+  click: 'Click', proc: 'Proc', worn: 'Worn', focus: 'Focus',
+  bard: 'Bard', mount: 'Mount', blessing: 'Blessing', familiar: 'Familiar',
+};
+const REL_HELP = {
+  click: 'Cast by activating the item.',
+  proc: 'Fires by itself while the item is in use.',
+  worn: 'Applied for as long as the item is equipped.',
+  focus: 'The item carries this as a focus effect.',
+  bard: 'The item is a bard instrument granting this.',
+  mount: 'Granted by a mount.',
+  blessing: 'A mount blessing effect.',
+  familiar: 'Granted by a familiar.',
+};
+// index rows carry the relationships as a bitmask so the search list can show
+// tags without fetching a shard. Bit order matches meta.items.rel.
+const relsOf = mask => (META.items?.rel || []).filter((_, i) => mask & (1 << i));
 
 // Labels for the `kind` a spell was classified into at build time.
 const KIND_LABEL = {
   spell: 'Spell', discipline: 'Discipline', song: 'Song', aa: 'AA',
-  item: 'Item / other', triggered: 'Triggered', npc: 'NPC',
+  item: 'Item', triggered: 'Triggered', npc: 'NPC', other: 'Unattributed',
 };
 const KIND_HELP = {
   spell: 'Scribed into a spellbook by a class at a normal level.',
   discipline: 'A combat skill — flagged as a discipline in the spell file.',
   song: 'Usable by bards and not a combat skill.',
   aa: 'Granted by an alternate ability (the class level reads 254).',
-  item: 'No class can learn it and nothing in the spell file triggers it — clickies, procs and worn effects land here, but so do NPC spells. The client files do not record which item grants an effect, so this bucket is a deduction rather than a fact.',
+  item: 'An item casts this — a click, proc, worn or focus effect. Named items come from a community database, not your client files.',
   triggered: 'Fired by another spell as a side effect, recourse or proc rather than cast directly.',
-  npc: 'Flagged in the spell file as castable by NPCs only.',
+  npc: 'Flagged in the spell file as castable by NPCs only, and no known item grants it.',
+  other: 'No class learns it, nothing in the spell file triggers it, and no item in the item database casts it. Unexplained rather than absent — the item data lags new content, so recent effects can land here for a while.',
 };
-const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item'];
+// Said when the build ran without item data, so 'item' keeps its older,
+// looser meaning and 'other' cannot occur at all.
+const KIND_HELP_NO_ITEMS = {
+  item: 'No class can learn it and nothing in the spell file triggers it — clickies, procs and worn effects land here, but so do NPC spells. This build has no item database loaded, so the bucket is a deduction rather than a fact.',
+};
+const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'other'];
+const kindHelp = k => (META.items ? KIND_HELP[k] : KIND_HELP_NO_ITEMS[k] || KIND_HELP[k]) || '';
 
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 
@@ -53,7 +84,7 @@ function buildFilters() {
   const kinds = $('#kinds');
   for (const k of META.kinds) {
     const b = el('button', 'chip' + (active.kinds.has(k) ? ' on' : ''), KIND_LABEL[k] || k);
-    b.title = KIND_HELP[k] || '';
+    b.title = kindHelp(k);
     b.onclick = () => {
       active.kinds.has(k) ? active.kinds.delete(k) : active.kinds.add(k);
       b.classList.toggle('on');
@@ -80,14 +111,18 @@ function buildFilters() {
 function renderDataAge() {
   $('#build').textContent =
     `${META.spell_count.toLocaleString()} spells, read from a client spells_us.txt dated ${META.spell_file_date}. `
-    + `This copy was built ${META.built.slice(0, 10)}.`;
+    + `This copy was built ${META.built.slice(0, 10)}.`
+    + (META.items
+        ? ` Which items grant an effect comes from a separate community database, last updated ${META.items.updated}.`
+        : ' No item database was loaded for this build, so nothing is tagged with the item that grants it.');
 
-  const { level, message } = dataAge(META.spell_file_date);
-  if (!message) return;
+  const notes = [dataAge(META.spell_file_date), META.items ? itemDataAge(META.items.updated) : {}]
+    .filter(n => n.message);
+  if (!notes.length) return;
   const box = $('#stale');
   box.hidden = false;
-  box.className = level === 'stale' ? 'stale bad' : 'stale';
-  box.textContent = message;
+  box.className = notes.some(n => n.level === 'stale') ? 'stale bad' : 'stale';
+  box.textContent = notes.map(n => n.message).join(' ');
 }
 
 // ---------- search ----------------------------------------------------------
@@ -150,6 +185,15 @@ function rerunSearch(side) {
     const head = el('div', 'row1');
     head.appendChild(el('span', null, r[row.name]));
     head.appendChild(el('span', 'badge ' + kind, KIND_LABEL[kind] || kind));
+    // A spell can be scribed *and* sit on a clicky, so these are extra tags
+    // beside the kind badge rather than a replacement for it. Suppressed when
+    // the kind badge already says "Item" and there is only one relationship.
+    const rels = relsOf(r[row.itemRel]);
+    if (rels.length && !(kind === 'item' && rels.length === 1)) {
+      const tags = el('span', 'rel-tags');
+      for (const rel of rels) tags.appendChild(el('span', 'badge rel', REL_LABEL[rel] || rel));
+      head.insertBefore(tags, head.lastChild);
+    }
     b.appendChild(head);
     const bits = [`#${r[row.id]}`];
     if (r[row.levels]) bits.push(r[row.levels].split('|').slice(0, 4).join(', '));
@@ -224,7 +268,7 @@ function spellCard(sp) {
   const h = el('div', 'row1');
   h.appendChild(el('h3', null, sp.name));
   const badge = el('span', 'badge ' + sp.kind, KIND_LABEL[sp.kind] || sp.kind);
-  badge.title = KIND_HELP[sp.kind] || '';
+  badge.title = kindHelp(sp.kind);
   h.appendChild(badge);
   c.appendChild(h);
   const sub = el('div', 'sub');
@@ -235,8 +279,38 @@ function spellCard(sp) {
   const a = el('a', null, 'Lucy'); a.href = LUCY(sp.id); a.target = '_blank'; a.rel = 'noopener';
   sub.appendChild(a);
   c.appendChild(sub);
+  if (sp.it) c.appendChild(itemSource(sp.it));
   if (sp.desc?.d) { const d = el('p', 'sub', sp.desc.d.replace(/<BR>/gi, ' ')); d.style.marginTop = '8px'; c.appendChild(d); }
   return c;
+}
+
+/**
+ * "Click · Proc — Mystic Cloak, The Sword of Rile and 4 others"
+ *
+ * `it` is [relationship bitmask, total item count, [[item id, name, rel index]]].
+ * Only a few named items ship; the count carries the rest, and the Lucy spell
+ * link above covers anyone who wants the full list.
+ */
+function itemSource([mask, count, items]) {
+  const wrap = el('div', 'sub item-source');
+  const tags = el('span', 'rel-tags');
+  for (const rel of relsOf(mask)) {
+    const t = el('span', 'badge rel', REL_LABEL[rel] || rel);
+    t.title = REL_HELP[rel] || '';
+    tags.appendChild(t);
+  }
+  wrap.appendChild(tags);
+  const named = items.length;
+  items.forEach(([id, name], i) => {
+    if (i) wrap.appendChild(document.createTextNode(i === named - 1 && count === named ? ' and ' : ', '));
+    const a = el('a', null, name);
+    a.href = LUCY_ITEM(id); a.target = '_blank'; a.rel = 'noopener';
+    a.title = 'Look this item up on Lucy';
+    wrap.appendChild(a);
+  });
+  const rest = count - named;
+  if (rest > 0) wrap.appendChild(document.createTextNode(` and ${rest} other item${rest === 1 ? '' : 's'}`));
+  return wrap;
 }
 
 function render() {
