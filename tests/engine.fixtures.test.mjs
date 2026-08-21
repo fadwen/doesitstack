@@ -19,6 +19,62 @@ test('but a shared non-cumulative effect is still flagged', () => {
   assert.equal(o[0].spa, 496);
 });
 
+// --- which value the game keeps ---------------------------------------------
+//
+// The site colours the slot that applies and the slot that does not. That is a
+// claim about the game, so it is only made where the claim is confirmed.
+
+const ncPair = (spaA, valA, spaB, valB) => {
+  const a = fx('longSongA'), b = fx('longSongB');
+  a.slots[20] = { spa: spaA, base1: valA, base2: -1, calc: 100, max: 0 };
+  b.slots[13] = { spa: spaB, base1: valB, base2: -1, calc: 100, max: 0 };
+  return nonCumulativeOverlap(a, b)[0];
+};
+
+test('a confirmed non-cumulative SPA names the larger value as the one that applies', () => {
+  const higherOnB = ncPair(496, 40, 496, 100);
+  assert.equal(higherOnB.confirmed, true);
+  assert.equal(higherOnB.winner, 'b');
+  assert.deepEqual([higherOnB.valueA, higherOnB.valueB], [40, 100]);
+
+  const higherOnA = ncPair(496, 300, 496, 100);
+  assert.equal(higherOnA.winner, 'a');
+});
+
+test('equal values are a tie, so neither buff is shown as losing out', () => {
+  const tied = ncPair(496, 100, 496, 100);
+  assert.equal(tied.winner, 'tie');
+});
+
+test('an unconfirmed non-cumulative SPA names no winner at all', () => {
+  // SPA 185 rests on EQEmu's bonus accumulation alone. We assert the values do
+  // not add; asserting which one survives would be a second, unearned claim —
+  // and some of these could plausibly favour the more negative value.
+  const o = ncPair(185, 2, 185, 110);
+  assert.equal(o.confirmed, false);
+  assert.equal(o.winner, null);
+  assert.deepEqual([o.valueA, o.valueB], [2, 110]);
+});
+
+test('the winner is decided at the caster levels asked about, not the cap', () => {
+  const a = fx('longSongA'), b = fx('longSongB');
+  // calc 102 scales with level, so who wins depends on the levels supplied
+  a.slots[20] = { spa: 496, base1: 10, base2: -1, calc: 102, max: 0 };
+  b.slots[13] = { spa: 496, base1: 10, base2: -1, calc: 102, max: 0 };
+  assert.equal(nonCumulativeOverlap(a, b, { levelA: 130, levelB: 100 })[0].winner, 'a');
+  assert.equal(nonCumulativeOverlap(a, b, { levelA: 100, levelB: 130 })[0].winner, 'b');
+  assert.equal(nonCumulativeOverlap(a, b)[0].winner, 'tie', 'both default to the cap');
+});
+
+test('checkBoth passes the caster levels through to the non-cumulative check', () => {
+  const a = fx('longSongA'), b = fx('longSongB');
+  a.slots[20] = { spa: 496, base1: 10, base2: -1, calc: 102, max: 0 };
+  b.slots[13] = { spa: 496, base1: 10, base2: -1, calc: 102, max: 0 };
+  const r = checkBoth(a, b, { levelX: 130, levelY: 100 });
+  assert.equal(r.nonCumulative[0].winner, 'a');
+  assert.equal(r.nonCumulative[0].valueA > r.nonCumulative[0].valueB, true);
+});
+
 test('the weaker rank of a line is refused, the stronger overwrites', () => {
   assert.equal(checkStack(fx('strongBuff'), fx('weakBuff')).code, -1);
   assert.equal(checkStack(fx('weakBuff'), fx('strongBuff')).code, 1);

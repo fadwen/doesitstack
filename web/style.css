@@ -116,6 +116,16 @@ table.slots td.empty-slot{color:#59607080}
 table.slots tr.hit .slotno{border-color:#6b3a3a}
 table.slots tr.ok .slotno{border-color:#2f5a44}
 table.slots .spa{padding-left:33px}
+/* Effects that land together but are not added together. Orange says "only one of
+   these counts"; green and red say which, and are only used where the claim behind
+   that is confirmed. Underline as well as colour, so the distinction survives a
+   colour-blind reader and a greyscale print. */
+.nc-wins{color:#8ee0b6;text-decoration:underline;text-decoration-color:#2c5d45;text-underline-offset:3px}
+.nc-loses{color:#ff9a9a;text-decoration:line-through;text-decoration-color:#6b2c2c}
+.nc-unsure{color:#f2ae5c;text-decoration:underline dotted;text-underline-offset:3px}
+.legend{margin-top:8px;font-size:12px;color:var(--muted)}
+.legend span{margin-left:2px}
+.legend span+span{margin-left:10px}
 table.slots tr.hit td{background:#2a1f1f}
 table.slots tr.ok td{background:#1a231e}
 .spa{font-family:var(--mono);font-size:12px;color:var(--muted)}

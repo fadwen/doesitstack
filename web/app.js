@@ -505,6 +505,60 @@ function focusBestOnlyNote(focus) {
   return claimNote(text, 'focus-best-only/all-focus-spas', 'Can you confirm or refute this?');
 }
 
+/**
+ * Which slots carry an effect that does not add with the other buff's copy of it.
+ *
+ * Two shapes, because the confidence differs. Where the claim is confirmed we know
+ * the game keeps the larger value, so the slot that applies is marked as taking
+ * precedence and the other as losing out. Where it is not, all we are asserting is
+ * that the numbers do not add — so both sides are flagged and neither is called the
+ * winner. Returns Map(slot index -> 'wins' | 'loses' | 'unsure') per side.
+ */
+function nonCumulativeMarks(overlaps) {
+  const marks = { a: new Map(), b: new Map() };
+  // A slot can appear in more than one pair. Losing is the strongest thing we can
+  // say about a slot, so it is never downgraded by a later pair.
+  const rank = { loses: 3, wins: 2, unsure: 1 };
+  const set = (side, slot, mark) => {
+    const had = marks[side].get(slot);
+    if (!had || rank[mark] > rank[had]) marks[side].set(slot, mark);
+  };
+  for (const o of overlaps) {
+    if (!o.confirmed) { set('a', o.slotA, 'unsure'); set('b', o.slotB, 'unsure'); continue; }
+    // A tie loses nothing either way — that value applies whichever buff supplies it.
+    if (o.winner === 'tie') { set('a', o.slotA, 'wins'); set('b', o.slotB, 'wins'); continue; }
+    set('a', o.slotA, o.winner === 'a' ? 'wins' : 'loses');
+    set('b', o.slotB, o.winner === 'b' ? 'wins' : 'loses');
+  }
+  return marks;
+}
+
+const MARK_TITLE = {
+  wins: 'Does not add with the other buff\u2019s copy of this effect. This is the larger value, so this is the one that applies.',
+  loses: 'Does not add with the other buff\u2019s copy of this effect. The other buff\u2019s value is larger, so this one does nothing while both are up.',
+  unsure: 'Reported not to add with the other buff\u2019s copy of this effect — only one value counts. Which one is unverified, so neither is marked as winning.',
+};
+
+function nonCumulativeLegend(marks) {
+  const kinds = new Set([...marks.a.values(), ...marks.b.values()]);
+  if (!kinds.size) return null;
+  const p = el('p', 'legend');
+  p.appendChild(document.createTextNode('Marked effects do not add together — '));
+  let first = true;
+  const add = (cls, label) => {
+    if (!kinds.has(cls)) return;
+    if (!first) p.appendChild(document.createTextNode(' · '));
+    first = false;
+    p.appendChild(el('span', 'nc-' + cls, label));
+  };
+  // The sample text carries the styling it describes, so the legend does not
+  // depend on the reader naming a colour.
+  add('wins', 'this value applies');
+  add('loses', 'this one is ignored');
+  add('unsure', 'which one applies is unverified');
+  return p;
+}
+
 function renderDetail(a, b, res, lvl) {
   const d = $('#detail'); d.hidden = false; d.innerHTML = '';
   d.appendChild(el('h3', 'sec', 'Slot by slot'));
@@ -518,14 +572,19 @@ function renderDetail(a, b, res, lvl) {
   const bySlot = new Map();
   for (const s of res.xThenY.slots) if (s.kind === 'slot') bySlot.set(s.slot, s);
 
+  // Only meaningful when both buffs actually hold — if one is refused there is no
+  // "both up, larger counts" situation to colour. Matches the note under the verdict.
+  const bothHold = res.xThenY.verdict === 'independent' && res.yThenX.verdict === 'independent';
+  const marks = nonCumulativeMarks(bothHold ? res.nonCumulative : []);
+
   // Live spells run well past twelve slots; show every slot either one uses.
   const span = Math.max(a.slots?.length || 0, b.slots?.length || 0);
   for (let i = 0; i < span; i++) {
     const sa = slotOf(a, i), sb = slotOf(b, i);
     if (!sa && !sb) continue;
     const tr = el('tr');
-    tr.appendChild(slotCell(a, i, lvl));
-    tr.appendChild(slotCell(b, i, lvl));
+    tr.appendChild(slotCell(a, i, lvl, marks.a.get(i)));
+    tr.appendChild(slotCell(b, i, lvl, marks.b.get(i)));
     const info = bySlot.get(i);
     let verdict = '—', cls = '';
     if (info) {
@@ -543,6 +602,8 @@ function renderDetail(a, b, res, lvl) {
   const scroller = el('div', 'table-scroll');
   scroller.appendChild(t);
   d.appendChild(scroller);
+  const legend = nonCumulativeLegend(marks);
+  if (legend) d.appendChild(legend);
 
   const notes = res.xThenY.slots.filter(s => s.kind !== 'slot');
   if (notes.length) {
@@ -594,13 +655,15 @@ function ruleProvenance(rules) {
   return wrap;
 }
 
-function slotCell(sp, i, lvl) {
+function slotCell(sp, i, lvl, mark) {
   const s = slotOf(sp, i);
   if (!s) return el('td', 'empty-slot', '—');
   const td = el('td');
   const head = el('div', 'slot-head');
   head.appendChild(el('span', 'slotno', String(i + 1)));
-  head.appendChild(el('span', null, META.spa_names[s.spa] || `SPA ${s.spa}`));
+  const name = el('span', mark ? 'nc-' + mark : null, META.spa_names[s.spa] || `SPA ${s.spa}`);
+  if (mark) name.title = MARK_TITLE[mark];
+  head.appendChild(name);
   td.appendChild(head);
   const v = calcValue(sp, i, lvl);
   td.appendChild(el('div', 'spa', `SPA ${s.spa} · base ${s.base1}${s.base2 ? ' / ' + s.base2 : ''}${s.max ? ' · max ' + s.max : ''} · value ${v}`));

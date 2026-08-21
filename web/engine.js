@@ -15,7 +15,7 @@
 // slot arbitration: two spells in the same stacking group never coexist.
 
 import {
-  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, IGNORED_BY_CLAIM,
+  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED, IGNORED_BY_CLAIM,
   FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
@@ -374,7 +374,8 @@ export function sharedStackingGroups(a, b) {
  * for the provenance note); the wording is confirmed by the live spell text for
  * SPA 496, whose descriptions say "non-cumulative" outright.
  */
-export function nonCumulativeOverlap(a, b) {
+export function nonCumulativeOverlap(a, b, opts = {}) {
+  const levelA = opts.levelA ?? MAX_PLAYER_LEVEL, levelB = opts.levelB ?? MAX_PLAYER_LEVEL;
   const out = [];
   const lenA = a.slots?.length || 0, lenB = b.slots?.length || 0;
   for (let i = 0; i < lenA; i++) {
@@ -382,7 +383,16 @@ export function nonCumulativeOverlap(a, b) {
     if (!sa || !NON_CUMULATIVE_SPA.includes(sa.spa)) continue;
     for (let j = 0; j < lenB; j++) {
       const sb = slotOf(b, j);
-      if (sb && sb.spa === sa.spa && i !== j) out.push({ spa: sa.spa, name: spaName(sa.spa), slotA: i, slotB: j });
+      if (!sb || sb.spa !== sa.spa || i === j) continue;
+      const valueA = calcValue(a, i, levelA), valueB = calcValue(b, j, levelB);
+      // A winner is only named where the claim is confirmed. For the other six
+      // SPAs we are asserting that the values do not add, on EQEmu's bonus
+      // accumulation alone — saying which one the game keeps would dress an
+      // unverified claim as a fact, and several of these could plausibly favour
+      // the more negative value rather than the larger one.
+      const confirmed = NON_CUMULATIVE_CONFIRMED.includes(sa.spa);
+      const winner = !confirmed ? null : valueA === valueB ? 'tie' : valueA > valueB ? 'a' : 'b';
+      out.push({ spa: sa.spa, name: spaName(sa.spa), slotA: i, slotB: j, valueA, valueB, confirmed, winner });
     }
   }
   return out;
@@ -408,7 +418,7 @@ export function checkBoth(x, y, opts = {}) {
   return {
     xThenY: checkStack(x, y, { levelA: opts.levelX, levelB: opts.levelY }),
     yThenX: checkStack(y, x, { levelA: opts.levelY, levelB: opts.levelX }),
-    nonCumulative: nonCumulativeOverlap(x, y),
+    nonCumulative: nonCumulativeOverlap(x, y, { levelA: opts.levelX, levelB: opts.levelY }),
     focus: focusOverlap(x, y),
   };
 }

@@ -167,9 +167,25 @@ Two caveats apply to all seven:
 - 185, 459, 482, 503 and 505 are additive when they arrive as a worn item bonus rather
   than as a buff.
 
+That difference in confidence is visible in the slot-by-slot table, not just in the
+warning under the verdict. Where both buffs hold and share one of these SPAs, the two
+slots are marked — and how they are marked depends on what can be justified:
+
+| | |
+| --- | --- |
+| **Confirmed** (496 only) | the larger value is marked as the one that applies, the other as ignored |
+| **Unverified** (the other six) | both sides are flagged, and neither is called the winner |
+
+Naming a winner for the other six would be a second claim on top of an unverified one:
+we would be asserting not only that the values do not add, but which one the game keeps
+— and several of these could plausibly favour the more negative value rather than the
+larger one. Values are compared at the caster levels you asked about, so who wins can
+change when you change the level. Ties mark neither side as losing out.
+
 Status is derived from evidence, not written by hand, so **adding a primary source
-removes the hedging on the next build with no code change**. If you can settle one of
-the six, see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
+removes the hedging on the next build with no code change** — and promotes that SPA's
+slots from "one of these counts" to a named winner. If you can settle one of the six,
+see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
 ## Searching
 
