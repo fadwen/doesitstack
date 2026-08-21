@@ -2,16 +2,18 @@
   "name": "does-it-stack",
   "version": "1.1.0",
   "private": true,
-  "description": "EverQuest buff stacking checker — a static site built from the live client's own spell files",
+  "description": "EverQuest buff stacking checker \u2014 a static site built from the live client's own spell files",
   "type": "module",
   "scripts": {
     "gen": "node tools/gen_spa_js.mjs",
     "build": "node tools/gen_spa_js.mjs && node tools/build.mjs",
     "serve": "npm run build && node tools/serve.mjs",
     "pretest": "node tools/gen_spa_js.mjs",
-    "test": "node --test tests/*.test.mjs",
+    "test": "node --test",
     "verify": "node tools/verify_claims.mjs",
     "claims": "node -e \"import('./tools/claims.mjs').then(m=>{const d=m.load();for(const c of d.claims)console.log(c.status.padEnd(11),c.id,'-',c.evidence.length,'evidence');})\""
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }
