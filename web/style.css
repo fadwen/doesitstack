@@ -55,6 +55,7 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 .badge.song{color:#d6b0ff;border-color:#4a3563}
 .badge.aa{color:#8ee0b6;border-color:#2c5d45}
 .badge.item{color:#f2d48a;border-color:#5d4d24}
+.badge.aura{color:#8ad6d0;border-color:#2b5450}
 .badge.triggered,.badge.npc,.badge.other{color:#98a0b3}
 .badge.rel{color:#c9b98a;border-color:#4a422c;text-transform:none;letter-spacing:0}
 .item-source{margin-top:6px;line-height:1.7}
@@ -151,3 +152,28 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
   .slotno{min-width:18px;padding:0 4px}
   table.slots .spa{padding-left:0}
 }
+
+/* ---- set view -------------------------------------------------------------- */
+.set-picker{max-width:520px}
+.set-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.setchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:var(--panel);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.setchip.bad{border-color:#6b3a3a;background:#2a1f1f}
+.setchip-x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;
+  line-height:1;padding:2px 6px;border-radius:999px}
+.setchip-x:hover{background:var(--panel-2);color:var(--ink)}
+.setlist .sec{margin-bottom:2px}
+.report .note h4{margin:0;font-size:14px}
+.group-members{margin:8px 0 0;padding-left:18px}
+.group-members li{margin-bottom:6px}
+.limiters{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.dirverdict{font-weight:600}
+.report table.slots td:first-child{min-width:150px}
+.report table.slots{min-width:720px}
+.saved{margin-top:10px}
+.saved .frow{margin-bottom:6px}
+.setchip.on{border-color:#3d6c94;background:#20364a}
+.setchip-name.as-button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
+.setchip-name.as-button:hover{text-decoration:underline}
+.saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
+.drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}

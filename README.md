@@ -187,6 +187,55 @@ removes the hedging on the next build with no code change** — and promotes tha
 slots from "one of these counts" to a named winner. If you can settle one of the six,
 see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
+## A whole buff set
+
+The pair view answers "do these two stack". [`set.html`](web/set.html) answers the raid
+question instead: given everything you expect to be carrying, **which of them cannot be up
+at once, and which effects are several buffs paying for where only one counts.**
+
+This scales without new mechanics because the game itself works pairwise — an incoming
+spell is checked against each buff already on you, one at a time. So a set holds exactly
+when every pair is mutually independent; there is no three-way interaction to model.
+`analyzeSet()` is a loop over `checkStack`, and it is cheap: a 40-buff set is **8 ms**, 120
+buffs is 86 ms, in the browser.
+
+Two things come out of it:
+
+- **Conflicts** — the pairs that cannot both be up, with the reason in each casting order.
+  Which one you keep depends on cast order, so it names the pair rather than choosing.
+- **Shared effects** — grouped by SPA across the whole set, which is the part a pair view
+  cannot show. Eight disciplines each carrying Skill Damage Mod 1 is a fact about the set,
+  not about any pair inside it. Non-cumulative effects use the same green / struck-through
+  / orange language as the slot table. Best-only foci list their **limiters**, because two
+  foci of the same type do not compete if they apply to different spells — and deciding
+  that needs per-cast context this tool does not have, so it shows them and leaves the
+  judgement to you.
+
+### Saving a set
+
+A raid set is worth building once. Name it and it is kept in **that browser**, so you can
+load it back, pile a few things on to see what they cost, and put it back the way it was —
+the page tells you when the live set has drifted from the one you loaded, and offers both
+**Revert** and **Update**.
+
+A reordered set is not "changed": the ids carry insertion order, which is a display
+detail, so comparison is order-insensitive rather than crying wolf.
+
+Saved sets never leave the browser they were made in — no account, no server. The **URL
+already carries the whole set**, so that stays the way to move one between machines or send
+it to someone. Storage that is blocked or full is reported rather than silently losing a
+set, and a browser that refuses it entirely still leaves the link in the address bar.
+
+### Why it will not rank sets
+
+Because it cannot do so honestly. A damage figure needs a model of how these values
+combine — the spell, AA and worn bonus buckets, which effects add and which keep only the
+larger, which focus wins a cast. Six of the seven non-cumulative claims here are
+`unverified` and the focus rule is `corroborated` rather than `confirmed`; a score built on
+that would look far more authoritative than its evidence. Burn output also depends on gear,
+AAs, recast timers and the encounter, none of which is in the spell file — that is a
+simulator, not a stacking checker. A test asserts `analyzeSet` returns no score.
+
 ## Searching
 
 The search box filters by name or spell id, narrowed by two things:
@@ -205,6 +254,7 @@ ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
 | **Song** | usable by bards, not a combat skill |
 | **AA** | granted by an alternate ability — the class level reads 254 |
 | **Item** | an item casts it — click, proc, worn, focus, bard, mount, blessing or familiar |
+| **Aura** | applied by an aura you stand in — see below |
 | **Triggered** | fired by another spell as a proc, recourse or side effect |
 | **NPC** | flagged castable by NPCs only, and no known item grants it |
 | **Unattributed** | nothing explains it — see below |
@@ -213,6 +263,25 @@ ranger search turns up *Jolting Swings Strike* and not just *Jolting Swings*.
 clicky; an AA effect can also be a proc; *Steelskin* is a click on some items and a proc
 on others. So items show as extra tags beside the source badge, never instead of it —
 676 scribed spells, 32 AAs and 25 songs carry one.
+
+### Auras
+
+An aura effect is what a raid actually stands in, and both halves of it were being lost.
+
+**Duration formula 51 has no tick count.** The effect holds for as long as the aura
+applying it holds, so the file gives no number — read naively that is "instant", and all
+**601** of them were hidden behind *Only effects with a duration*. They now report as
+lasting, and the card reads **"while the aura holds"** rather than inventing a figure.
+Deliberately not folded into formula 50: claiming 72000 ticks would be a duration the file
+does not give.
+
+**Nothing linked an aura to its effect.** `Spawn Interactive Object` (SPA 351) carries the
+applied spell in its **`max`** field, where every other reference SPA uses a base field, so
+the reference table missed it. *Aura of Kenburk Effect* had no class levels of its own and
+nothing explained it, which left it unattributed and unreachable from a bard search. It is
+now linked, borrows BRD 130 from the song that spawns it, and carries its own **Aura**
+source label — above *Triggered* in the classification, because "triggered" is a bucket
+nobody browses and these are effects people deliberately go and stand in.
 
 ### Where item tags come from
 
@@ -376,8 +445,11 @@ tools/spa_meta.json                stacking ignore list and focus lists, from EQ
 tools/items.mjs                    item → spell relationships, parsed by column name
 tools/fetch_items.mjs              the only thing here that touches the network
 tools/serve.mjs                    dependency-free static server for dist/
-web/engine.js                      the stacking rules
-web/app.js                         search, pickers, rendering
+web/engine.js                      the stacking rules, pair and set
+web/data.js                        loading and searching the dataset, shared by both pages
+web/app.js                         the pair view
+web/set.js                         the set view — conflicts and shared effects
+web/saved.js                       named sets in browser storage, pure and testable
 web/freshness.js                   how stale the shipped data is
 tests/                             node:test — fixtures and claims run anywhere
 ```

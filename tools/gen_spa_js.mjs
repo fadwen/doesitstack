@@ -29,7 +29,7 @@ export function generate() {
   // Daybreak's list names every one of EQEmu's as Fc_/Ff_ and adds three more.
   const focusEffects = spaMeta.focus_effects || [];
   const focusSpaList = focusSpas([...focusEffects, ...(spaMeta.focus_limits || [])]);
-  // The limiter subset, so the engine can tell a focus from the thing narrowing it.
+  // The limiter subset, so a focus can be told apart from the thing narrowing it.
   const focusLimitList = focusLimitSpas(spaMeta.focus_limits || []);
 
   // Foci where only the best applies to a cast, minus the procs that all fire.

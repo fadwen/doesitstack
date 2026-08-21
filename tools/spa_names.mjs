@@ -72,6 +72,10 @@ export function focusSpas(eqemuFocus = []) {
  * restricts the focus sitting beside it. Reporting two spells as competing over
  * a shared Ff_LevelMax says nothing at all.
  *
+ * Naming them is also what lets the set view show why two foci of the same type
+ * may not compete at all: if their limiters are disjoint they apply to different
+ * spells and both do work.
+ *
  * Same union as focusSpas: Daybreak's Ff_ prefix, plus EQEmu's own limit list.
  */
 export function focusLimitSpas(eqemuLimits = []) {

@@ -20,7 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadAll, applyItemSources, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
+import { loadAll, applyItemSources, isAuraEffect, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { loadItems, defaultItemFile, REL } from './items.mjs';
 import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs } from './gen_spa_js.mjs';
@@ -42,6 +42,7 @@ function compact(sp) {
     kind: sp.kind,
     slots: sp.slots.map(s => s && [s.spa, s.base1, s.base2, s.calc, s.max]),
   };
+  if (isAuraEffect(sp)) rec.aura = true;
   if (sp.extra) rec.extra = sp.extra;
   if (sp.categories.length) rec.categories = sp.categories;
   if (sp.stacking.length) rec.stacking = sp.stacking;
@@ -117,12 +118,14 @@ async function main() {
   //   [id, name, target, flags, duration_ticks, "BER 254|SHM 70", category,
   //    kind, class bitmask, borrowed-class bitmask, item relationship bitmask]
   // flags bit 0 beneficial, 1 combat skill (discipline), 2 bard song, 3 song window,
-  //       4 group spell, 5 has a Live stacking group
+  //       4 group spell, 5 has a Live stacking group, 6 aura effect (no tick count,
+  //       holds while the aura does — so it is a lasting effect despite duration 0)
   // The borrowed mask covers classes that reach the spell only by triggering it.
   const index = spells.map(sp => [
     sp.id, sp.name, sp.target,
     (sp.beneficial ? 1 : 0) | (sp.is_skill ? 2 : 0) | (isBardSong(sp) ? 4 : 0) |
-    (sp.song_window ? 8 : 0) | (isGroupSpell(sp) ? 16 : 0) | (sp.stacking.length ? 32 : 0),
+    (sp.song_window ? 8 : 0) | (isGroupSpell(sp) ? 16 : 0) | (sp.stacking.length ? 32 : 0) |
+    (isAuraEffect(sp) ? 64 : 0),
     sp.duration,
     CLASSES.map((c, i) => sp.levels[i] < 255 ? `${c} ${sp.levels[i]}` : null).filter(Boolean).join('|'),
     sp.categories[0] || '',

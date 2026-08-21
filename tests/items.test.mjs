@@ -174,5 +174,5 @@ test('with no item data nothing is reclassified and "item" keeps its older meani
 
 test('"other" is a real kind the index can encode', () => {
   // build.mjs stores KINDS.indexOf(kind); a kind missing here would ship as -1.
-  for (const k of ['item', 'other', 'npc', 'triggered']) assert.ok(KINDS.includes(k), k);
+  for (const k of ['item', 'other', 'npc', 'triggered', 'aura']) assert.ok(KINDS.includes(k), k);
 });
