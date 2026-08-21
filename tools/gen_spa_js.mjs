@@ -7,7 +7,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { load as loadClaims, byType, spasOf } from './claims.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -64,7 +64,10 @@ export function generate() {
   return { spaNames, spas, confirmed, nonCumulative, focusSpas, focusBestOnly, focusExceptions, contested };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// `file://${process.argv[1]}` looks equivalent but is not: on Windows argv[1] is a
+// backslashed drive path, so that comparison never matches and the script silently
+// does nothing. pathToFileURL is the portable form.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const { spas, confirmed, focusSpas, contested } = generate();
   console.log(`web/spa.js written — ${spas.length} non-cumulative SPAs (${confirmed.length} confirmed), `
             + `${focusSpas.length} focus SPAs, ${contested.length} contested for stacking`);

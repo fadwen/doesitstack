@@ -7,9 +7,14 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Windows is in the matrix deliberately: most contributors here run EverQuest,
+    # so they run Windows, and a Linux-only matrix once let a path bug through that
+    # broke `npm test` on every fresh Windows clone.
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         node: ['20', '22']
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +26,11 @@ jobs:
       # a malformed claim should fail with a clear message, not inside a test.
       - name: Validate claims.json
         run: npm run claims
+
+      # web/spa.js is generated, never committed. A fresh clone must produce it or
+      # nothing imports; this asserts that rather than trusting it.
+      - name: Generated tables exist after a clean checkout
+        run: npm run gen && node -e "import('./web/spa.js').then(m => { if (!m.FOCUS_BEST_ONLY) { console.error('spa.js is missing its exports'); process.exit(1); } console.log('spa.js ok'); })"
 
       # No EverQuest install here, so the dataset-backed suites skip themselves.
       # The fixture and claim suites carry the load.
