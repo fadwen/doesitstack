@@ -205,6 +205,14 @@ Pairing it with **Beneficial only** and **Only effects with a duration** gets cl
 the Lucy link when it matters — Lucy has an item database and can tell you the real
 source.
 
+**Lucy's public item dump does not close this**, in case the thought occurs. Its
+`itemlist.txt.gz` is `id,name,lucylink` and nothing else — 128,083 items, no click,
+proc, worn or focus columns. The effects are on Lucy's per-item pages, which would mean
+fetching all 128,083 of them, and that is not something this project is going to do.
+Matching spell names against item names is not a substitute either: it hits 3.1% of the
+bucket, and the matches skew towards `Spell: <name>` scrolls — the item that *teaches* a
+spell, not one that casts it.
+
 ## Data files
 
 Everything comes from the four spell files that ship with the live client:

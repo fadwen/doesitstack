@@ -275,6 +275,18 @@ node tools/gen_spa_meta.mjs --eqemu /tmp/eqemu
 Run it when an expansion adds SPAs and EQEmu catches up. It should produce no diff
 otherwise.
 
+## Things already tried
+
+Saves someone repeating the work:
+
+- **Linking effects to the items that grant them.** Lucy's `itemlist.txt.gz` is
+  `id,name,lucylink` only — no effect columns. The data is on Lucy's per-item pages,
+  128,083 of them. Name-matching spells against items hits 3.1% of the "Item / other"
+  bucket and skews towards `Spell: <name>` scrolls, which are the wrong relationship.
+  The EQEmu/PEQ items table does carry click/proc/worn/focus effects, but lags live
+  badly on modern gear; it would be partial coverage presented as a source label, which
+  is worse than the honest residual. Open if someone finds a current, complete mapping.
+
 ## Ground rules
 
 Be specific and be checkable. Beyond that: no spell data from the game is redistributed
