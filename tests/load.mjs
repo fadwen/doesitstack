@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MAX_PLAYER_LEVEL } from '../web/spa.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const DATA = path.join(root, 'dist', 'data');
@@ -9,8 +10,18 @@ export const DATA = path.join(root, 'dist', 'data');
 // fresh clone and in CI. Suites that need it skip instead of failing; the
 // fixture-based suites cover the engine either way.
 export const HAS_DATASET = fs.existsSync(path.join(DATA, 'meta.json'));
-export const SKIP = HAS_DATASET ? {} : { skip: 'no built dataset — run `npm run build` with EverQuest installed' };
 export const META = HAS_DATASET ? JSON.parse(fs.readFileSync(path.join(DATA, 'meta.json'), 'utf8')) : null;
+
+// dist/ is a build artifact, so it can lag the source it was built from. Comparing
+// the level cap catches the common case — someone changed a constant and has not
+// rebuilt — and turns what would be a baffling assertion failure into an
+// instruction. Without this the first symptom is "125 !== 130" with no hint why.
+const STALE = HAS_DATASET && META.max_level !== MAX_PLAYER_LEVEL;
+
+export const SKIP =
+  !HAS_DATASET ? { skip: 'no built dataset — run `npm run build` with EverQuest installed' }
+  : STALE      ? { skip: `dist/ was built at level ${META.max_level} but the source says ${MAX_PLAYER_LEVEL} — run \`npm run build\`` }
+  : {};
 
 const shards = new Map();
 
