@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 REMOTE="${1:-origin}"
 
-python tools/build_data.py --out dist
+node tools/build.mjs --out dist
 touch dist/.nojekyll                      # GitHub Pages would otherwise skip data/
 
 WORK="$(mktemp -d)"

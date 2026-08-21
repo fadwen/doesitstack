@@ -72,12 +72,13 @@ current as your last patch. The field layout follows
 
 ## Build and run
 
-```bash
-python tools/build_data.py           # auto-detects the usual Windows install paths
-python tools/build_data.py --eq-dir "C:/Users/Public/Daybreak Game Company/Installed Games/EverQuest"
+Node 20+ is the only prerequisite — no dependencies to install.
 
-python -m http.server 8000 --directory dist
-# open http://localhost:8000
+```bash
+npm run build                 # auto-detects the usual Windows install paths
+node tools/build.mjs --eq-dir "C:/Users/Public/Daybreak Game Company/Installed Games/EverQuest"
+
+npm run serve                 # builds, then serves dist/ on http://localhost:8000
 ```
 
 The build writes `dist/`:
@@ -95,7 +96,7 @@ dist/data/desc/NN.json       descriptions with their #1/%z template tokens resol
 ### Tests
 
 ```bash
-node --test tests/*.test.mjs
+npm test
 ```
 
 The suite pins the engine against known-good pairs (the two spells above, snare vs.
@@ -106,8 +107,11 @@ with the current file format.
 ### Publishing
 
 ```bash
-tools/deploy_pages.sh        # builds, then force-pushes dist/ as an orphan gh-pages commit
+tools/deploy_pages.sh                                        # macOS / Linux / Git Bash
+powershell -ExecutionPolicy Bypass -File tools\deploy_pages.ps1   # Windows
 ```
+
+Either script builds, then force-pushes `dist/` as an orphan `gh-pages` commit.
 
 Pushing the data as an orphan commit each time keeps thirty-odd megabytes of
 regenerated JSON out of the repo's history.
@@ -115,8 +119,9 @@ regenerated JSON out of the repo's history.
 ## Layout
 
 ```
-tools/eqspells.py       spell file parser, duration/value formulas, description tokens
-tools/build_data.py     dataset + site build
+tools/spells.mjs        spell file parser, duration/value formulas, description tokens
+tools/build.mjs         dataset + site build
+tools/serve.mjs         dependency-free static server for dist/
 tools/spa_meta.json     SPA id → name and the stacking ignore list, extracted from EQEmu
 web/engine.js           the stacking rules
 web/app.js              search, pickers, rendering
