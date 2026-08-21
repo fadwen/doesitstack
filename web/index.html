@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Does it stack? — EverQuest buff stacking checker</title>
+<meta name="description" content="Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312141a'/%3E%3Crect x='7' y='18' width='18' height='4' rx='1' fill='%237cc4ff'/%3E%3Crect x='7' y='12' width='18' height='4' rx='1' fill='%235fd39a'/%3E%3Crect x='7' y='6' width='18' height='4' rx='1' fill='%23f2c35c'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Does it stack?</h1>
+    <p class="tag">Slot-by-slot buff arbitration for EverQuest — spells, disciplines, songs and AA effects.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="pickers">
+    <div class="picker" data-side="a">
+      <label class="picker-label" for="q-a">Buff already on you</label>
+      <input id="q-a" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
+      <div class="results" id="results-a" hidden></div>
+      <div class="chosen" id="chosen-a"></div>
+    </div>
+    <div class="swap-col"><button id="swap" class="swap" title="Swap the two spells">⇄</button></div>
+    <div class="picker" data-side="b">
+      <label class="picker-label" for="q-b">Buff being cast</label>
+      <input id="q-b" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
+      <div class="results" id="results-b" hidden></div>
+      <div class="chosen" id="chosen-b"></div>
+    </div>
+  </section>
+
+  <section class="filters">
+    <label><input type="checkbox" id="f-buffs" checked> Only effects with a duration</label>
+    <label><input type="checkbox" id="f-player"> Only player-usable</label>
+    <label class="lvl">Caster level <input type="number" id="lvl" min="1" max="130" value="125"></label>
+  </section>
+
+  <section id="verdict" class="verdict" hidden></section>
+  <section id="detail" class="detail" hidden></section>
+
+  <section id="empty" class="empty">
+    <p>Pick two effects to see whether they can sit on you at the same time.</p>
+    <p class="examples">Try
+      <a href="#a=6273&amp;b=70855">Prophet's Gift of the Ruchu vs Savage Spirit XVII</a>.
+    </p>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p id="build"></p>
+  <p>Rules ported from the EQEmu server's <code>CheckStackConflict</code>, which mirrors the live client. Spell data comes from your own <code>spells_us.txt</code>. Not affiliated with Daybreak Game Company.</p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
