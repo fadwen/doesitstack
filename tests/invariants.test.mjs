@@ -8,10 +8,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 const read = f => readFile(new URL(f, root), 'utf8');
-const tracked = () => execFileSync('git', ['ls-files'], { cwd: new URL('.', root).pathname, encoding: 'utf8' }).split('\n');
+
+// fileURLToPath, not URL.pathname: on Windows the latter yields "/C:/Users/..." —
+// a leading slash and forward slashes — which is not a usable cwd, so git never
+// starts. Caught by this very test failing on Windows and passing on Linux.
+const repoRoot = fileURLToPath(root);
+
+function tracked() {
+  try {
+    return execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    return null;   // no git, or not a checkout — nothing to assert about
+  }
+}
 
 test('the parser imports only Node built-ins', async () => {
   const src = await read('tools/spells.mjs');
@@ -33,8 +46,9 @@ test('the engine imposes no slot ceiling', async () => {
   assert.doesNotMatch(src, /Math\.min\([^)]*slots\?\.length/, 'a min() over slot length would be a cap');
 });
 
-test('generated and licensed files are not committed', async () => {
+test('generated and licensed files are not committed', async (t) => {
   const files = tracked();
+  if (!files) return t.skip('git not available, so there is no index to inspect');
   const banned = [/^dist\//, /^web\/spa\.js$/, /spells_us\.txt$/, /dbstr_us\.txt$/, /spells_us_str\.txt$/, /SpellStackingGroups\.txt$/];
   for (const f of files)
     for (const b of banned)
