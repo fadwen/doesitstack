@@ -250,9 +250,12 @@ Normal rules. A few things specific to this project:
   parser that keeps its own offsets, so the two disagreeing is the signal. Update both
   or the check is worthless.
 - **Spell values come from the client's files and nothing else.** `tools/spells.mjs`
-  imports only Node built-ins, and it should stay that way. Labels for SPA and target
-  ids are third-party naming and are the weak spot — a correction there, sourced from
-  Daybreak's own SPA list, is welcome.
+  imports only Node built-ins, and it should stay that way.
+- **SPA names come from Daybreak's published list**, kept verbatim at
+  `tools/reference/daybreak-spa-list.txt`. Do not tidy the capitalisation or strip the
+  underscores — a reformatted copy is a second-hand reading of a primary source. When
+  Daybreak extends the list, replace the file wholesale; the spell file already uses
+  SPAs past its end, and those fall back to EQEmu's naming and then to their number.
 
 ## Regenerating the SPA tables
 

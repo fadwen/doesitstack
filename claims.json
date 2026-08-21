@@ -146,12 +146,19 @@
      "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
     },
     {
+     "strength": "strong",
+     "kind": "dev-statement",
+     "summary": "Daybreak's list names 339 Fc_CastProc and 383 Fc_CastProcNormalized \u2014 the two proc-type foci reported as able to fire together are, in the publisher's own naming, the cast-proc focus family. 340 is named Chance Spell and is not a focus at all, which is why it never enters the best-only set.",
+     "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+    },
+    {
      "strength": "supporting",
      "kind": "implementation",
      "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three named exceptions exactly.",
      "source": "EQEmu/Server zone/spell_effects.cpp Mob::GetFocusEffect and zone/bonuses.cpp:4157,4167"
     }
-   ]
+   ],
+   "_exceptions_note": "Recorded as reported, all three. 340 Chance Spell is not Fc_/Ff_ prefixed so it is not in the focus set to begin with and the exception is a no-op \u2014 kept so the report is preserved verbatim rather than silently trimmed."
   },
   {
    "id": "focus-stacking/not-on-client-ignore-list",
@@ -169,6 +176,12 @@
      "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
     },
     {
+     "strength": "strong",
+     "kind": "dev-statement",
+     "summary": "Daybreak's own list names 81 SPAs with an Fc_ or Ff_ prefix, so which effects are focus effects is published rather than inferred. It establishes the category, not the stacking behaviour \u2014 but it is a superset of what EQEmu treats as focus, naming every one of those and three more (212, 497, 528).",
+     "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+    },
+    {
      "strength": "supporting",
      "kind": "implementation",
      "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is plainly meant to be exempt and the rest look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
@@ -181,7 +194,7 @@
      "source": "Long-standing player report, reconciled against the focus_best_only claim"
     }
    ],
-   "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The build derives the set, currently 13 SPAs, so it tracks spa_meta.json rather than freezing a list."
+   "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The set comes from the Fc_/Ff_ prefixes in Daybreak's published SPA list, unioned with EQEmu's focus lists, so it tracks the published source rather than freezing a list."
   },
   {
    "id": "stacking-rule/slot-arbitration",

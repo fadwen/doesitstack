@@ -10,37 +10,30 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { load as loadClaims, byType, spasOf, isActionable } from './claims.mjs';
 import { MAX_PLAYER_LEVEL } from './spells.mjs';
+import { resolveNames, focusSpas } from './spa_names.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
 
-export const prettySpa = name => name
-  .replace(/_/g, ' ')
-  .replace(/(?<=[a-z0-9])(?=[A-Z])/g, ' ')
-  .replace(/(?<=[A-Z])(?=[A-Z][a-z])/g, ' ')
-  .replace(/\s+/g, ' ')
-  .trim();
-
 export function generate() {
   const spaMeta = JSON.parse(fs.readFileSync(path.join(HERE, 'spa_meta.json'), 'utf8'));
-  const spaNames = Object.fromEntries(Object.entries(spaMeta.spa_names).map(([k, v]) => [k, prettySpa(v)]));
+  const { names: spaNames, fallback } = resolveNames(spaMeta.spa_names);
 
   const claimsDoc = loadClaims();
   const nonCumulative = byType(claimsDoc, 'non_cumulative').sort((a, b) => a.spa - b.spa);
   const spas = nonCumulative.map(c => c.spa);
   const confirmed = nonCumulative.filter(c => c.status === 'confirmed').map(c => c.spa);
 
-  // Focus effects, taken from EQEmu's Mob::IsFocusEffect rather than guessed from
-  // names — several foci predate the Fc_ convention (ImprovedDamage,
-  // SympatheticProc, TriggerOnCast) and a name test would miss them. Focus limits
-  // are folded in because they collide in slots the same way.
+  // Focus effects, from Daybreak's own Fc_ and Ff_ prefixes, unioned with the set
+  // EQEmu treats as focus. Naming by EQEmu's enum would miss the legacy-named foci;
+  // Daybreak's list names every one of EQEmu's as Fc_/Ff_ and adds three more.
   const focusEffects = spaMeta.focus_effects || [];
-  const focusSpas = [...new Set([...focusEffects, ...(spaMeta.focus_limits || [])])].sort((a, b) => a - b);
+  const focusSpaList = focusSpas([...focusEffects, ...(spaMeta.focus_limits || [])]);
 
   // Foci where only the best applies to a cast, minus the procs that all fire.
   const bestOnlyClaim = byType(claimsDoc, 'focus_best_only')[0];
   const focusExceptions = bestOnlyClaim ? bestOnlyClaim.exceptions : [];
-  const focusBestOnly = bestOnlyClaim ? focusEffects.filter(id => !focusExceptions.includes(id)) : [];
+  const focusBestOnly = bestOnlyClaim ? focusSpaList.filter(id => !focusExceptions.includes(id)) : [];
 
   // Focus SPAs missing from the client-derived ignore list.
   //
@@ -52,7 +45,7 @@ export function generate() {
   const stackingClaims = byType(claimsDoc, 'focus_stacking');
   const declared = stackingClaims.flatMap(spasOf);
   const wildcard = stackingClaims.some(c => Array.isArray(c.spas) && c.spas.length === 0);
-  const pool = wildcard ? [...new Set([...focusSpas, ...declared])] : declared;
+  const pool = wildcard ? [...new Set([...focusSpaList, ...declared])] : declared;
   const unlisted = pool.filter(id => !spaMeta.ignored_in_stacking.includes(id)).sort((a, b) => a - b);
   const acted = stackingClaims.length > 0 && stackingClaims.every(isActionable);
   const exemptedByClaim = acted ? unlisted : [];
@@ -64,21 +57,23 @@ export function generate() {
     + `export const NON_CUMULATIVE_SPA = ${JSON.stringify(spas)};\n`
     + `export const NON_CUMULATIVE_CONFIRMED = ${JSON.stringify(confirmed)};\n`
     + `export const IGNORED_BY_CLAIM = ${JSON.stringify(exemptedByClaim)};\n`
-    + `export const FOCUS_SPA = ${JSON.stringify(focusSpas)};\n`
+    + `export const FOCUS_SPA = ${JSON.stringify(focusSpaList)};\n`
     + `export const FOCUS_BEST_ONLY = ${JSON.stringify(focusBestOnly)};\n`
     + `export const FOCUS_PROC_EXCEPTIONS = ${JSON.stringify(focusExceptions)};\n`
     + `export const FOCUS_CONTESTED = ${JSON.stringify(contested)};\n`
     + `export const MAX_PLAYER_LEVEL = ${MAX_PLAYER_LEVEL};\n`;
   fs.writeFileSync(path.join(ROOT, 'web', 'spa.js'), js);
-  return { spaNames, spas, confirmed, nonCumulative, focusSpas, focusBestOnly, focusExceptions, contested, exemptedByClaim };
+  return { spaNames, spas, confirmed, nonCumulative, focusSpas: focusSpaList, focusBestOnly, focusExceptions, contested, exemptedByClaim, fallback };
 }
 
 // `file://${process.argv[1]}` looks equivalent but is not: on Windows argv[1] is a
 // backslashed drive path, so that comparison never matches and the script silently
 // does nothing. pathToFileURL is the portable form.
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const { spas, confirmed, focusSpas, contested, exemptedByClaim } = generate();
-  console.log(`web/spa.js written — ${spas.length} non-cumulative SPAs (${confirmed.length} confirmed), `
-            + `${focusSpas.length} focus SPAs, ${exemptedByClaim.length} exempted by claim, `
-            + `${contested.length} still contested`);
+  const r = generate();
+  console.log(`web/spa.js written — SPA names from Daybreak's list`
+            + (r.fallback.length ? ` (${r.fallback.length} falling back to EQEmu)` : '')
+            + `, ${r.focusSpas.length} focus SPAs, ${r.spas.length} non-cumulative `
+            + `(${r.confirmed.length} confirmed), ${r.exemptedByClaim.length} exempted by claim, `
+            + `${r.contested.length} still contested`);
 }

@@ -18,7 +18,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { loadAll, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { load as loadClaims, byType } from './claims.mjs';
-import { generate as generateSpaJs, prettySpa } from './gen_spa_js.mjs';
+import { generate as generateSpaJs } from './gen_spa_js.mjs';
+import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -120,7 +121,7 @@ async function main() {
   const NON_CUMULATIVE_CONFIRMED = nonCumulative.filter(c => c.status === 'confirmed').map(c => c.spa);
   const tally = claimsDoc.claims.reduce((m, c) => ({ ...m, [c.status]: (m[c.status] || 0) + 1 }), {});
   console.log('claims: ' + Object.entries(tally).map(([k, v]) => `${v} ${k}`).join(', '));
-  const spaNames = Object.fromEntries(Object.entries(spaMeta.spa_names).map(([k, v]) => [k, prettySpa(v)]));
+  const { names: spaNames } = resolveNames(spaMeta.spa_names);
   const meta = {
     built: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     spell_file_date: fs.statSync(path.join(eqDir, 'spells_us.txt')).mtime.toISOString().slice(0, 10),
@@ -132,6 +133,7 @@ async function main() {
     targets: TARGET_NAMES,
     resists: RESIST_NAMES,
     spa_names: spaNames,
+    spa_names_source: SPA_LIST_SOURCE,
     ignored_in_stacking: spaMeta.ignored_in_stacking,
     non_cumulative: NON_CUMULATIVE_SPA,
     non_cumulative_confirmed: NON_CUMULATIVE_CONFIRMED,

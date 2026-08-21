@@ -183,3 +183,41 @@ test('evidence cannot be rated above its kind ceiling', () => {
   assert.deepEqual(mk('game-text', 'supporting'), []);
   assert.deepEqual(mk('practitioner', 'strong'), []);
 });
+
+
+// --- SPA naming -------------------------------------------------------------
+
+test('SPA names come from Daybreak, not from EQEmu enum identifiers', async () => {
+  const { daybreakNames, resolveNames, focusSpas } = await import('../tools/spa_names.mjs');
+  const db = daybreakNames();
+  assert.equal(Object.keys(db).length, 529, 'the published list runs 0-528');
+  for (let i = 0; i <= 528; i++) assert.ok(db[i], `SPA ${i} missing from the reference copy`);
+
+  // the ones this project talks about most, in the publisher's words
+  assert.equal(db[0], 'HP');
+  assert.equal(db[148], 'StackingBlocker');
+  assert.equal(db[339], 'Fc_CastProc');
+  assert.equal(db[383], 'Fc_CastProcNormalized');
+  assert.equal(db[496], 'Critical Melee Damage Mod Max');
+
+  const eqemu = JSON.parse(await readFile(new URL('../tools/spa_meta.json', import.meta.url), 'utf8'));
+  const { names } = resolveNames(eqemu.spa_names);
+  assert.equal(names[0], 'HP', 'not EQEmu\'s CurrentHP');
+  assert.equal(names[85], 'Contact Ability (Melee Proc)', 'not EQEmu\'s WeaponProc');
+
+  // Daybreak's prefixes name every focus SPA EQEmu knows about, and more
+  const eqemuFocus = [...eqemu.focus_effects, ...eqemu.focus_limits];
+  const focus = focusSpas(eqemuFocus);
+  for (const id of eqemuFocus) assert.ok(focus.includes(id));
+  assert.ok(focus.length > eqemuFocus.length);
+});
+
+test('the proc exceptions match how Daybreak names them', async () => {
+  const { daybreakNames } = await import('../tools/spa_names.mjs');
+  const db = daybreakNames();
+  // 339 and 383 are the cast-proc focus family in the publisher's own naming
+  assert.match(db[339], /^Fc_CastProc/);
+  assert.match(db[383], /^Fc_CastProc/);
+  // 340 is not a focus at all, so excepting it is a no-op rather than a claim
+  assert.doesNotMatch(db[340], /^(Fc_|Ff_)/);
+});

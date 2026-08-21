@@ -218,7 +218,8 @@ Worth being precise, because the two are easy to conflate:
 | --- | --- |
 | Every spell value — name, class levels, slots, SPA ids, base/limit/max, formulas, durations, mana, targets, stacking groups, descriptions | **The client's own files.** Nothing else. |
 | Field offsets in `spells_us.txt` | [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) |
-| Labels for SPA ids and target types | eqspellparser and EQEmu enum names |
+| SPA names | **Daybreak's [enumerated SPA list](https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/)**, kept verbatim at `tools/reference/daybreak-spa-list.txt` |
+| Target type labels | eqspellparser, which is what Lucy's presentation follows |
 | The value shown per slot, and duration in ticks | Local base/max/calc run through EQEmu's and eqspellparser's formula tables |
 | The stacking rules | EQEmu — see Source of truth above |
 
@@ -227,13 +228,24 @@ EQEmu. `npm run verify:data` proves the result, re-reading the file with a separ
 parser that has its own field offsets and comparing every spell in the built dataset —
 2.5 million values, and it exits non-zero on a single mismatch.
 
-The labels are the weak spot. They are third-party naming, not Daybreak's, and one of
-them was wrong until a reader's spell dump caught it: EQEmu calls target type 3
-`ST_GroupTeleport`, which reads as a port spell, where it is in fact the target type on
-ordinary group buffs and everyone else calls it Caster Group. SPA names are still
-EQEmu's enum names; Daybreak publishes its own
-[enumerated SPA list](https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/),
-and replacing the table with it is an open job.
+SPA names are Daybreak's own, which they were not until recently: of the 420 SPAs the
+spell file uses, **282 were being displayed under an EQEmu enum identifier no player
+would recognise** — `CurrentHP` for HP, `WeaponProc` for Contact Ability,
+`SympatheticProc` for Fc_CastProcNormalized. The published list is stored verbatim,
+underscores and all, because tidying it would make the label a second-hand reading of a
+primary source.
+
+Two consequences beyond the labels. Which effects are *focus* effects is now published
+rather than inferred — Daybreak prefixes 81 SPAs `Fc_` or `Ff_`, a superset of what
+EQEmu treats as focus. And it settles a detail of the proc exception: 339 and 383 are
+named `Fc_CastProc` and `Fc_CastProcNormalized`, the cast-proc focus family, while 340
+is `Chance Spell` and not a focus at all.
+
+The list stops at 528 and the spell file already uses 529 and 531, so newer SPAs fall
+back to EQEmu's naming and then to their bare number. Target type labels are still
+third-party naming, and one of those was wrong until a reader's spell dump caught it:
+EQEmu calls target type 3 `ST_GroupTeleport`, which reads as a port spell, where it is
+the target type on ordinary group buffs and everyone else calls it Caster Group.
 
 **Freshness depends on who built the copy you are looking at.** Build it yourself and
 it is exactly as current as your last patch. Visit a hosted copy and you get whatever
