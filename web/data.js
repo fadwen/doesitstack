@@ -152,7 +152,7 @@ export function search(q, f) {
 }
 
 /**
- * The class filter chips, in display order.
+ * The class filter chips, in display order: A to Z after "Any".
  *
  * META.classes stays in the game's own class-index order, because that index is
  * the bit position in the class mask on every index row — reordering it would
@@ -163,5 +163,5 @@ export function search(q, f) {
 export function orderClasses(names) {
   return names
     .map((label, idx) => ({ label, idx }))
-    .sort((a, b) => b.label.localeCompare(a.label));
+    .sort((a, b) => a.label.localeCompare(b.label));
 }

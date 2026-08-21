@@ -12,10 +12,10 @@ import { orderClasses } from '../web/data.js';
 const CLASSES = ['WAR', 'CLR', 'PAL', 'RNG', 'SHD', 'DRU', 'MNK', 'BRD', 'ROG',
                  'SHM', 'NEC', 'WIZ', 'MAG', 'ENC', 'BST', 'BER'];
 
-test('classes come out alphabetically descending', () => {
+test('classes come out A to Z', () => {
   const labels = orderClasses(CLASSES).map(c => c.label);
-  assert.deepEqual(labels, ['WIZ', 'WAR', 'SHM', 'SHD', 'ROG', 'RNG', 'PAL', 'NEC',
-                            'MNK', 'MAG', 'ENC', 'DRU', 'CLR', 'BST', 'BRD', 'BER']);
+  assert.deepEqual(labels, ['BER', 'BRD', 'BST', 'CLR', 'DRU', 'ENC', 'MAG', 'MNK',
+                            'NEC', 'PAL', 'RNG', 'ROG', 'SHD', 'SHM', 'WAR', 'WIZ']);
 });
 
 test('every class survives the reorder exactly once', () => {
