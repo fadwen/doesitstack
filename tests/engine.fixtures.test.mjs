@@ -167,6 +167,30 @@ test('an ordinary conflict is not flagged as contested focus', () => {
   assert.equal(r.contestedFocus, null);
 });
 
+test('a focus limiter is never reported as a focus that competes', () => {
+  // FOCUS_SPA unions Daybreak's Fc_ and Ff_ prefixes, so the best-only list swept
+  // up the Ff_ limiters — and "both carry Ff_LevelMax, only the best applies" is
+  // meaningless. A limiter does not apply to a cast; it restricts the focus
+  // sitting beside it. Two spells sharing only a limiter compete over nothing.
+  const withLimiter = (id, name, focusSpa) => ({
+    id, name, beneficial: true, target: 5, duration: 100, dur_calc: 7, dur_cap: 0,
+    is_skill: false, song_window: false, unstackable_dot: false, timer: 0,
+    levels: new Array(16).fill(255), stacking: [], categories: [],
+    slots: [
+      { spa: focusSpa, base1: 10, base2: 0, calc: 100, max: 0 },
+      { spa: 134, base1: 60, base2: 0, calc: 100, max: 0 },   // Ff_LevelMax
+      { spa: 142, base1: 5, base2: 0, calc: 100, max: 0 },    // Ff_LevelMin
+    ],
+  });
+  const a = withLimiter(1, 'A', 124), b = withLimiter(2, 'B', 125);
+  assert.deepEqual(focusOverlap(a, b).bestOnly.map(f => f.spa), [],
+    'they share two limiters and no actual focus, so nothing is best-only');
+
+  // and a genuinely shared focus is still caught, limiters or not
+  const c = withLimiter(3, 'C', 124);
+  assert.deepEqual(focusOverlap(a, c).bestOnly.map(f => f.spa), [124]);
+});
+
 test('shared best-only foci are reported so the numbers are not assumed to add', () => {
   const o = focusOverlap(fx('focusIgnoredA'), fx('focusIgnoredB'));
   assert.deepEqual(o.bestOnly.map(f => f.spa), [286]);

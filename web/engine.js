@@ -16,7 +16,7 @@
 
 import {
   SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED, IGNORED_BY_CLAIM,
-  FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
+  FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_LIMIT, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
 export const SPA = {
@@ -45,6 +45,7 @@ const BARD_INDEX = 7;
 const ignored = new Set([...IGNORED_IN_STACKING, ...IGNORED_BY_CLAIM]);
 const ignoredByClaim = new Set(IGNORED_BY_CLAIM);
 const focusSpa = new Set(FOCUS_SPA);
+const focusLimit = new Set(FOCUS_LIMIT);
 const focusBestOnly = new Set(FOCUS_BEST_ONLY);
 const focusContested = new Set(FOCUS_CONTESTED);
 
@@ -408,7 +409,11 @@ export function focusOverlap(a, b) {
   const inA = spasOf(a), inB = spasOf(b);
   const shared = [...inA].filter(s => inB.has(s));
   return {
-    bestOnly: shared.filter(s => focusBestOnly.has(s)).map(s => ({ spa: s, name: spaName(s) })),
+    // Limiters are excluded. FOCUS_SPA is the union of Daybreak's Fc_ and Ff_
+    // prefixes, so the best-only list picked up the Ff_ limiters too — and
+    // "both carry Ff_LevelMax, only the best applies" is meaningless. A limiter
+    // does not apply to a cast; it restricts the focus sitting beside it.
+    bestOnly: shared.filter(s => focusBestOnly.has(s) && !focusLimit.has(s)).map(s => ({ spa: s, name: spaName(s) })),
     procs: shared.filter(s => FOCUS_PROC_EXCEPTIONS.includes(s)).map(s => ({ spa: s, name: spaName(s) })),
   };
 }

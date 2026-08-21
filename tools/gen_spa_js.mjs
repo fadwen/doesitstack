@@ -10,7 +10,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { load as loadClaims, byType, spasOf, isActionable } from './claims.mjs';
 import { MAX_PLAYER_LEVEL } from './spells.mjs';
-import { resolveNames, focusSpas } from './spa_names.mjs';
+import { resolveNames, focusSpas, focusLimitSpas } from './spa_names.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -29,6 +29,8 @@ export function generate() {
   // Daybreak's list names every one of EQEmu's as Fc_/Ff_ and adds three more.
   const focusEffects = spaMeta.focus_effects || [];
   const focusSpaList = focusSpas([...focusEffects, ...(spaMeta.focus_limits || [])]);
+  // The limiter subset, so the engine can tell a focus from the thing narrowing it.
+  const focusLimitList = focusLimitSpas(spaMeta.focus_limits || []);
 
   // Foci where only the best applies to a cast, minus the procs that all fire.
   const bestOnlyClaim = byType(claimsDoc, 'focus_best_only')[0];
@@ -59,11 +61,12 @@ export function generate() {
     + `export const IGNORED_BY_CLAIM = ${JSON.stringify(exemptedByClaim)};\n`
     + `export const FOCUS_SPA = ${JSON.stringify(focusSpaList)};\n`
     + `export const FOCUS_BEST_ONLY = ${JSON.stringify(focusBestOnly)};\n`
+    + `export const FOCUS_LIMIT = ${JSON.stringify(focusLimitList)};\n`
     + `export const FOCUS_PROC_EXCEPTIONS = ${JSON.stringify(focusExceptions)};\n`
     + `export const FOCUS_CONTESTED = ${JSON.stringify(contested)};\n`
     + `export const MAX_PLAYER_LEVEL = ${MAX_PLAYER_LEVEL};\n`;
   fs.writeFileSync(path.join(ROOT, 'web', 'spa.js'), js);
-  return { spaNames, spas, confirmed, nonCumulative, focusSpas: focusSpaList, focusBestOnly, focusExceptions, contested, exemptedByClaim, fallback };
+  return { spaNames, spas, confirmed, nonCumulative, focusSpas: focusSpaList, focusBestOnly, focusLimit: focusLimitList, focusExceptions, contested, exemptedByClaim, fallback };
 }
 
 // `file://${process.argv[1]}` looks equivalent but is not: on Windows argv[1] is a

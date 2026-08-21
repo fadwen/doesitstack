@@ -62,3 +62,20 @@ export function focusSpas(eqemuFocus = []) {
   const byName = Object.keys(db).map(Number).filter(id => /^(Fc_|Ff_)/.test(db[id]));
   return [...new Set([...byName, ...eqemuFocus])].sort((a, b) => a - b);
 }
+
+/**
+ * The limiter subset: SPAs that restrict which casts a focus applies to, rather
+ * than modifying anything themselves.
+ *
+ * These need separating because Daybreak's Fc_ and Ff_ prefixes both land in
+ * focusSpas(), and a limiter is not a focus that "applies" to a cast — it
+ * restricts the focus sitting beside it. Reporting two spells as competing over
+ * a shared Ff_LevelMax says nothing at all.
+ *
+ * Same union as focusSpas: Daybreak's Ff_ prefix, plus EQEmu's own limit list.
+ */
+export function focusLimitSpas(eqemuLimits = []) {
+  const db = daybreakNames();
+  const byName = Object.keys(db).map(Number).filter(id => /^Ff_/.test(db[id]));
+  return [...new Set([...byName, ...eqemuLimits])].sort((a, b) => a - b);
+}
