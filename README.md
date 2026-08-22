@@ -388,7 +388,7 @@ your browser.
 Nothing is hidden by the default: the raw `SPA n · base x · value y` line is printed under
 the name in both readings.
 
-**217 effects have a phrasing, covering 93% of the slots in the current spell file**, and
+**215 effects have a phrasing, covering 93% of the slots in the current spell file**, and
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
 slot keeps its exact name and is marked **as-is** — never a guess.
 
@@ -400,9 +400,9 @@ node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to por
 node tools/phrasing_todo.mjs --json
 ```
 
-219 effects still read as-is, and **211 of them have an eqspellparser line to port**, so
+221 effects still read as-is, and **215 of them have an eqspellparser line to port**, so
 most entries are a one-line job. The tail is shallow: the four biggest reach 95% coverage,
-nineteen reach 97%, sixty-one reach 99%, and 103 of the 219 appear in fewer than 20 slots in
+nineteen reach 97%, sixty-one reach 99%, and 105 of the 221 appear in fewer than 20 slots in
 the entire file. Adding one is a `case` in [`web/phrasing.js`](web/phrasing.js) — return
 `null` rather than guessing if the effect is not understood.
 
