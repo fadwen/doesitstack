@@ -1,0 +1,243 @@
+:root{
+  --bg:#12141a; --panel:#1a1d26; --panel-2:#22262f; --line:#2f3542;
+  --ink:#e6e8ee; --muted:#98a0b3; --accent:#7cc4ff;
+  --good:#5fd39a; --bad:#ff7a7a; --warn:#f2c35c;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+.top{border-bottom:1px solid var(--line);padding:26px 0 20px;background:linear-gradient(180deg,#171b24,#12141a)}
+h1{margin:0;font-size:30px;letter-spacing:-.02em}
+.tag{margin:6px 0 0;color:var(--muted)}
+
+.pickers{display:grid;grid-template-columns:1fr 44px 1fr;gap:14px;align-items:start;margin:26px 0 12px}
+.picker{position:relative}
+.picker-label{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:6px}
+.search{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line);
+  background:var(--panel);color:var(--ink);font-size:15px}
+.search:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.swap-col{align-self:center;padding-top:22px}
+.swap{width:38px;height:38px;border-radius:8px;border:1px solid var(--line);background:var(--panel);
+  color:var(--ink);font-size:17px;cursor:pointer}
+.swap:hover{background:var(--panel-2)}
+
+.results{position:absolute;z-index:20;left:0;right:0;top:100%;margin-top:4px;max-height:340px;overflow:auto;
+  background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.results button{display:block;width:100%;text-align:left;padding:8px 12px;border:0;background:none;color:var(--ink);cursor:pointer;font-size:14px}
+.results button:hover,.results button.on{background:var(--panel-2)}
+.results .meta{color:var(--muted);font-size:12px}
+
+.chosen{margin-top:10px;min-height:22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.card h3{margin:0 0 2px;font-size:17px}
+.card .row1{display:flex;gap:8px;align-items:baseline;justify-content:space-between;margin-bottom:2px}
+.card .sub{color:var(--muted);font-size:13px}
+.card .sub a{text-decoration:none}
+
+.filters{margin:14px 0 22px;color:var(--muted);font-size:14px}
+.frow{display:flex;gap:10px;align-items:baseline;margin-bottom:8px}
+.frow.opts{gap:18px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.flabel{flex:0 0 52px;font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);padding-top:5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--panel);color:var(--muted);border-radius:999px;
+  padding:4px 11px;font-size:13px;cursor:pointer;line-height:1.3;font-family:inherit}
+.chip:hover{background:var(--panel-2);color:var(--ink)}
+.chip.on{background:#20364a;border-color:#3d6c94;color:#dbeaf7}
+.chip.wide{border-radius:8px}
+.filters input[type=number]{width:64px;padding:4px 6px;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink)}
+.badge{display:inline-block;border-radius:4px;padding:1px 6px;font-size:11px;letter-spacing:.04em;
+  text-transform:uppercase;background:var(--panel-2);color:var(--muted);border:1px solid var(--line);vertical-align:1px}
+.badge.spell{color:#9fd0ff;border-color:#2f4a63}
+.badge.discipline{color:#ffbd9a;border-color:#5f3c2c}
+.badge.song{color:#d6b0ff;border-color:#4a3563}
+.badge.aa{color:#8ee0b6;border-color:#2c5d45}
+.badge.item{color:#f2d48a;border-color:#5d4d24}
+.badge.aura{color:#8ad6d0;border-color:#2b5450}
+.badge.triggered,.badge.npc,.badge.other{color:#98a0b3}
+.badge.rel{color:#c9b98a;border-color:#4a422c;text-transform:none;letter-spacing:0}
+.item-source{margin-top:6px;line-height:1.7}
+.rel-tags{display:inline-flex;flex-wrap:wrap;gap:4px;vertical-align:baseline}
+.item-source .rel-tags{margin-right:5px}
+.results .row1 .rel-tags{margin-left:auto}
+.results .row1{display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+
+.verdict{border-radius:12px;padding:18px 20px;margin-bottom:18px;border:1px solid var(--line);background:var(--panel)}
+.verdict.stacks{border-color:#2c6b52;background:linear-gradient(180deg,#172c24,#161d1c)}
+.verdict.conflict{border-color:#6b2c2c;background:linear-gradient(180deg,#2c1a1a,#1d1616)}
+.verdict.partial{border-color:#6b5a2c;background:linear-gradient(180deg,#2c261a,#1d1b16)}
+.verdict h2{margin:0 0 6px;font-size:22px}
+.verdict p{margin:4px 0;color:#d6dae4}
+
+.dirs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
+.dir{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.dir h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.dir .out{font-weight:600;margin-bottom:4px}
+.out.independent{color:var(--good)}
+.out.overwrite{color:var(--warn)}
+.out.blocked{color:var(--bad)}
+.dir .why{color:#c9cfdb;font-size:14px}
+
+.note{border-left:3px solid var(--warn);background:#221f16;padding:10px 14px;border-radius:0 8px 8px 0;margin:14px 0;color:#e6dcc2}
+.note p{margin:0}
+.note-doubt{border-left-color:var(--bad);background:#241a1a;color:#e9d2d2}
+.note-doubt .evidence{color:#d8c2c2}
+.note-doubt .evidence summary{color:#ff9b9b}
+.note-doubt .evidence .src{color:#a58c8c}
+.evidence{margin-top:10px;font-size:13px;color:#cfc7ae}
+.evidence summary{cursor:pointer;color:#f2c35c;list-style:revert}
+.evidence summary:hover{text-decoration:underline}
+.evidence .claim{margin:10px 0 0}
+.claim-head{display:flex;gap:8px;align-items:baseline;font-weight:600}
+.evidence ul{margin:4px 0 0;padding-left:18px}
+.evidence li{margin:3px 0;line-height:1.45}
+.strength{display:inline-block;border-radius:3px;padding:0 5px;font-size:10.5px;text-transform:uppercase;
+  letter-spacing:.05em;border:1px solid currentColor;vertical-align:1px}
+.strength.primary{color:#8ee0b6}
+.strength.strong{color:#9fd0ff}
+.strength.supporting{color:#f2c35c}
+.strength.weak{color:#98a0b3}
+.badge.confirmed{color:#8ee0b6;border-color:#2c5d45}
+.badge.corroborated{color:#9fd0ff;border-color:#2f4a63}
+.badge.unverified{color:#f2c35c;border-color:#5d4d24}
+.badge.disputed{color:#ff7a7a;border-color:#6b2c2c}
+.evidence .src{color:#9a937f}
+.evidence .ask{margin-top:12px;color:#e6dcc2}
+
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.slots{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px;min-width:520px}
+table.slots th,table.slots td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+table.slots th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+table.slots td.empty-slot{color:#59607080}
+.slot-head{display:flex;gap:8px;align-items:baseline}
+.slotno{flex:0 0 auto;min-width:20px;font-family:var(--mono);font-size:12px;color:var(--muted);
+  background:var(--panel-2);border:1px solid var(--line);border-radius:4px;padding:0 5px;text-align:center}
+table.slots tr.hit .slotno{border-color:#6b3a3a}
+table.slots tr.ok .slotno{border-color:#2f5a44}
+table.slots .spa{padding-left:33px}
+/* Effects that land together but are not added together. Orange says "only one of
+   these counts"; green and red say which, and are only used where the claim behind
+   that is confirmed. Underline as well as colour, so the distinction survives a
+   colour-blind reader and a greyscale print. */
+.nc-wins{color:#8ee0b6;text-decoration:underline;text-decoration-color:#2c5d45;text-underline-offset:3px}
+.nc-loses{color:#ff9a9a;text-decoration:line-through;text-decoration-color:#6b2c2c}
+.nc-unsure{color:#f2ae5c;text-decoration:underline dotted;text-underline-offset:3px}
+.credits{font-size:12px}
+.legend{margin-top:8px;font-size:12px;color:var(--muted)}
+.legend span{margin-left:2px}
+.legend span+span{margin-left:10px}
+table.slots tr.hit td{background:#2a1f1f}
+table.slots tr.ok td{background:#1a231e}
+.spa{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.blank{color:#59607080;font-style:italic}
+h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.trace li{margin:4px 0;color:#c9cfdb}
+.provenance{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
+.provenance p{margin:6px 0;line-height:1.5}
+.provenance .src{color:#7d8494}
+.provenance .ask{margin-top:10px;color:var(--muted)}
+.empty{color:var(--muted);padding:30px 0}
+.foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px;padding-bottom:40px}
+.stale{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}
+.stale.bad{color:var(--bad);border-left-color:var(--bad);background:#241a1a}
+code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:1px 5px;border-radius:4px}
+@media (max-width:760px){
+  .pickers{grid-template-columns:1fr}
+  .swap-col{padding:0}
+  .dirs{grid-template-columns:1fr}
+  table.slots{font-size:13px}
+  table.slots th,table.slots td{padding:6px}
+  .slotno{min-width:18px;padding:0 4px}
+  table.slots .spa{padding-left:0}
+}
+
+/* ---- set view -------------------------------------------------------------- */
+.set-picker{max-width:520px}
+.set-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.setchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);
+  background:var(--panel);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.setchip.bad{border-color:#6b3a3a;background:#2a1f1f}
+.setchip-x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:15px;
+  line-height:1;padding:2px 6px;border-radius:999px}
+.setchip-x:hover{background:var(--panel-2);color:var(--ink)}
+.setlist .sec{margin-bottom:2px}
+.report .note h4{margin:0;font-size:14px}
+.group-members{margin:8px 0 0;padding-left:18px}
+.group-members li{margin-bottom:6px}
+/* A set member is a link inside the mark, and a link carries its own colour — so
+   the verdict was being drawn and then painted over. It read as four equal names
+   with no winner, which is the one thing this box exists to say. */
+.group-members .nc-wins a, .group-members .nc-loses a, .group-members .nc-unsure a
+  {color:inherit;text-decoration:inherit;text-decoration-color:inherit}
+.limiters{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.dirverdict{font-weight:600}
+.report table.slots td:first-child{min-width:150px}
+.report table.slots{min-width:720px}
+.saved{margin-top:10px}
+.saved .frow{margin-bottom:6px}
+.setchip.on{border-color:#3d6c94;background:#20364a}
+.setchip-name.as-button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
+.setchip-name.as-button:hover{text-decoration:underline}
+.saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
+.drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}
+
+/* Two views of the same dataset. The only route between them used to be a link
+   trailing off the end of the tagline, which read as a footnote and wrapped out
+   of sight on a phone — most people never found the second one. */
+.views{display:flex;gap:4px;margin-top:12px;flex-wrap:wrap}
+.view{padding:5px 12px;border-radius:999px;border:1px solid var(--line);color:var(--muted);
+  text-decoration:none;font-size:13px;background:var(--panel)}
+.view:hover{background:var(--panel-2);color:var(--ink)}
+.view.on{background:#20364a;border-color:#3d6c94;color:#dbeaf7}
+.setchip-tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);
+  border:1px solid var(--line);border-radius:999px;padding:1px 6px;margin-right:4px}
+button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);font:inherit;
+  cursor:pointer;text-decoration:underline}
+.empty-name{color:var(--muted)}
+
+/* A phrased effect that names another spell. It reads as part of the sentence
+   until you look at it, because most of the time you are not asking about it. */
+.spell-ref {
+  font: inherit; color: inherit; background: none; padding: 0; cursor: pointer;
+  border: 0; border-bottom: 1px dashed currentColor; text-align: left;
+}
+.spell-ref:hover, .spell-ref:focus-visible { border-bottom-style: solid; }
+.spell-ref[aria-expanded="true"] { border-bottom-style: solid; }
+.spell-ref-flat { border-bottom: 1px dotted currentColor; }
+.ref-panel {
+  margin: .4rem 0 .1rem; padding: .4rem .55rem;
+  border-left: 2px solid var(--line, #ccc); background: rgba(127, 127, 127, .08);
+  border-radius: 0 4px 4px 0;
+}
+.ref-head { font-size: .92em; }
+
+.ref-meta { opacity: .75; }
+.ref-loading { opacity: .7; font-style: italic; }
+.ref-slots { margin: .3rem 0 0; padding-left: 1.1rem; }
+.ref-slots li { margin: .15rem 0; font-size: .92em; }
+.ref-slots .spa { opacity: .7; }
+
+/* Background that applies to a family of claims. Folded away by default: a
+   reader opening the evidence wants the claim in front of them, not the history. */
+.evidence .background{margin:12px 0 0;border-top:1px solid #3a3527;padding-top:9px}
+.evidence .background summary{color:#c9b98a;font-size:12.5px}
+.evidence .background .lead{margin:7px 0 0;color:#cfc7ae}
+.bg-block{margin:11px 0 0;padding-left:9px;border-left:2px solid #3a3527}
+.bg-block h4{margin:0;font-size:12.5px;letter-spacing:.02em;color:#e6dcc2}
+.bg-block p{margin:4px 0 0;line-height:1.5}
+.bg-block blockquote{margin:5px 0 0;padding-left:9px;border-left:2px solid #554d33;
+  color:#e6dcc2;font-style:italic}
+.bg-block .caveat{color:#c9c0a8}
+.caveat-tag{display:inline-block;border-radius:3px;padding:0 5px;margin-right:2px;
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  color:#f0b46a;background:#3a2f1c}
+
+/* Where else to read a spell. Deliberately quiet: these are other people's
+   readings, not sources, and they should not compete with the verdict. */
+.elsewhere a{white-space:nowrap}
+
+/* A verdict that rests on an unsettled claim is drawn faintly. The colour still
+   says which value applies; the weight says how much to lean on it. */
+.nc-soft{opacity:.72;text-decoration-style:dotted}

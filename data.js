@@ -1,0 +1,259 @@
+// Loading and searching the built dataset, shared by the pair tool and the set tool.
+//
+// Extracted from app.js when a second page needed the same dataset. Nothing here
+// touches the DOM of either page or knows what is being rendered — it answers
+// "give me this spell" and "which spells match this query", and the pages decide
+// what to do with the answer.
+
+export const $ = s => document.querySelector(s);
+export const el = (t, cls, txt) => {
+  const n = document.createElement(t);
+  if (cls) n.className = cls;
+  if (txt != null) n.textContent = txt;
+  return n;
+};
+export const link = (href, text) => {
+  const a = el('a', null, text);
+  a.href = href; a.target = '_blank'; a.rel = 'noopener';
+  return a;
+};
+export const escape = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// Outbound links. Every one of these is built from an id rather than looked up,
+// so none of them costs a request or a download at build time.
+//
+// None of these is a source for anything here: spell values come from your own
+// client files, and item tags from SoDeq. They exist so a reader can go and check
+// a second reading of the same file \u2014 which means saying honestly how good each
+// one is. THIRD_PARTY_LAG is that sentence, said in one place.
+export const THIRD_PARTY_LAG =
+  'A separate reading of the same spell file. Their copy is refreshed on their own '
+  + 'schedule, so a spell added in a recent patch may be missing or out of date there.';
+
+// Raidloot is first because it is the closer match: it phrases effects the same
+// way this page does \u2014 both port eqspellparser \u2014 and it resolves a referenced
+// spell to its name. Lucy renders SPA 496 as "Unknown #496", which is the one
+// effect this project has a confirmed claim about.
+export const RAIDLOOT = id => `https://www.raidloot.com/spells?name=${id}`;
+export const LUCY = id => `https://lucy.allakhazam.com/spell.html?id=${id}&source=Live`;
+// The one thing no client file carries: when a spell last changed, and what
+// changed. Worth a link of its own rather than a tab a reader has to find.
+export const LUCY_HISTORY = id => `https://lucy.allakhazam.com/spellhistory.html?id=${id}&source=Live`;
+// An item tag came from SoDeq, so an item name links to SoDeq \u2014 where the page
+// also names who submitted the item and when it was last verified, which is the
+// same staleness question the footer raises about the dump as a whole.
+export const SODEQ_ITEM = id => `https://items.sodeq.org/item.php?id=${id}`;
+
+export const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16,
+             F_STACKGRP = 32, F_AURA = 64;
+
+/**
+ * Does this sit on you, rather than firing and being done?
+ *
+ * Not just `duration > 0`. An aura effect holds for as long as the aura applying
+ * it holds, which duration formula 51 expresses by giving no tick count at all —
+ * so Aura of Kenburk Effect reads as duration 0 and a plain duration test hides
+ * the thing a raid actually stands in.
+ */
+export const lasts = r => r[row.duration] > 0 || !!(r[row.flags] & F_AURA);
+
+/** Column positions in a data/index.json row. */
+export const row = {
+  id: 0, name: 1, target: 2, flags: 3, duration: 4, levels: 5, category: 6,
+  kind: 7, classMask: 8, extMask: 9, itemRel: 10,
+};
+
+// Labels for the `kind` a spell was classified into at build time.
+export const KIND_LABEL = {
+  spell: 'Spell', discipline: 'Discipline', song: 'Song', aa: 'AA',
+  item: 'Item', aura: 'Aura', triggered: 'Triggered', npc: 'NPC', other: 'Unattributed',
+};
+export const KIND_HELP = {
+  spell: 'Scribed into a spellbook by a class at a normal level.',
+  discipline: 'A combat skill — flagged as a discipline in the spell file.',
+  song: 'Usable by bards and not a combat skill.',
+  aa: 'Granted by an alternate ability (the class level reads 254).',
+  item: 'An item casts this — a click, proc, worn or focus effect. Named items come from a community database, not your client files.',
+  aura: 'Applied by an aura you are standing in. It holds for as long as the aura does rather than for a number of ticks, which is why it shows no duration.',
+  triggered: 'Fired by another spell as a side effect, recourse or proc rather than cast directly.',
+  npc: 'Flagged in the spell file as castable by NPCs only, and no known item grants it.',
+  other: 'No class learns it, nothing in the spell file triggers it, and no item in the item database casts it. Unexplained rather than absent — the item data lags new content, so recent effects can land here for a while.',
+};
+// Said when the build ran without item data, so 'item' keeps its older,
+// looser meaning and 'other' cannot occur at all.
+export const KIND_HELP_NO_ITEMS = {
+  item: 'No class can learn it and nothing in the spell file triggers it — clickies, procs and worn effects land here, but so do NPC spells. This build has no item database loaded, so the bucket is a deduction rather than a fact.',
+};
+
+// How an item grants a spell. Additive, not a classification: a scribed spell
+// can also be a clicky, and one spell can be several of these at once.
+export const REL_LABEL = {
+  click: 'Click', proc: 'Proc', worn: 'Worn', focus: 'Focus',
+  bard: 'Bard', mount: 'Mount', blessing: 'Blessing', familiar: 'Familiar',
+};
+export const REL_HELP = {
+  click: 'Cast by activating the item.',
+  proc: 'Fires by itself while the item is in use.',
+  worn: 'Applied for as long as the item is equipped.',
+  focus: 'The item carries this as a focus effect.',
+  bard: 'The item is a bard instrument granting this.',
+  mount: 'Granted by a mount.',
+  blessing: 'A mount blessing effect.',
+  familiar: 'Granted by a familiar.',
+};
+
+// How a slot is written out. "phrased" is the eqspellparser-style reading and is
+// the default, because "Limit Resist: Fire" is what somebody came here to find
+// out and "Ff_ResistType" is not. "exact" is what the file says — Daybreak's SPA
+// name — and is one click away for anyone quoting a slot in a bug report or a
+// claim, where the interpretation is exactly what you do not want.
+//
+// Nothing is hidden by the choice: the raw SPA number and base values are
+// printed under the name in both readings, and an effect with no phrasing keeps
+// its exact name and is marked as such.
+const READING_KEY = 'doesitstack.reading';
+let reading = 'phrased';
+try {
+  const saved = window.localStorage?.getItem(READING_KEY);
+  if (saved === 'phrased' || saved === 'exact') reading = saved;
+} catch { /* storage blocked; the default stands */ }
+
+export const getReading = () => reading;
+export function setReading(next) {
+  // Falls to the default, not to "exact" — that fallback was written when exact
+  // was the default and would have quietly inverted the choice for anything it
+  // did not recognise.
+  reading = next === 'exact' ? 'exact' : 'phrased';
+  try { window.localStorage?.setItem(READING_KEY, reading); } catch { /* not worth reporting */ }
+  return reading;
+}
+
+// Rows the slot table leaves out because they say nothing — today that is the
+// client's spacer slots and nothing else, but the control is named for the
+// general case so anything else omitted later lands under the same switch.
+const HIDDEN_KEY = 'doesitstack.showHidden';
+let showHidden = false;
+try {
+  showHidden = window.localStorage?.getItem(HIDDEN_KEY) === '1';
+} catch { /* storage blocked; the default stands */ }
+
+export const getShowHidden = () => showHidden;
+export function setShowHidden(next) {
+  showHidden = !!next;
+  try { window.localStorage?.setItem(HIDDEN_KEY, showHidden ? '1' : '0'); } catch { /* not worth reporting */ }
+  return showHidden;
+}
+
+export let META = null, INDEX = null;
+const shardCache = new Map(), descCache = new Map();
+
+export async function load() {
+  [META, INDEX] = await Promise.all([
+    fetch('data/meta.json').then(r => r.json()),
+    fetch('data/index.json').then(r => r.json()),
+  ]);
+  return { META, INDEX };
+}
+
+export const kindHelp = k => (META.items ? KIND_HELP[k] : KIND_HELP_NO_ITEMS[k] || KIND_HELP[k]) || '';
+
+// Name lookup without a fetch. A phrased effect that says "Cast: [Spell 6097]"
+// has to decide, while it is being drawn, whether 6097 is in this spell file at
+// all — an id that is not cannot be offered as something to open. The index is
+// already in memory and carries every id and name, so this costs one pass.
+let nameById = null;
+export function nameOf(id) {
+  if (!nameById) {
+    nameById = new Map();
+    for (const r of INDEX) nameById.set(r[row.id], r[row.name]);
+  }
+  return nameById.get(id) || null;
+}
+
+// "Cast: [Spell 6097] on Fade" -> "Cast: Savage Spirit Penance on Fade".
+// A token whose id is not in this spell file is left exactly as written, because
+// there is nothing honest to put in its place.
+export const named = text =>
+  text.replace(/\[Spell (\d+)\]/g, (whole, id) => nameOf(+id) || whole);
+
+// index rows carry item relationships as a bitmask so a result list can show
+// tags without fetching a shard. Bit order matches meta.items.rel.
+export const relsOf = mask => (META.items?.rel || []).filter((_, i) => mask & (1 << i));
+
+async function shard(id) {
+  const b = Math.floor(id / META.bucket);
+  if (!shardCache.has(b)) shardCache.set(b, fetch(`data/spells/${b}.json`).then(r => r.ok ? r.json() : {}));
+  return (await shardCache.get(b))[id] || null;
+}
+async function descOf(id) {
+  const b = Math.floor(id / META.bucket);
+  if (!descCache.has(b)) descCache.set(b, fetch(`data/desc/${b}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  return (await descCache.get(b))[id] || null;
+}
+
+/** compact record -> the shape engine.js expects */
+export function hydrate(rec) {
+  if (!rec) return null;
+  return {
+    ...rec,
+    stacking: rec.stacking || [],
+    slots: (rec.slots || []).map(s => s && { spa: s[0], base1: s[1], base2: s[2], calc: s[3], max: s[4] }),
+  };
+}
+
+/** A spell ready for the engine, with its resolved description attached. */
+export async function spellById(id) {
+  const sp = hydrate(await shard(id));
+  if (sp) sp.desc = await descOf(id);
+  return sp;
+}
+
+const matches = (r, q) => /^\d+$/.test(q)
+  ? String(r[row.id]).startsWith(q)
+  : r[row.name].toLowerCase().includes(q);
+
+/**
+ * @param {string} q                lower-cased query — a name fragment or a spell id
+ * @param {object} f                filters, passed in rather than read from a page
+ * @param {boolean} f.buffsOnly     only effects with a duration
+ * @param {boolean} f.benefOnly     only beneficial effects
+ * @param {Set<string>} f.kinds     which source buckets to include
+ * @param {number} f.cls            class index, or -1 for any
+ * @param {Set<number>} [f.exclude] spell ids already chosen
+ */
+export function search(q, f) {
+  const clsBit = f.cls >= 0 ? (1 << f.cls) : 0;
+  const out = [];
+  for (const r of INDEX) {
+    if (f.buffsOnly && !lasts(r)) continue;
+    if (f.benefOnly && !(r[row.flags] & F_BENEFICIAL)) continue;
+    if (f.kinds && !f.kinds.has(META.kinds[r[row.kind]])) continue;
+    // a class matches either by learning the spell or by triggering it
+    if (clsBit && !((r[row.classMask] | r[row.extMask]) & clsBit)) continue;
+    if (f.exclude?.has(r[row.id])) continue;
+    if (!matches(r, q)) continue;
+    out.push(r);
+    if (out.length >= 400) break;
+  }
+  // exact-ish first, then shortest name, then id
+  out.sort((x, y) => {
+    const a = x[row.name].toLowerCase(), b = y[row.name].toLowerCase();
+    return (a.startsWith(q) ? 0 : 1) - (b.startsWith(q) ? 0 : 1) || a.length - b.length || x[row.id] - y[row.id];
+  });
+  return out.slice(0, 60);
+}
+
+/**
+ * The class filter chips, in display order: A to Z after "Any".
+ *
+ * META.classes stays in the game's own class-index order, because that index is
+ * the bit position in the class mask on every index row — reordering it would
+ * silently mismatch every class search. So only the display order changes here,
+ * and each chip carries its own index rather than being identified by where it
+ * sits, which is what a position-based highlight got wrong.
+ */
+export function orderClasses(names) {
+  return names
+    .map((label, idx) => ({ label, idx }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
