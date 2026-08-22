@@ -59,9 +59,8 @@ thousands of verdicts once already.
 **Do not commit `dist/`, `web/spa.js`, `vendor/`, or any game data file.** They are
 generated, licensed or third party. `dist/` deploys as an orphan `gh-pages` commit.
 
-**Assume Windows.** Contributors run EverQuest, so they run Windows. Do not rely on
-shell glob expansion, POSIX-only paths, or `file://${process.argv[1]}` — all three have
-broken this repo before.
+**Assume Windows.** Contributors run EverQuest, so they run Windows. Shell glob
+expansion, POSIX-only paths and `file://${process.argv[1]}` have each broken this repo.
 
 ## When changing things
 
@@ -69,13 +68,11 @@ broken this repo before.
   in the commit message. Divergence from EQEmu may be right, but it must be deliberate
   and written down. Every rule the engine can cite needs a `stacking_rule` claim; a test
   checks that by scanning `engine.js`.
-- **A phrasing** — a `case` in `web/phrasing.js` is a translation of eqspellparser's
-  line, not a paraphrase of the SPA name. Run
-  `node tools/phrasing_audit.mjs --eqsp ../eqspellparser`; it must report zero
-  MISMATCH. A divergence is allowed and sometimes right, but the comment above the
-  `case` has to say *deliberate divergence* and then say why — that is what exempts
-  it. Return `null` before guessing: an effect that needs a field of the spell rather
-  than of the slot cannot be phrased here at all.
+- **A phrasing** — a `case` in `web/phrasing.js` translates eqspellparser's line, and
+  is never a paraphrase of the SPA name; guessing from the name has been wrong every
+  time. `node tools/phrasing_audit.mjs --eqsp ../eqspellparser` must report zero
+  MISMATCH; a divergence needs *deliberate divergence* in the comment above the case,
+  and a reason. Return `null` rather than guess.
 - **The parser** — run `npm run verify:data`. It re-reads the spell file with a second
   parser that keeps its own field offsets, so the two disagreeing is the signal. Update
   both or the check is worthless.
