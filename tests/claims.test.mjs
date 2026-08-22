@@ -267,3 +267,29 @@ test('the mount exception is written down rather than modelled', () => {
   assert.match(note, /113/);
   assert.match(note, /cannot|could not/i);
 });
+
+test('the bucket note is blocks, and every hedge in it survives', () => {
+  // It used to be one 2,000-character paragraph. The risk in breaking it up is
+  // that the qualifications get lost — they are the least quotable sentences and
+  // the ones this project cannot do without.
+  const n = doc.notes.bonus_buckets;
+  assert.ok(Array.isArray(n.blocks) && n.blocks.length >= 4, 'the note must be blocks, not a wall');
+  const all = JSON.stringify(n);
+  assert.match(all, /does not speak to the seven SPAs/, 'the 2015 patch notes describe a change away from this');
+  assert.match(all, /relay rather than the original post/, 'Dzarn is quoted second-hand');
+  assert.match(all, /SPA 219 rather than the seven/, 'and about a different effect');
+  assert.match(all, /worn item bonus/, 'the worn-item exception to best-only');
+  assert.match(all, /never merged across them/, 'why overlaps are reported per SPA');
+});
+
+test('a quotation in a note has to say who said it', () => {
+  const bad = { version: 1, claims: [], notes: { x: { blocks: [{ title: 'T', quote: 'said a thing' }] } } };
+  assert.ok(validate(bad).some(p => /where it came from/.test(p)));
+  const ok = { version: 1, claims: [], notes: { x: { blocks: [{ title: 'T', quote: 'said a thing', source: 'somewhere' }] } } };
+  assert.deepEqual(validate(ok), []);
+});
+
+test('a note may still be a plain paragraph', () => {
+  assert.equal(typeof doc.notes.movement_and_mounts, 'string');
+  assert.deepEqual(validate({ version: 1, claims: [], notes: { x: 'a sentence long enough to matter' } }), []);
+});

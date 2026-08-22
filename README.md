@@ -137,6 +137,21 @@ npm run verify       # re-runs the machine-checkable evidence against your spell
 npm run verify:data  # re-parses the spell file and diffs it against the built dataset
 ```
 
+### Notes, and why they are blocks
+
+A claim carries its own evidence. Background that applies to a *family* of claims —
+how the bonus buckets work, what a mount does to a movement buff — lives in
+`notes`, and the site shows it under the evidence it qualifies.
+
+`notes.bonus_buckets` was one paragraph of two thousand characters, which is a wall,
+and a wall is where a reader stops — which defeats the point of showing the evidence
+at all. It is now `lead` plus `blocks`, each block a `title`, a `body` and/or a
+`quote`, its `source` and `url`, and a `caveat`: what that source does **not**
+establish. The caveats are the least quotable sentences in the note and the ones this
+project cannot do without, so they get their own line, their own marker, and a test
+that fails if one goes missing. A quotation without a `source` is rejected. A note may
+still be a plain string, and `notes.movement_and_mounts` is one.
+
 ## How the rules work
 
 EverQuest arbitrates buffs slot by slot: two spells conflict only where the **same** SPA

@@ -364,7 +364,8 @@ function nonCumulativeNote(overlaps) {
     box.appendChild(ul);
     d.appendChild(box);
   }
-  if (META.claim_notes?.bonus_buckets) d.appendChild(el('p', 'src', META.claim_notes.bonus_buckets));
+  const bg = noteSection('How the bonus buckets work', META.claim_notes?.bonus_buckets);
+  if (bg) d.appendChild(bg);
 
   d.appendChild(askParagraph(
     spas.map(s2 => `non-cumulative/${s2}`),
@@ -411,6 +412,70 @@ function askParagraph(claimIds, askText) {
   ask.appendChild(pr);
   ask.appendChild(document.createTextNode('.'));
   return ask;
+}
+
+/**
+ * Background that applies to a whole family of claims, rather than to one of them.
+ *
+ * This was one 2,000-character paragraph, which is a wall — and a wall is where a
+ * reader stops, which defeats the point of showing the evidence at all. It is
+ * four separate things: the rule, Daybreak naming it, a developer describing the
+ * same shape, and the illustration that stops the list being read as one pool.
+ * Each has its own source and its own limits, so each gets its own block, and the
+ * whole section is folded away behind the per-claim evidence a reader came for.
+ *
+ * A note may still be a plain string; those render as they always did.
+ */
+function noteSection(title, note) {
+  if (!note) return null;
+  if (typeof note === 'string') return el('p', 'src', note);
+  const d = el('details', 'background');
+  d.appendChild(el('summary', null, title));
+  if (note.lead) d.appendChild(el('p', 'lead', note.lead));
+  for (const b of note.blocks || []) d.appendChild(noteBlock(b));
+  return d;
+}
+
+// *word* -> emphasis, without handing anyone's text to innerHTML. The one bit of
+// markup these notes use, and it carries meaning: "changed *away* from that
+// behaviour" is the whole point of that sentence.
+function emphasise(node, text) {
+  for (const part of String(text).split(/(\*[^*]+\*)/g)) {
+    if (!part) continue;
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2)
+      node.appendChild(el('em', null, part.slice(1, -1)));
+    else node.appendChild(document.createTextNode(part));
+  }
+  return node;
+}
+
+function noteBlock(b) {
+  const box = el('div', 'bg-block');
+  if (b.title) box.appendChild(el('h4', null, b.title));
+  if (b.quote) box.appendChild(el('blockquote', null, `\u201c${b.quote}\u201d`));
+  if (b.body) box.appendChild(emphasise(el('p'), b.body));
+  // Attribution reads the same way here as it does on an evidence line, because
+  // it is the same job: who said it, and where a reader can go and check.
+  if (b.source || b.who) {
+    const cite = el('p', 'src');
+    cite.appendChild(document.createTextNode(`\u2014 ${[b.who, b.source].filter(Boolean).join(', ')}`));
+    // Name the host rather than say "source" — a reader deciding whether to click
+    // wants to know it goes to everquest.com and not to a forum copy of it.
+    if (b.url) {
+      cite.appendChild(document.createTextNode(' \u00b7 '));
+      cite.appendChild(link(b.url, new URL(b.url).host.replace(/^www\./, '')));
+    }
+    box.appendChild(cite);
+  }
+  // What the source does NOT establish. It is the most easily lost sentence in a
+  // paragraph and the one most worth keeping, so it gets its own line and marker.
+  if (b.caveat) {
+    const c = el('p', 'caveat');
+    c.appendChild(el('span', 'caveat-tag', 'but'));
+    emphasise(c, ' ' + b.caveat);
+    box.appendChild(c);
+  }
+  return box;
 }
 
 function evidenceLine(e) {

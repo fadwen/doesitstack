@@ -213,3 +213,18 @@ button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);fo
 .ref-slots { margin: .3rem 0 0; padding-left: 1.1rem; }
 .ref-slots li { margin: .15rem 0; font-size: .92em; }
 .ref-slots .spa { opacity: .7; }
+
+/* Background that applies to a family of claims. Folded away by default: a
+   reader opening the evidence wants the claim in front of them, not the history. */
+.evidence .background{margin:12px 0 0;border-top:1px solid #3a3527;padding-top:9px}
+.evidence .background summary{color:#c9b98a;font-size:12.5px}
+.evidence .background .lead{margin:7px 0 0;color:#cfc7ae}
+.bg-block{margin:11px 0 0;padding-left:9px;border-left:2px solid #3a3527}
+.bg-block h4{margin:0;font-size:12.5px;letter-spacing:.02em;color:#e6dcc2}
+.bg-block p{margin:4px 0 0;line-height:1.5}
+.bg-block blockquote{margin:5px 0 0;padding-left:9px;border-left:2px solid #554d33;
+  color:#e6dcc2;font-style:italic}
+.bg-block .caveat{color:#c9c0a8}
+.caveat-tag{display:inline-block;border-radius:3px;padding:0 5px;margin-right:2px;
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
+  color:#f0b46a;background:#3a2f1c}

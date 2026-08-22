@@ -122,6 +122,27 @@ export function validate(doc) {
       }
     });
   }
+
+  // A note is background shared by a family of claims. It may be a plain string,
+  // or blocks — which exist because one 2,000-character paragraph is where a
+  // reader stops. The rules are the same either way: a quotation has to say who
+  // said it, and a block has to say something.
+  for (const [key, note] of Object.entries(doc.notes || {})) {
+    const where = `notes.${key}`;
+    if (typeof note === 'string') {
+      if (note.length < 10) fail(where, 'too short to be worth recording');
+      continue;
+    }
+    if (!note || typeof note !== 'object') { fail(where, 'must be a string or an object with blocks'); continue; }
+    if (!Array.isArray(note.blocks) || !note.blocks.length) { fail(where, 'needs a non-empty "blocks" array'); continue; }
+    note.blocks.forEach((b, i) => {
+      const bw = `${where} blocks[${i}]`;
+      if (!b.title) fail(bw, 'missing title — it is what makes the section scannable');
+      if (!b.body && !b.quote) fail(bw, 'needs a "body", a "quote", or both');
+      if (b.quote && !b.source) fail(bw, 'a quotation must say where it came from');
+      if (b.url && !/^https?:\/\//.test(b.url)) fail(bw, '"url" must be an absolute http(s) link');
+    });
+  }
   return problems;
 }
 

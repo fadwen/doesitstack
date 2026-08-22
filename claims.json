@@ -495,7 +495,37 @@
     }
   ],
   "notes": {
-    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here. A developer has described the same shape for a specific effect: on SPA 219 (Slay Undead), Dzarn \u2014 \"For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs.\" Cumulative and highest-wins sitting in one effect, split across its two values, with the highest taken per bucket. That is independent of the 2015 patch notes above and says the buckets are real; it is about SPA 219 and not about the seven listed here. Relayed by rumstil/eqspellparser (core/SpellData.cs case 219, added November 2016) rather than read from the original post. The three haste effects are the clearest illustration of the bucket structure, and a warning against reading this list as one pool: SPA 11, SPA 98 and SPA 119 each keep only their own largest value, but they accumulate into three separate fields that DO add to each other \u2014 EQEmu's own comments call SPA 98 \"Stacks with V1 but does not Overcap\" and SPA 119 \"Stacks and Overcaps\". Two spell hastes do not add; a spell haste and a bard haste do. That is why overlaps here are reported per SPA and never merged across them.",
+    "bonus_buckets": {
+      "lead": "For every non-cumulative claim the rule is the same: the larger value wins within one bonus bucket. What follows is where that comes from, and what it does not cover.",
+      "blocks": [
+        {
+          "title": "There is more than one bucket",
+          "body": "EQEmu sums the spell, AA and worn-item buckets at use time. Best-only applies inside each bucket, and the three totals then add. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket, which is why one of them is wasted.",
+          "source": "EQEmu/Server zone/mob.cpp",
+          "caveat": "185, 459, 482, 503 and 505 are additive when they arrive as a worn item bonus rather than as a buff."
+        },
+        {
+          "title": "Daybreak names the mechanic",
+          "quote": "Only the best modifier from AAs was added, and only the best modifier from spells was added",
+          "source": "July Patch Cliff Notes, 23 July 2015",
+          "url": "https://www.everquest.com/news/july-patch-cliff-notes",
+          "body": "\u201cBest only\u201d is Daybreak\u2019s own term for it, and the page confirms the buckets are separate and each best-only.",
+          "caveat": "It describes spell critical damage being changed *away* from that behaviour, so it does not speak to the seven SPAs listed here."
+        },
+        {
+          "title": "A developer describes the same shape",
+          "quote": "For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs.",
+          "who": "Dzarn, on SPA 219 (Slay Undead)",
+          "source": "relayed by rumstil/eqspellparser, core/SpellData.cs case 219, added November 2016",
+          "body": "Cumulative and highest-wins sitting in one effect, split across its two values, with the highest taken per bucket. That is independent of the 2015 patch notes and says the buckets are real.",
+          "caveat": "It is about SPA 219 rather than the seven listed here, and it is a relay rather than the original post."
+        },
+        {
+          "title": "Haste shows why this list is not one pool",
+          "body": "SPA 11, 98 and 119 each keep only their own largest value, but they accumulate into three separate fields that DO add to each other \u2014 EQEmu's own comments call 98 \"Stacks with V1 but does not Overcap\" and 119 \"Stacks and Overcaps\". Two spell hastes do not add; a spell haste and a bard haste do. That is why overlaps are reported per SPA here and never merged across them."
+        }
+      ]
+    },
     "movement_and_mounts": "Movement speed has an exception this tool cannot see. A mount overrides a player's movement buff outright rather than the larger of the two winning \u2014 Spirit of Wolf is overwritten by Knight's Holy Steed regardless of values. It is not modelled here and could not be: Holy Steed carries only SPA 113 (SummonMount) and no SPA 3 at all, so a mount's speed is not expressed in the spell file. Reported by Matrim, August 2026. If you compare a run buff against a mount here you will be told they do not share an effect, which is true of the spell data and not of the game."
   }
 }
