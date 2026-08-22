@@ -19,11 +19,30 @@ export const link = (href, text) => {
 };
 export const escape = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// Outbound links. Every one of these is built from an id rather than looked up,
+// so none of them costs a request or a download at build time.
+//
+// None of these is a source for anything here: spell values come from your own
+// client files, and item tags from SoDeq. They exist so a reader can go and check
+// a second reading of the same file \u2014 which means saying honestly how good each
+// one is. THIRD_PARTY_LAG is that sentence, said in one place.
+export const THIRD_PARTY_LAG =
+  'A separate reading of the same spell file. Their copy is refreshed on their own '
+  + 'schedule, so a spell added in a recent patch may be missing or out of date there.';
+
+// Raidloot is first because it is the closer match: it phrases effects the same
+// way this page does \u2014 both port eqspellparser \u2014 and it resolves a referenced
+// spell to its name. Lucy renders SPA 496 as "Unknown #496", which is the one
+// effect this project has a confirmed claim about.
+export const RAIDLOOT = id => `https://www.raidloot.com/spells?name=${id}`;
 export const LUCY = id => `https://lucy.allakhazam.com/spell.html?id=${id}&source=Live`;
-// Lucy's own item export stores this link verbatim, and it is the item id
-// templated in with no exceptions across all 134,079 of its rows — so we build
-// it rather than shipping a second download to look it up.
-export const LUCY_ITEM = id => `https://lucy.allakhazam.com/item.html?id=${id}`;
+// The one thing no client file carries: when a spell last changed, and what
+// changed. Worth a link of its own rather than a tab a reader has to find.
+export const LUCY_HISTORY = id => `https://lucy.allakhazam.com/spellhistory.html?id=${id}&source=Live`;
+// An item tag came from SoDeq, so an item name links to SoDeq \u2014 where the page
+// also names who submitted the item and when it was last verified, which is the
+// same staleness question the footer raises about the dump as a whole.
+export const SODEQ_ITEM = id => `https://items.sodeq.org/item.php?id=${id}`;
 
 export const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16,
              F_STACKGRP = 32, F_AURA = 64;

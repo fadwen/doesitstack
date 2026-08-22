@@ -8,7 +8,7 @@
 import { analyzeSet, calcValue, slotOf } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
 import {
-  $, el, link, LUCY, F_BENEFICIAL, row,
+  $, el, link, RAIDLOOT, THIRD_PARTY_LAG, F_BENEFICIAL, row,
   KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
   getReading, setReading, named,
 } from './data.js';
@@ -360,8 +360,8 @@ function renderSaved() {
 }
 
 function spellLink(name, id) {
-  const a = link(LUCY(id), name);
-  a.title = `Look ${name} up on Lucy`;
+  const a = link(RAIDLOOT(id), name);
+  a.title = `${name} on Raidloot. ${THIRD_PARTY_LAG}`;
   return a;
 }
 
@@ -550,6 +550,7 @@ function renderFooter() {
     link('https://github.com/rumstil/eqspellparser', 'eqspellparser’s field layout'),
   ];
   if (META.items) parts.push(link(META.items.source, 'the SoDeq item database'));
+  parts.push(link('https://www.raidloot.com/', 'Raidloot'));
   parts.push(link('https://lucy.allakhazam.com/', 'Lucy'));
   parts.forEach((node, i) => {
     if (i) p.appendChild(document.createTextNode(i === parts.length - 1 ? ' and ' : ', '));

@@ -228,3 +228,7 @@ button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);fo
 .caveat-tag{display:inline-block;border-radius:3px;padding:0 5px;margin-right:2px;
   font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;
   color:#f0b46a;background:#3a2f1c}
+
+/* Where else to read a spell. Deliberately quiet: these are other people's
+   readings, not sources, and they should not compete with the verdict. */
+.elsewhere a{white-space:nowrap}

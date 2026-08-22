@@ -581,8 +581,28 @@ the data underneath us; a *renamed* column is a hard build failure rather than s
 wrong tags. Only spells present in the current spell file get tagged, which is what makes
 stale item data produce fewer tags instead of tags pointing nowhere.
 
-Nothing is scraped, and Lucy is linked from every result — and from every named item —
-so you can check the source.
+Nothing is scraped.
+
+### Links off this site
+
+Every result links out, and none of those links is a source. Spell values come from
+your own client files; item tags come from SoDeq. What the links are for is checking
+this page against somebody else's reading of the same data — which is only worth
+offering if the page says how good each reading is.
+
+| | Link | What it is |
+|---|---|---|
+| **Raidloot** | `spells?name=<id>` | Another port of eqspellparser, so it phrases effects the way this page does, and it resolves a referenced spell to its name. Its own copy of the spell file, refreshed on its own schedule. |
+| **Lucy** | `spell.html?id=<id>` | The reference every EverQuest player knows. Its **Raw Data** tab is a second, independent naming of all 166 fields, which is worth having. But its live copy lags — it was eight months behind this build when last checked — and it renders SPA 496 as `Unknown #496`, the one effect here with a `confirmed` claim. |
+| **changes** | `spellhistory.html?id=<id>` | Lucy's history of a spell. The only public record of *when* something changed; nothing in the client files carries it. |
+| **item names** | `items.sodeq.org/item.php?id=<id>` | Where the tag came from. The page names who submitted the item and when it was last verified — the same staleness question the footer raises about the dump as a whole. |
+
+Each carries that caveat on hover rather than in a footnote, because a link that
+quietly points at old data is worse than no link. All four are templated from an id,
+so none of them costs a request or a download.
+
+Item links used to go to Lucy, which supplies none of the item data, and the README
+used to say Lucy let you "check the source" — a claim this project could not back.
 
 SPA names are Daybreak's own, which they were not until recently: of the 420 SPAs the
 spell file uses, **282 were being displayed under an EQEmu enum identifier no player
@@ -770,7 +790,10 @@ parse protocol are in [CONTRIBUTING.md](CONTRIBUTING.md) for anyone who wants th
   here under Apache 2.0 (see [LICENSE-eqspellparser.txt](LICENSE-eqspellparser.txt)), and a
   decade of recorded developer statements about individual SPAs that would otherwise be lost
   with the forum threads they came from
-- [Lucy](https://lucy.allakhazam.com/) — the reference every EverQuest player already trusts
+- [Raidloot](https://www.raidloot.com/) — a second reading of the spell file to check this
+  one against, and the one linked first
+- [Lucy](https://lucy.allakhazam.com/) — the reference every EverQuest player already
+  knows, and the spell history no client file records
 
 Not affiliated with or endorsed by Daybreak Game Company. EverQuest is a trademark of
 Daybreak Game Company LLC.

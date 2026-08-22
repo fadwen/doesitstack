@@ -2,7 +2,7 @@ import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, isEmptySlot
 import { dataAge, itemDataAge } from './freshness.js';
 import { phrase } from './phrasing.js';
 import {
-  $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
+  $, el, link, escape, LUCY, LUCY_HISTORY, RAIDLOOT, SODEQ_ITEM, THIRD_PARTY_LAG, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, nameOf, load as loadData,
   F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden,
 } from './data.js';
@@ -90,6 +90,7 @@ function renderCredits() {
     link('https://github.com/rumstil/eqspellparser', 'eqspellparser\u2019s field layout'),
   ];
   if (META.items) parts.push(link(META.items.source, 'the SoDeq item database'));
+  parts.push(link('https://www.raidloot.com/', 'Raidloot'));
   parts.push(link('https://lucy.allakhazam.com/', 'Lucy'));
   parts.forEach((node, i) => {
     if (i) p.appendChild(document.createTextNode(i === parts.length - 1 ? ' and ' : ', '));
@@ -232,8 +233,7 @@ function spellCard(sp) {
   const lv = META.classes.map((c2, i) => sp.levels[i] < 255 ? `${c2} ${sp.levels[i]}` : null).filter(Boolean);
   if (lv.length) bits.push(lv.slice(0, 5).join(', '));
   sub.textContent = bits.join(' · ') + ' · ';
-  const a = el('a', null, 'Lucy'); a.href = LUCY(sp.id); a.target = '_blank'; a.rel = 'noopener';
-  sub.appendChild(a);
+  sub.appendChild(elsewhere(sp.id));
   c.appendChild(sub);
   if (sp.it) c.appendChild(itemSource(sp.it));
   if (sp.desc?.d) { const d = el('p', 'sub', sp.desc.d.replace(/<BR>/gi, ' ')); d.style.marginTop = '8px'; c.appendChild(d); }
@@ -244,9 +244,41 @@ function spellCard(sp) {
  * "Click · Proc — Mystic Cloak, The Sword of Rile and 4 others"
  *
  * `it` is [relationship bitmask, total item count, [[item id, name, rel index]]].
- * Only a few named items ship; the count carries the rest, and the Lucy spell
- * link above covers anyone who wants the full list.
+ * Only a few named items ship; the count carries the rest, and the links above
+ * cover anyone who wants the full list.
  */
+/**
+ * Where else to read this spell.
+ *
+ * Not sources. Every value on this page comes from your own client files; these
+ * are other people's readings of the same file, offered so a verdict here can be
+ * checked against one. Which means being straight about what they are: each says
+ * so on hover, because a link that quietly points at eight-month-old data is
+ * worse than no link.
+ *
+ * Raidloot leads. Lucy is the name every EverQuest player knows, but on the exact
+ * case this tool exists for it shows "Unknown #496" where raidloot shows
+ * "Increase Critical Hit Damage by 300% of Base Damage (Non Stacking)".
+ *
+ * The history link is the one thing neither this page nor the client files can
+ * give you: when a spell last changed.
+ */
+function elsewhere(id) {
+  const span = el('span', 'elsewhere');
+  const rl = link(RAIDLOOT(id), 'Raidloot');
+  rl.title = THIRD_PARTY_LAG;
+  const lu = link(LUCY(id), 'Lucy');
+  lu.title = THIRD_PARTY_LAG + ' Lucy also has no name for some newer effects.';
+  const hi = link(LUCY_HISTORY(id), 'changes');
+  hi.title = 'When Lucy last saw this spell change \u2014 the client files do not record that.';
+  span.appendChild(rl);
+  span.appendChild(document.createTextNode(' \u00b7 '));
+  span.appendChild(lu);
+  span.appendChild(document.createTextNode(' \u00b7 '));
+  span.appendChild(hi);
+  return span;
+}
+
 function itemSource([mask, count, items]) {
   const wrap = el('div', 'sub item-source');
   const tags = el('span', 'rel-tags');
@@ -260,8 +292,8 @@ function itemSource([mask, count, items]) {
   items.forEach(([id, name], i) => {
     if (i) wrap.appendChild(document.createTextNode(i === named - 1 && count === named ? ' and ' : ', '));
     const a = el('a', null, name);
-    a.href = LUCY_ITEM(id); a.target = '_blank'; a.rel = 'noopener';
-    a.title = 'Look this item up on Lucy';
+    a.href = SODEQ_ITEM(id); a.target = '_blank'; a.rel = 'noopener';
+    a.title = 'This tag came from SoDeq. Its page names who submitted the item and when it was last verified.';
     wrap.appendChild(a);
   });
   const rest = count - named;
@@ -754,7 +786,7 @@ function refBody(sp, depth) {
   h.appendChild(el('strong', null, sp.name));
   h.appendChild(el('span', 'ref-meta',
     ` · #${sp.id} · ${KIND_LABEL[sp.kind] || sp.kind} · ${durText(sp.duration, sp.aura)} · `));
-  h.appendChild(link(LUCY(sp.id), 'Lucy'));
+  h.appendChild(elsewhere(sp.id));
   box.appendChild(h);
   const lvl = parseInt($('#lvl').value, 10) || META.max_level;
   const ul = el('ul', 'ref-slots');
