@@ -77,3 +77,23 @@ test('every phrasing is a non-empty string', () => {
     assert.doesNotMatch(out, /undefined|NaN|\[object/, `SPA ${spa} phrased to "${out}"`);
   }
 });
+
+// --- which reading you get without asking -----------------------------------
+
+import { getReading, setReading } from '../web/data.js';
+
+test('the readable form is what you get by default', () => {
+  // With no stored preference — which is every first visit — a slot should read
+  // "Limit Resist: Fire" rather than "Ff_ResistType". The exact view is a
+  // checkbox away for anyone who needs to quote what the file actually says.
+  assert.equal(getReading(), 'phrased');
+});
+
+test('the choice is limited to the two readings that exist', () => {
+  assert.equal(setReading('exact'), 'exact');
+  assert.equal(setReading('phrased'), 'phrased');
+  // anything unrecognised falls to the readable form rather than to a broken state
+  assert.equal(setReading('nonsense'), 'phrased');
+  assert.equal(setReading(undefined), 'phrased');
+  assert.equal(getReading(), 'phrased');
+});

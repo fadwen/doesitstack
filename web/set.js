@@ -41,9 +41,11 @@ async function boot() {
   wirePicker();
   $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; sync(); };
   $('#lvl').addEventListener('change', render);
-  const phraseBox = $('#f-phrase');
-  phraseBox.checked = getReading() === 'phrased';
-  phraseBox.addEventListener('change', () => { setReading(phraseBox.checked ? 'phrased' : 'exact'); render(); });
+  // Checked means "show me what the file says" — the opposite of the old box,
+  // because the readable form is now what you get without asking.
+  const exactBox = $('#f-exact');
+  exactBox.checked = getReading() === 'exact';
+  exactBox.addEventListener('change', () => { setReading(exactBox.checked ? 'exact' : 'phrased'); render(); });
   for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunSearch);
   $('#why-no-score').textContent = NO_SCORE;
   if (META.repo_url) $('#repo-link').href = META.repo_url;

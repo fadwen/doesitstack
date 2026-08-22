@@ -83,12 +83,17 @@ export const REL_HELP = {
   familiar: 'Granted by a familiar.',
 };
 
-// How a slot is written out. "exact" is what the file says — Daybreak's SPA name
-// and the raw values, which is what a bug report or a claim should quote.
-// "phrased" is the eqspellparser-style reading, easier to read and one step
-// further from the source, which is why exact is the default.
+// How a slot is written out. "phrased" is the eqspellparser-style reading and is
+// the default, because "Limit Resist: Fire" is what somebody came here to find
+// out and "Ff_ResistType" is not. "exact" is what the file says — Daybreak's SPA
+// name — and is one click away for anyone quoting a slot in a bug report or a
+// claim, where the interpretation is exactly what you do not want.
+//
+// Nothing is hidden by the choice: the raw SPA number and base values are
+// printed under the name in both readings, and an effect with no phrasing keeps
+// its exact name and is marked as such.
 const READING_KEY = 'doesitstack.reading';
-let reading = 'exact';
+let reading = 'phrased';
 try {
   const saved = window.localStorage?.getItem(READING_KEY);
   if (saved === 'phrased' || saved === 'exact') reading = saved;
@@ -96,7 +101,10 @@ try {
 
 export const getReading = () => reading;
 export function setReading(next) {
-  reading = next === 'phrased' ? 'phrased' : 'exact';
+  // Falls to the default, not to "exact" — that fallback was written when exact
+  // was the default and would have quietly inverted the choice for anything it
+  // did not recognise.
+  reading = next === 'exact' ? 'exact' : 'phrased';
   try { window.localStorage?.setItem(READING_KEY, reading); } catch { /* not worth reporting */ }
   return reading;
 }

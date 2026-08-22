@@ -314,13 +314,10 @@ simulator, not a stacking checker. A test asserts `analyzeSet` returns no score.
 
 ## Two ways to read a slot
 
-The slot table shows what the file says: Daybreak's SPA name and the raw values.
-That is exact, and it is what a bug report or a claim should quote. It is also close to
-unreadable unless you already know the SPAs.
+The slot table reads effects out in plain wording, because "Limit Resist: Fire" is what
+somebody came here to find out and `Ff_ResistType` is not:
 
-**Plain wording** on either page switches to a phrased reading:
-
-| Exact | Plain wording |
+| What the file says | What the table shows |
 | --- | --- |
 | `Ff_ResistType` · SPA 135 · base 2 | Limit Resist: Fire |
 | `Ff_TargetType` · SPA 136 · base -2 | Limit Target: Exclude Caster AE |
@@ -328,15 +325,20 @@ unreadable unless you already know the SPAs.
 | `Fc_Damage_%` · SPA 124 · base 33 | Increase Spell Damage by 33% |
 | `StackingBlocker` · SPA 148 | Block new spell if slot 2 is 'AC' and < 500 |
 
-The phrasing is ported from [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser),
-Apache 2.0, and is a **third-party reading** — the same standing as the target-type labels.
-That is why the exact view is the default and this one has to be asked for. The choice is
-remembered in your browser.
+**SPA names** on either page switches back to the left-hand column. That matters more than
+it sounds: the phrasing is ported from
+[rumstil/eqspellparser](https://github.com/rumstil/eqspellparser), Apache 2.0, and is a
+**third-party reading** — the same standing as the target-type labels. Quoting a slot in a
+bug report or a claim is exactly when you want the file's own words and not an
+interpretation of them, so the exact view is one click away and the choice is remembered in
+your browser.
+
+Nothing is hidden by the default: the raw `SPA n · base x · value y` line is printed under
+the name in both readings.
 
 **217 effects have a phrasing, covering 93% of the slots in the current spell file**, and
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
-slot keeps its exact name and is marked **as-is** — never a guess. The raw
-`SPA n · base x · value y` line is always shown underneath, in both readings.
+slot keeps its exact name and is marked **as-is** — never a guess.
 
 Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
 than eqspellparser's own enum, so the two readings never disagree about what an effect is
