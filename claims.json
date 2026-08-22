@@ -9,31 +9,49 @@
   },
   "claims": [
     {
-      "id": "non-cumulative/496",
+      "id": "non-cumulative/11",
       "type": "non_cumulative",
-      "spa": 496,
-      "spa_name": "Critical_Melee_Damage_Mod_Max",
-      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
+      "spa": 11,
+      "spa_name": "AttackSpeed",
+      "assertion": "Two buffs carrying SPA 11 both land, but only the larger value applies.",
       "evidence": [
-        {
-          "strength": "primary",
-          "kind": "game-text",
-          "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 \u2014 and none says it without.",
-          "source": "dbstr_us.txt, shipped with the live client",
-          "check": {
-            "id": "desc-phrase-implies-spa",
-            "phrase": "non-cumulative",
-            "spa": 496
-          }
-        },
         {
           "strength": "supporting",
           "kind": "implementation",
-          "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=. Its commit asserted the behaviour with no source cited; that it matches the spell text is what makes it corroboration rather than the basis.",
-          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
+          "summary": "SPA 11 is the ordinary spell haste every raid carries. Keeps the larger value: `if ((effect_value - 100) > new_bonus->haste) new_bonus->haste = effect_value - 100;`. Accumulated into its own `haste` field, separate from the two other haste types, and never added to another SPA 11 buff. Found the same way as the other entries here \u2014 a spell-bonus path that keeps the larger magnitude where an ordinary bonus uses +=. It was missed on the first pass because haste is handled in a different switch from the effects that produced the rest of this list.",
+          "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
         }
-      ],
-      "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
+      ]
+    },
+    {
+      "id": "non-cumulative/98",
+      "type": "non_cumulative",
+      "spa": 98,
+      "spa_name": "AttackSpeed2",
+      "assertion": "Two buffs carrying SPA 98 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "SPA 98 is bard haste. Keeps the larger value into `hastetype2`, which EQEmu's own comment describes as \"Stacks with V1 but does not Overcap\" \u2014 a separate bucket from SPA 11 that adds to it, while two SPA 98 buffs do not add to each other.",
+          "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
+        }
+      ]
+    },
+    {
+      "id": "non-cumulative/119",
+      "type": "non_cumulative",
+      "spa": 119,
+      "spa_name": "AttackSpeed3",
+      "assertion": "Two buffs carrying SPA 119 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "SPA 119 is overhaste. Keeps the larger value into `hastetype3`, commented \"Stacks and Overcaps\" \u2014 again its own bucket, adding to the other two while not adding to itself.",
+          "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
+        }
+      ]
     },
     {
       "id": "non-cumulative/185",
@@ -94,6 +112,33 @@
           "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) \u2014 no source cited"
         }
       ]
+    },
+    {
+      "id": "non-cumulative/496",
+      "type": "non_cumulative",
+      "spa": 496,
+      "spa_name": "Critical_Melee_Damage_Mod_Max",
+      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
+      "evidence": [
+        {
+          "strength": "primary",
+          "kind": "game-text",
+          "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 \u2014 and none says it without.",
+          "source": "dbstr_us.txt, shipped with the live client",
+          "check": {
+            "id": "desc-phrase-implies-spa",
+            "phrase": "non-cumulative",
+            "spa": 496
+          }
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=. Its commit asserted the behaviour with no source cited; that it matches the spell text is what makes it corroboration rather than the basis.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
+        }
+      ],
+      "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
     },
     {
       "id": "non-cumulative/503",
@@ -426,6 +471,6 @@
     }
   ],
   "notes": {
-    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here. A developer has described the same shape for a specific effect: on SPA 219 (Slay Undead), Dzarn \u2014 \"For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs.\" Cumulative and highest-wins sitting in one effect, split across its two values, with the highest taken per bucket. That is independent of the 2015 patch notes above and says the buckets are real; it is about SPA 219 and not about the seven listed here. Relayed by rumstil/eqspellparser (core/SpellData.cs case 219, added November 2016) rather than read from the original post."
+    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here. A developer has described the same shape for a specific effect: on SPA 219 (Slay Undead), Dzarn \u2014 \"For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs.\" Cumulative and highest-wins sitting in one effect, split across its two values, with the highest taken per bucket. That is independent of the 2015 patch notes above and says the buckets are real; it is about SPA 219 and not about the seven listed here. Relayed by rumstil/eqspellparser (core/SpellData.cs case 219, added November 2016) rather than read from the original post. The three haste effects are the clearest illustration of the bucket structure, and a warning against reading this list as one pool: SPA 11, SPA 98 and SPA 119 each keep only their own largest value, but they accumulate into three separate fields that DO add to each other \u2014 EQEmu's own comments call SPA 98 \"Stacks with V1 but does not Overcap\" and SPA 119 \"Stacks and Overcaps\". Two spell hastes do not add; a spell haste and a bard haste do. That is why overlaps here are reported per SPA and never merged across them."
   }
 }

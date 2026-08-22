@@ -23,7 +23,7 @@ not add up, because the effect is non-cumulative. That second statement is a cla
 game mechanics, and it is only as good as what is behind it.
 
 Right now, exactly one of the seven non-cumulative claims has a primary source. The
-other six rest on a reading of the EQEmu server's code, where the behaviour was
+other nine rest on a reading of the EQEmu server's code, where the behaviour was
 committed with no source cited. That is worth something — EQEmu developers test against
 live servers — but it is not the same as knowing.
 

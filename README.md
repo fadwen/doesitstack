@@ -82,7 +82,7 @@ Both are rated **below primary**: they reach us through a third party's transcri
 than from the posts themselves, and the first presupposes the slot rule rather than stating
 it. Anyone who can read those threads and confirm the wording would raise both.
 
-**What eqspellparser does not do is back the six unverified non-cumulative SPAs.** It carries
+**What eqspellparser does not do is back the unverified non-cumulative SPAs.** It carries
 no stacking comment for 185, 186, 482 or 505; for 503 its author wrote "similar to 185 but
 with rear arc? stacking?" — his own question mark. A careful parser declining to make the
 claim is worth knowing about.
@@ -204,20 +204,36 @@ A handful of SPAs land on you together but are not added together; the game keep
 larger value. The tool warns when a stacking pair shares one, and shows the evidence
 behind the warning — because the evidence differs sharply between them.
 
-Seven qualify, identified from `zone/bonuses.cpp` in EQEmu, where they keep the larger
-magnitude instead of the `+=` an ordinary bonus uses: **185** Skill Damage Mod 1,
-**186** Min Damage Done Mod, **459** Skill Damage Mod 2, **482** Skill Base Damage Mod,
-**496** Critical Melee Damage Mod Max, **503** Melee Damage Position Mod, **505** Damage
-Taken Position Mod.
+Ten qualify, identified from `zone/bonuses.cpp` in EQEmu, where they keep the larger
+magnitude instead of the `+=` an ordinary bonus uses: **11** Melee Speed, **98** Bard
+Haste, **119** Overhaste, **185** Skill Damage Mod 1, **186** Min Damage Done Mod, **459**
+Skill Damage Mod 2, **482** Skill Base Damage Mod, **496** Critical Melee Damage Mod Max,
+**503** Melee Damage Position Mod, **505** Damage Taken Position Mod.
+
+The three haste effects were missed on the first pass. Haste is accumulated in a different
+switch from the damage modifiers, so a reader following the effects that produced the rest
+of the list never reaches it — and a raid set with four haste buffs in it reported that
+nothing doubled up. They are also the clearest illustration of the bucket structure, and a
+warning against reading the list as one pool: each keeps only its own largest value, but
+the three accumulate into separate fields that **do** add to each other. EQEmu's own
+comments call SPA 98 *"Stacks with V1 but does not Overcap"* and SPA 119 *"Stacks and
+Overcaps"*. Two spell hastes do not add; a spell haste and a bard haste do — which is why
+overlaps are reported per SPA and never merged across them.
+
+**Movement speed is deliberately not on this list**, though community guides often group it
+with haste. EQEmu adds SPA 3 (`newbon->movementspeed += base_value`) and leaves a comment
+asking *"should we let these stack?"* with a highest-wins alternative commented out beside
+it. That is an open question, not a finding.
 
 **Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,963
 spells, exactly 53 descriptions contain the word "non-cumulative", and every one of them
 carries SPA 496; none says it without. EQEmu independently agrees, which corroborates
 but does not establish.
 
-The other six rest on uncited emulator code. 185/186/459 came from a 2016 mackal commit
+The other nine rest on uncited emulator code. 185/186/459 came from a 2016 mackal commit
 whose message body is empty; 503/505 from KayenEQ's PR #1454 and 482 from #1474, each
-asserting the behaviour with no source given. The site marks those six unverified and
+asserting the behaviour with no source given, and the three haste effects on the same
+footing. The site marks those nine unverified and
 says so in the warning.
 
 Two caveats apply to all seven:
@@ -245,7 +261,7 @@ change when you change the level. Ties mark neither side as losing out.
 
 Status is derived from evidence, not written by hand, so **adding a primary source
 removes the hedging on the next build with no code change** — and promotes that SPA's
-slots from "one of these counts" to a named winner. If you can settle one of the six,
+slots from "one of these counts" to a named winner. If you can settle one of the nine,
 see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
 ## A whole buff set
@@ -306,7 +322,7 @@ set, and a browser that refuses it entirely still leaves the link in the address
 
 Because it cannot do so honestly. A damage figure needs a model of how these values
 combine — the spell, AA and worn bonus buckets, which effects add and which keep only the
-larger, which focus wins a cast. Six of the seven non-cumulative claims here are
+larger, which focus wins a cast. Nine of the ten non-cumulative claims here are
 `unverified` and the focus rule is `corroborated` rather than `confirmed`; a score built on
 that would look far more authoritative than its evidence. Burn output also depends on gear,
 AAs, recast timers and the encounter, none of which is in the spell file — that is a
@@ -624,7 +640,7 @@ tests/                             node:test — fixtures and claims run anywher
 - Caster level is a single input applied to both spells; the game tracks it per buff.
   It defaults to 130, the live cap — raise `MAX_PLAYER_LEVEL` in `tools/spells.mjs` on
   the expansion that raises it, and everything else follows from there.
-- Six of the seven non-cumulative SPAs rest on uncited EQEmu implementation rather than
+- Nine of the ten non-cumulative SPAs rest on uncited EQEmu implementation rather than
   any primary source. See above, and `claims.json` for each one.
 - Most stacking rules are `unverified` for the same reason. The biggest remaining one is
   `slot-strength` — that an incoming spell must be at least as strong on **every** shared

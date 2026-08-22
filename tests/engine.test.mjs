@@ -178,8 +178,22 @@ test('every indexed spell has a known kind', SKIP, () => {
 // --- non-cumulative effects -------------------------------------------------
 
 test('the non-cumulative list matches what EQEmu treats as highest-wins', SKIP, () => {
-  // zone/bonuses.cpp keeps the larger magnitude for these instead of summing
-  assert.deepEqual(NON_CUMULATIVE_SPA, [185, 186, 459, 482, 496, 503, 505]);
+  // zone/bonuses.cpp keeps the larger magnitude for these instead of summing.
+  // 11, 98 and 119 were missed on the first pass: haste is accumulated in a
+  // different switch from the effects that produced the rest of the list, so a
+  // reader following the damage modifiers never reaches it. Four buffs in one
+  // raid set carried SPA 11 and the site said nothing doubled up.
+  assert.deepEqual(NON_CUMULATIVE_SPA, [11, 98, 119, 185, 186, 459, 482, 496, 503, 505]);
+});
+
+test('the three haste types are separate buckets, not one', SKIP, () => {
+  // Each keeps only its own largest value, but they add to each other — EQEmu
+  // calls SPA 98 "Stacks with V1 but does not Overcap". Merging them would turn
+  // a spell haste plus a bard haste into a conflict, which is wrong.
+  for (const spa of [11, 98, 119]) assert.ok(NON_CUMULATIVE_SPA.includes(spa), `SPA ${spa}`);
+  const a = { id: 1, name: 'Spell Haste', slots: [{ spa: 11, base1: 160, base2: 0, calc: 100, max: 0 }], stacking: [] };
+  const b = { id: 2, name: 'Bard Haste', slots: [null, { spa: 98, base1: 160, base2: 0, calc: 100, max: 0 }], stacking: [] };
+  assert.equal(nonCumulativeOverlap(a, b).length, 0, 'different haste types must not be grouped together');
 });
 
 test('SPA 496 is flagged when two stacking buffs both carry it', SKIP, () => {

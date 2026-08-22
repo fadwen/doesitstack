@@ -495,3 +495,47 @@ test('a spell that is not a combat skill still falls to the residual', () => {
   assert.equal(classify(skill({ is_skill: false }), new Set()), 'item',
     'provisional — applyItemSources turns an unexplained one into "other"');
 });
+
+
+// --- haste ------------------------------------------------------------------
+//
+// Reported from the shipped "Common level 130 buffs" set: four of its buffs
+// carry SPA 11 in different slots, all four hold, and the set view said nothing
+// doubled up. Haste is the effect every EverQuest player knows does not add.
+
+test('several haste buffs in different slots are reported as not adding', () => {
+  const haste = (id, name, slot, base1) => {
+    const slots = new Array(slot).fill(null);
+    slots[slot] = { spa: 11, base1, base2: 0, calc: 100, max: 0 };
+    return { id, name, beneficial: true, target: 5, duration: 100, dur_calc: 7, dur_cap: 0,
+             is_skill: false, song_window: false, unstackable_dot: false, timer: 0,
+             levels: new Array(16).fill(255), stacking: [], categories: [], slots };
+  };
+  const set = [
+    haste(1, 'Symphony of Battle', 9, 160),
+    haste(2, 'Celeritous Unity', 0, 160),
+    haste(3, 'Hastening of Elluria', 4, 168),
+    haste(4, 'Illusion Benefit Greater Jann', 2, 150),
+  ];
+  const r = analyzeSet(set);
+  assert.equal(r.allHold, true, 'different slots, so they do all hold');
+  const g = r.nonCumulative.find(x => x.spa === 11);
+  assert.ok(g, 'and the set view must say that only one of them counts');
+  assert.equal(g.members.length, 4);
+  assert.equal(g.coexist, true);
+  // unverified, so no winner is named even though the largest is obvious
+  assert.ok(g.members.every(m => m.applies === null));
+});
+
+test('a spell haste and a bard haste are left alone', () => {
+  // They really do add: EQEmu accumulates them into separate fields.
+  const mk = (id, spa, slot) => {
+    const slots = new Array(slot).fill(null);
+    slots[slot] = { spa, base1: 160, base2: 0, calc: 100, max: 0 };
+    return { id, name: `haste ${spa}`, beneficial: true, target: 5, duration: 100, dur_calc: 7,
+             dur_cap: 0, is_skill: false, song_window: false, unstackable_dot: false, timer: 0,
+             levels: new Array(16).fill(255), stacking: [], categories: [], slots };
+  };
+  const r = analyzeSet([mk(1, 11, 0), mk(2, 98, 3), mk(3, 119, 5)]);
+  assert.deepEqual(r.nonCumulative, [], 'three different haste types share nothing');
+});

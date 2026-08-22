@@ -61,7 +61,7 @@ async function boot() {
 const NO_SCORE =
   'Ranking buff sets by damage needs a model of how these values combine into a number — '
   + 'the spell, AA and worn bonus buckets, which effects add and which keep only the larger, '
-  + 'which focus wins a cast. Six of the seven non-cumulative claims here are unverified and '
+  + 'which focus wins a cast. Nine of the ten non-cumulative claims here are unverified and '
   + 'the focus rule is corroborated rather than confirmed, so a damage figure would look far '
   + 'more authoritative than the evidence behind it. This tool shows you what is being wasted '
   + 'and leaves the arithmetic to you.';
