@@ -44,7 +44,14 @@ const MAX_STRENGTH = {
   'implementation': 'supporting',
   'community': 'weak',
 };
-export const TYPES = ['non_cumulative', 'focus_best_only', 'focus_stacking', 'stacking_rule'];
+export const TYPES = [
+  'non_cumulative', 'focus_best_only', 'focus_stacking', 'stacking_rule',
+  // How bonuses combine once both spells have landed, which is a different question
+  // from whether they land. Slot arbitration is over by then: two effects can hold
+  // perfectly well and still not give you the sum of their numbers, and a slow can
+  // sit alongside a haste and cancel it outright.
+  'bonus_bucket',
+];
 
 // Types that describe a rule rather than a spell effect, so they carry a slug
 // instead of a SPA number.

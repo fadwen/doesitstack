@@ -370,10 +370,15 @@ function nonCumulativeNote(overlaps) {
   const statusOf = (spa) => META.claims?.[spa]?.status || 'unverified';
   const unverified = spas.filter(s => statusOf(s) === 'unverified');
   const disputed = spas.filter(s => statusOf(s) === 'disputed');
+  const corroborated = spas.filter(s => statusOf(s) === 'corroborated');
 
   let text = `Both carry ${names}. The game does not add these together — while both buffs are up, only the value furthest from zero counts. Stacking here does not mean the numbers add.`;
   if (unverified.length)
     text += ` Treat that as unverified for SPA ${unverified.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which nothing in that project backs up, and the game's own spell text never calls these non-cumulative.`;
+  // Corroborated is not confirmed. A named practitioner reporting first-hand is
+  // acted on, and is still not Daybreak saying so.
+  if (corroborated.length)
+    text += ` For SPA ${corroborated.join(', ')} this is reported first-hand from play rather than settled by a source — it is acted on here, and it has not been independently parsed.`;
   // A disputed claim is not a weaker unverified one — the sources actively
   // disagree, and saying "unverified because EQEmu says so" would be backwards
   // when EQEmu is the side saying they do add.

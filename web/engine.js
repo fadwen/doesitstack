@@ -16,7 +16,7 @@
 
 import {
   SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED,
-  NON_CUMULATIVE_STATUS, NON_CUMULATIVE_OFFSET, IGNORED_BY_CLAIM,
+  NON_CUMULATIVE_STATUS, NON_CUMULATIVE_OFFSET, NON_CUMULATIVE_MIXED, IGNORED_BY_CLAIM,
   FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_LIMIT, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
@@ -415,15 +415,22 @@ export const ncBonus = (spa, value) => value - (NON_CUMULATIVE_OFFSET[spa] || 0)
  * in every one of its 22 slots in the current file, and SPA 3 in 1,297 of 1,515,
  * so "the larger" would name the weaker effect the winner on both.
  *
- * Opposite signs return null. Those two branches never displace each other on
- * their own terms, so which one is left standing depends on the order the server
+ * Opposite signs usually return null. Those two branches never displace each other
+ * on their own terms, so which one is left standing depends on the order the server
  * happened to apply them in, and that is not something this tool can know.
+ *
+ * Haste is the exception, and it is not a rounding detail: a slow is not a small
+ * haste. While any slow is applied no haste applies at all — reported from play, and
+ * EQEmu does the same twice over, refusing a haste while the bonus is already
+ * negative and returning from its haste calculation before item, SPA 98 or SPA 119
+ * haste are added. So a negative takes the slot outright, whatever the magnitudes.
  */
 export function ncWinner(spa, valueA, valueB) {
   const a = ncBonus(spa, valueA), b = ncBonus(spa, valueB);
   if (a === b) return 'tie';
   if (a === 0 || b === 0) return null;
-  if ((a > 0) !== (b > 0)) return null;
+  if ((a > 0) !== (b > 0))
+    return NON_CUMULATIVE_MIXED[spa] === 'negative' ? (a < 0 ? 'a' : 'b') : null;
   return Math.abs(a) > Math.abs(b) ? 'a' : 'b';
 }
 
@@ -584,10 +591,19 @@ export function analyzeSet(spells, opts = {}) {
     // zero applies, and only among members on the same side of zero. A set holding
     // both a haste and a slow has no single answer, so none is marked.
     const bonuses = members.map(m => ncBonus(spa, m.value));
-    const mixed = bonuses.some(v => v > 0) && bonuses.some(v => v < 0);
-    const best = Math.max(...bonuses.map(Math.abs));
-    for (let i = 0; i < members.length; i++)
-      members[i].applies = mixed || bonuses[i] === 0 ? null : Math.abs(bonuses[i]) === best;
+    const hasNeg = bonuses.some(v => v < 0), hasPos = bonuses.some(v => v > 0);
+    // A set holding a slow and a haste has an answer: the slow. A set holding a
+    // buff and a debuff of anything else does not.
+    const slowWins = hasNeg && hasPos && NON_CUMULATIVE_MIXED[spa] === 'negative';
+    const mixed = hasNeg && hasPos && !slowWins;
+    const pool = slowWins ? bonuses.filter(v => v < 0) : bonuses;
+    const best = Math.max(...pool.map(Math.abs));
+    for (let i = 0; i < members.length; i++) {
+      const v = bonuses[i];
+      members[i].applies = mixed || v === 0 ? null
+        : slowWins ? v < 0 && Math.abs(v) === best
+        : Math.abs(v) === best;
+    }
     return {
       spa, name: spaName(spa), confirmed, status: NON_CUMULATIVE_STATUS[spa] || 'unverified',
       mixed, members, coexist: coexist(idxs),

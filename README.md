@@ -290,9 +290,30 @@ is taken off (haste is stored as a percentage of normal speed, so 168 is a 68% b
 slots** in the current file and **3 in 1,297 of its 1,515**, so reading it as "the larger"
 would name the weaker effect the winner on both.
 
-Two values on **opposite sides of zero** name nobody. They never displace each other on
-their own terms, so which one is left standing depends on the order the server applied
-them in, and that is not something this tool can know.
+Two values on **opposite sides of zero** name nobody — with one exception. They normally
+never displace each other on their own terms, so which one is left standing depends on the
+order the server applied them in, and that is not something this tool can know.
+
+**Haste is the exception.** A slow is not a small haste: while any slow is applied no haste
+applies at all, so a negative value takes the slot outright however small it is. Reported
+from play by Matrim, and EQEmu does the same twice over — it refuses a haste while the
+bonus is already negative (`if (new_bonus->haste < 0) break;`) and returns from its haste
+calculation before item, SPA 98 or SPA 119 haste are added, under the comment
+`// slow beats all! Besides a better inhibit`.
+
+### Bonus buckets
+
+Slot arbitration is over once both spells have landed. What happens to the numbers after
+that is a different question, and the claims answering it are typed `bonus_bucket`:
+
+| | |
+| --- | --- |
+| `slow-cancels-haste` | **corroborated** — a slow removes haste entirely rather than netting off against it |
+| `haste-types-add` | **corroborated** — SPA 11 and SPA 119 are separate buckets and add; within either, the highest applies |
+| `inhibit-melee-beats-haste` | **disputed** — SPA 371 against any SPA 11 haste is reported from play as 371 winning outright, where EQEmu subtracts the inhibit from the haste (`h += spellbonuses.haste - spellbonuses.inhibitmelee`) and only lets it dominate when there is no SPA 11 haste at all. Its own recorded parse reads `68 v1 + 46 item + 25 over + 35 inhib = 204%`. The two accounts agree on the no-haste case, so neither side is taken here |
+
+SPA 371 is not in the non-cumulative list and is not modelled: it is a cross-SPA
+interaction, and everything here is deliberately per-SPA and never merged across them.
 
 Values are compared at the caster levels you asked about, so which one applies can change
 when you change the level. Ties mark neither side as losing out.

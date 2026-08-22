@@ -77,8 +77,17 @@ test('haste is compared after the 100 comes off, so a slow is not a big buff', (
   // 168 is a 68% haste and 90 is a 10% slow. Comparing the stored numbers would
   // make every haste beat every slow and call the slow a bonus.
   assert.equal(ncPair(11, 168, 11, 160).winner, 'a');
-  assert.equal(ncPair(11, 168, 11, 90).winner, null, 'a haste and a slow are opposite signs');
   assert.equal(ncPair(11, 80, 11, 60).winner, 'b', 'and the deeper slow is the one that lands');
+});
+
+test('a slow takes the slot from a haste however small it is', () => {
+  // A slow is not a lesser haste. While any slow is applied no haste applies at
+  // all, so magnitude does not come into it: a 1% slow beats a 68% haste.
+  assert.equal(ncPair(11, 168, 11, 99).winner, 'b');
+  assert.equal(ncPair(11, 99, 11, 168).winner, 'a');
+  assert.equal(ncPair(119, 25, 119, -1).winner, 'b');
+  // Only where a claim says so. Everywhere else opposite signs still name nobody.
+  assert.equal(ncPair(185, 60, 185, -40).winner, null);
 });
 
 test('the winner is decided at the caster levels asked about, not the cap', () => {
@@ -558,7 +567,7 @@ test('several haste buffs in different slots are reported as not adding', () => 
   // The set this preset ships: four haste buffs, and Hastening of Elluria at 168
   // is a 68% bonus against 60, 60 and 50. It holds with the other three and they
   // do nothing, which is the whole point of showing the set.
-  assert.equal(g.status, 'unverified', 'said as an unverified claim, but said');
+  assert.equal(g.status, 'corroborated', 'a named practitioner reported it, so it is said out loud');
   const applies = Object.fromEntries(g.members.map(m => [m.name, m.applies]));
   assert.deepEqual(applies, {
     'Symphony of Battle': false,
@@ -615,4 +624,15 @@ test('only the client spacer counts as an empty row', () => {
 test('a missing slot is empty', () => {
   assert.equal(isEmptySlot({ id: 1, slots: [null] }, 0), true);
   assert.equal(isEmptySlot({ id: 1, slots: [] }, 3), true);
+});
+
+test('a set holding a slow and hastes marks the slow, not the biggest haste', () => {
+  const set = [
+    setSpell(1, 'Hastening', [1, [11, 168]]),
+    setSpell(2, 'Symphony', [2, [11, 160]]),
+    setSpell(3, 'Cripple', [3, [11, 75]]),
+  ];
+  const g = analyzeSet(set).nonCumulative.find(x => x.spa === 11);
+  assert.equal(g.mixed, false, 'there is an answer here, so it is not the no-answer case');
+  assert.deepEqual(g.members.map(m => m.applies), [false, false, true]);
 });

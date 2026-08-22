@@ -37,10 +37,19 @@
       "id": "non-cumulative/11",
       "type": "non_cumulative",
       "spa": 11,
-      "assertion": "Two buffs carrying SPA 11 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "assertion": "Two buffs carrying SPA 11 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative. A slow is not a small haste: while any slow is applied no haste applies at all, so a negative value takes this slot outright.",
       "keep": "magnitude",
+      "mixed": "negative",
       "offset": 100,
       "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: two SPA 11 hastes do not add. The highest applies and the rest do nothing while all of them are up. A slow is not a smaller haste \u2014 while any slow is on you no SPA 11 haste applies at all.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
         {
           "strength": "supporting",
           "kind": "implementation",
@@ -54,8 +63,9 @@
       "id": "non-cumulative/98",
       "type": "non_cumulative",
       "spa": 98,
-      "assertion": "Two buffs carrying SPA 98 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "assertion": "Two buffs carrying SPA 98 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative. A slow is not a small haste: while any slow is applied no haste applies at all, so a negative value takes this slot outright.",
       "keep": "magnitude",
+      "mixed": "negative",
       "offset": 100,
       "evidence": [
         {
@@ -71,9 +81,18 @@
       "id": "non-cumulative/119",
       "type": "non_cumulative",
       "spa": 119,
-      "assertion": "Two buffs carrying SPA 119 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "assertion": "Two buffs carrying SPA 119 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative. A slow is not a small haste: while any slow is applied no haste applies at all, so a negative value takes this slot outright.",
       "keep": "magnitude",
+      "mixed": "negative",
       "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: SPA 119 behaves as SPA 11 does among its own kind. Two of them do not add; the highest applies.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
         {
           "strength": "supporting",
           "kind": "implementation",
@@ -505,6 +524,85 @@
       "engine_rules": [
         "mana-burn"
       ]
+    },
+    {
+      "id": "bonus-bucket/slow-cancels-haste",
+      "type": "bonus_bucket",
+      "spas": [
+        11,
+        371
+      ],
+      "slug": "slow-cancels-haste",
+      "assertion": "A slow does not average with a haste, and is not treated as a smaller one. While any slow is applied, no haste applies at all \u2014 the haste is removed rather than reduced.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: applying any slow removes the haste entirely rather than netting the two off against each other.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu behaves the same way, in two places. A haste is refused outright while the spell haste bonus is already negative \u2014 `if (new_bonus->haste < 0) break; // Slowed - Don\u2019t apply haste` \u2014 and once slowed, the haste calculation returns before item haste, SPA 98 or SPA 119 are added to it, under the comment \"slow beats all! Besides a better inhibit\".",
+          "source": "EQEmu/Server zone/bonuses.cpp ApplySpellsBonuses (AttackSpeed, AttackSpeed2) and zone/client_mods.cpp Client::CalcHaste"
+        }
+      ]
+    },
+    {
+      "id": "bonus-bucket/haste-types-add",
+      "type": "bonus_bucket",
+      "spas": [
+        11,
+        119
+      ],
+      "slug": "haste-types-add",
+      "assertion": "SPA 11 and SPA 119 are separate haste buckets and add to each other. Within either one they do not add \u2014 the highest applies.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: an SPA 11 haste and an SPA 119 haste both count, where two of the same kind do not.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu accumulates them into separate fields and then sums those fields \u2014 `h += spellbonuses.haste` and, subject to its own cap, `h += spellbonuses.hastetype3`. Each field keeps only its own largest value.",
+          "source": "EQEmu/Server zone/client_mods.cpp Client::CalcHaste, and zone/bonuses.cpp for the per-field accumulation"
+        }
+      ]
+    },
+    {
+      "id": "bonus-bucket/inhibit-melee-beats-haste",
+      "type": "bonus_bucket",
+      "spas": [
+        11,
+        371
+      ],
+      "slug": "inhibit-melee-beats-haste",
+      "assertion": "SPA 371 (Inhibit Melee) wins against any SPA 11 haste \u2014 the haste does not apply.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: SPA 371 against any SPA 11 haste, the 371 wins.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "refutes": true,
+          "summary": "EQEmu contradicts this where a SPA 11 haste is present: it subtracts the inhibit from the haste rather than replacing it \u2014 `h += spellbonuses.haste - spellbonuses.inhibitmelee` \u2014 and only lets the inhibit dominate when there is no SPA 11 haste at all. Its own recorded parse reads \"68 v1 + 46 item + 25 over + 35 inhib = 204%\" and concludes \"inhib will only negate all other hastes if you don\u2019t have v1\". The two accounts agree on the no-haste case and disagree on the case named here, so neither side is taken.",
+          "source": "EQEmu/Server zone/client_mods.cpp Client::CalcHaste, and the parse recorded in the comment above it"
+        }
+      ]
     }
   ],
   "notes": {
@@ -535,7 +633,8 @@
         },
         {
           "title": "Haste shows why this list is not one pool",
-          "body": "SPA 11, 98 and 119 each keep only their own largest value, but they accumulate into three separate fields that DO add to each other \u2014 EQEmu's own comments call 98 \"Stacks with V1 but does not Overcap\" and 119 \"Stacks and Overcaps\". Two spell hastes do not add; a spell haste and a bard haste do. That is why overlaps are reported per SPA here and never merged across them."
+          "body": "SPA 11 and SPA 119 each keep only their own largest value, but they accumulate into separate fields that DO add to each other \u2014 EQEmu\u2019s own comments call 98 \"Stacks with V1 but does not Overcap\" and 119 \"Stacks and Overcaps\". Two SPA 11 hastes do not add; an SPA 11 and an SPA 119 do. That is why overlaps are reported per SPA here and never merged across them.",
+          "caveat": "Haste is also the one place a bonus and a penalty have a settled answer. A slow is not a small haste: while any slow is applied no haste applies at all, so a negative value takes the slot outright. Everywhere else, two values on opposite sides of zero name nobody. See bonus-bucket/slow-cancels-haste and bonus-bucket/haste-types-add."
         }
       ]
     },
