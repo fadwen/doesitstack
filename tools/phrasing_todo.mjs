@@ -20,8 +20,12 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 /** eqspellparser's formatting line for a SPA, if a checkout was provided. */
 function eqspLines(dir) {
+  if (!dir) return null;                       // checked before joining, not after
   const file = path.join(dir, 'core', 'SpellData.cs');
-  if (!dir || !fs.existsSync(file)) return null;
+  if (!fs.existsSync(file)) {
+    console.error(`No SpellData.cs under ${dir} — listing without the lines to port.`);
+    return null;
+  }
   const src = fs.readFileSync(file, 'utf8').split('\n');
   const out = new Map();
   for (let i = 0; i < src.length; i++) {
