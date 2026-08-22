@@ -309,7 +309,7 @@ that is a different question, and the claims answering it are typed `bonus_bucke
 | | |
 | --- | --- |
 | `slow-cancels-haste` | **corroborated** — a slow removes haste entirely rather than netting off against it |
-| `haste-types-add` | **corroborated** — SPA 11 and SPA 119 are separate buckets and add; within either, the highest applies |
+| `haste-types-add` | **confirmed** — SPA 119 is overhaste, a separate bucket that adds on top of the SPA 11 melee haste; within either, the highest applies. Battlecry of the Vah Shir says "cumulative with most other effects that increase attack speed", and of the 152 spells whose description uses the word *overhaste*, all 152 carry SPA 119 and none carries SPA 371 |
 | `inhibit-melee-beats-haste` | **disputed** — SPA 371 against any SPA 11 haste is reported from play as 371 winning outright, where EQEmu subtracts the inhibit from the haste (`h += spellbonuses.haste - spellbonuses.inhibitmelee`) and only lets it dominate when there is no SPA 11 haste at all. Its own recorded parse reads `68 v1 + 46 item + 25 over + 35 inhib = 204%`. The two accounts agree on the no-haste case, so neither side is taken here |
 
 SPA 371 is not in the non-cumulative list and is not modelled: it is a cross-SPA

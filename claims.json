@@ -559,8 +559,14 @@
         119
       ],
       "slug": "haste-types-add",
-      "assertion": "SPA 11 and SPA 119 are separate haste buckets and add to each other. Within either one they do not add \u2014 the highest applies.",
+      "assertion": "SPA 119 is overhaste: a separate bucket from the SPA 11 melee haste, which adds on top of it rather than competing with it. Within either bucket they do not add \u2014 the highest applies.",
       "evidence": [
+        {
+          "strength": "primary",
+          "kind": "game-text",
+          "summary": "The client's own descriptions say it twice over. Battlecry of the Vah Shir (#2606), an SPA 119 song: \"This increase is cumulative with most other effects that increase attack speed.\" And the name of the mechanic is in the text of the effects that carry it \u2014 Frenzied Burnout I (#2754) reads \"increases ... overhaste by 15%\". Of the 152 spells in the current file whose description uses the word overhaste, 152 carry SPA 119 and none carries SPA 371.",
+          "source": "dbstr_us.txt, shipped with the live client"
+        },
         {
           "strength": "strong",
           "kind": "practitioner",
