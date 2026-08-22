@@ -340,6 +340,20 @@ the name in both readings.
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
 slot keeps its exact name and is marked **as-is** — never a guess.
 
+To see what is left:
+
+```bash
+node tools/phrasing_todo.mjs                              # worst first
+node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to port
+node tools/phrasing_todo.mjs --json
+```
+
+219 effects still read as-is, and **211 of them have an eqspellparser line to port**, so
+most entries are a one-line job. The tail is shallow: the four biggest reach 95% coverage,
+nineteen reach 97%, sixty-one reach 99%, and 103 of the 219 appear in fewer than 20 slots in
+the entire file. Adding one is a `case` in [`web/phrasing.js`](web/phrasing.js) — return
+`null` rather than guessing if the effect is not understood.
+
 Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
 than eqspellparser's own enum, so the two readings never disagree about what an effect is
 called; and in the exact reading a repeated limiter collapses to `TargetType ×5`, while
