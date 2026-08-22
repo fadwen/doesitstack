@@ -254,6 +254,12 @@ export function phrase(slot, value, names = {}) {
     case 320: return pct('Shield Block Chance', base1);
     case 350: return `Mana Burn up to ${base1 * -base2 / 10} Damage`;
     case 369: return up('Corruption Counter', value);
+    // Stored as the slow amount, positive, so the sign is flipped to read it. The
+    // marker is not decoration: a negative SPA 11 is also "Decrease Melee Haste by
+    // 30%", and these are two different mechanisms that combine differently.
+    // EQEmu notes a few spells store this negative and reads those as slows too;
+    // none in the current file does, so the source's line is kept as it is.
+    case 371: return pct('Melee Haste', -value) + ' (v371, Incremental)';
     case 373: return `Cast: [Spell ${base1}] on Fade`;
     case 382: return `Inhibit Effect: ${effectName(base2)}`;
     case 416: return up('AC', value) + ', Based on Class';

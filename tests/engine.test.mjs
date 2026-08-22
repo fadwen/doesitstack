@@ -188,7 +188,11 @@ test('the non-cumulative list is what is claimed, not only what EQEmu implements
   // claim is a player report that contradicts it. The list is every effect
   // claimed to be non-cumulative, whatever the status of that claim, because the
   // site has to raise the overlap before it can say how sure it is.
-  assert.deepEqual(NON_CUMULATIVE_SPA, [3, 11, 98, 119, 185, 186, 459, 482, 496, 503, 505]);
+  //
+  // 371 is the slow, which EQEmu keeps in a field of its own. Two of them keep the
+  // largest, the same shape as the rest — what it does against a SPA 11 haste is a
+  // cross-SPA question this tool does not answer, and is in Known gaps.
+  assert.deepEqual(NON_CUMULATIVE_SPA, [3, 11, 98, 119, 185, 186, 371, 459, 482, 496, 503, 505]);
 });
 
 test('the three haste types are separate buckets, not one', SKIP, () => {

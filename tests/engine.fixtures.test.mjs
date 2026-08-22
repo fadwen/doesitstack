@@ -636,3 +636,13 @@ test('a set holding a slow and hastes marks the slow, not the biggest haste', ()
   assert.equal(g.mixed, false, 'there is an answer here, so it is not the no-answer case');
   assert.deepEqual(g.members.map(m => m.applies), [false, false, true]);
 });
+
+test('two slows keep the deepest, because 371 stores the slow as a positive', () => {
+  // The sign convention is inverted against everything else here: a bigger number
+  // is a worse slow, so "furthest from zero" is the one that lands on you.
+  assert.equal(ncPair(371, 40, 371, 80).winner, 'b');
+  const set = [setSpell(1, 'Weak', [1, [371, 30]]), setSpell(2, 'Deep', [2, [371, 80]])];
+  const g = analyzeSet(set).nonCumulative.find(x => x.spa === 371);
+  assert.equal(g.status, 'corroborated');
+  assert.deepEqual(g.members.map(m => m.applies), [false, true]);
+});

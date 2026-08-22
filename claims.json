@@ -227,6 +227,29 @@
       "spa_name": "Damage_Taken_Position_Mod"
     },
     {
+      "id": "non-cumulative/371",
+      "type": "non_cumulative",
+      "spa": 371,
+      "assertion": "Two spells carrying SPA 371 both land, but only one value applies: the largest slow. SPA 371 stores the slow as a positive number, so the value furthest from zero is the deepest slow.",
+      "keep": "magnitude",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "summary": "Reported from play: two SPA 371 slows do not add. The highest slow applies and the rest do nothing while all of them are on.",
+          "source": "Reported directly to this project, August 2026",
+          "who": "Matrim",
+          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the largest into its own `inhibitmelee` field rather than summing \u2014 `if (effect_value > 0 && effect_value > new_bonus->inhibitmelee)`, applied after slow mitigation. It also normalises a negative stored value to positive first, with the comment \"A few spells use negative values (Descriptions all indicate it should be a slow)\". This is a separate field from the SPA 11 haste bucket, so a 371 is not arbitrated against a negative SPA 11 here \u2014 see Known gaps.",
+          "source": "EQEmu/Server zone/bonuses.cpp, the AttackSpeed4 case"
+        }
+      ]
+    },
+    {
       "id": "focus-best-only/all-focus-spas",
       "type": "focus_best_only",
       "slug": "all-focus-spas",

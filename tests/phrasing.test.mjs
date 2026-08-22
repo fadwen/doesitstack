@@ -175,3 +175,13 @@ test('a reference to a spell outside this file stays as the file wrote it', () =
   assert.equal(phrase(slot(113, 1), 1), 'Summon Mount: [Spell 1]');
   assert.match(phrase(slot(373, 6097), 6097), /\[Spell 6097\]/);
 });
+
+test('the two melee slows read differently, because they are different mechanisms', () => {
+  // A negative SPA 11 and a SPA 371 both slow melee, and both read "Decrease Melee
+  // Haste by n%". The (v371) marker is the only thing on the row that tells them
+  // apart, and they combine differently — so it is kept, exactly as the source and
+  // raidloot print it.
+  assert.equal(phrase(slot(371, 40), 40), 'Decrease Melee Haste by 40% (v371, Incremental)');
+  assert.equal(phrase(slot(11, 70), 70), 'Decrease Melee Haste by 30%');
+  assert.equal(phrase(slot(11, 168), 168), 'Increase Melee Haste by 68%');
+});
