@@ -44,6 +44,7 @@ by someone who does not work on it, this project included.
 | Live stacking groups | **`SpellStackingGroups.txt`**, shipped with the client |
 | Field offsets in `spells_us.txt` | [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) |
 | Target type labels | eqspellparser, which is what Lucy's presentation follows |
+| Developer remarks on individual SPAs | eqspellparser's source comments — see below |
 | Level-scaled values and durations | Local base/max/calc, run through EQEmu's and eqspellparser's formula tables |
 | The stacking rules | [EQEmu](https://github.com/EQEmu/Server) — see below |
 
@@ -52,6 +53,39 @@ any of the third-party sources. `npm run verify:data` proves the result end to e
 re-reads `spells_us.txt` with a separate parser that keeps its own field offsets and
 diffs every spell against the built dataset — 2.5 million values, exiting non-zero on a
 single mismatch.
+
+### Where else a developer has spoken
+
+[eqspellparser](https://github.com/rumstil/eqspellparser) is credited above for field offsets,
+but it turns out to be something more useful than a format reference. Across 93 commits to
+`core/SpellData.cs`, its author has been recording **Daybreak developer statements as source
+comments** — nine attributed to Dzarn, some with the forum thread they came from. Those
+threads are largely unreachable now; the comments are not.
+
+Two bear on the rules here, and both are recorded in `claims.json`:
+
+> "SPA 416 functions exactly like SPA 1, it was added so that we could avoid stacking
+> conflicts with only 12 spell slots."
+>
+> — Dzarn, [via eqspellparser case 416](https://github.com/rumstil/eqspellparser/blob/master/core/SpellData.cs), May 2014, citing [forum thread 210028](https://forums.daybreakgames.com/eq/index.php?threads/ac-vs-acv2.210028/)
+
+> "For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs."
+>
+> — Dzarn on SPA 219, via eqspellparser case 219, November 2016
+
+The first explains a pattern visible all over the dataset — `AC_2` (416), `Skill Damage Mod 2`
+(459), `Skill Min_Damage Amt 2` (418), `Contact Ability 2` (419) are duplicate effects that
+exist to dodge slot conflicts. The second is a developer describing cumulative and
+highest-wins behaviour sitting side by side in one effect, taken per bucket.
+
+Both are rated **below primary**: they reach us through a third party's transcription rather
+than from the posts themselves, and the first presupposes the slot rule rather than stating
+it. Anyone who can read those threads and confirm the wording would raise both.
+
+**What eqspellparser does not do is back the six unverified non-cumulative SPAs.** It carries
+no stacking comment for 185, 186, 482 or 505; for 503 its author wrote "similar to 185 but
+with rear arc? stacking?" — his own question mark. A careful parser declining to make the
+claim is worth knowing about.
 
 ### The one rule Daybreak has stated
 
@@ -581,7 +615,9 @@ parse protocol are in [CONTRIBUTING.md](CONTRIBUTING.md) for anyone who wants th
 - **Sancus** — focus effect behaviour, the slot-count limit, and the SPA list
 - [EQEmu/Server](https://github.com/EQEmu/Server) — the stacking algorithm this engine is
   ported from. Corroborating, not authoritative
-- [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) — spell file field layout
+- [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) — spell file field layout,
+  the target type labels players actually use, and a decade of recorded developer statements
+  about individual SPAs that would otherwise be lost with the forum threads they came from
 - [Lucy](https://lucy.allakhazam.com/) — the reference every EverQuest player already trusts
 
 Not affiliated with or endorsed by Daybreak Game Company. EverQuest is a trademark of

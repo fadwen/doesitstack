@@ -210,6 +210,12 @@
           "source": "Daybreak, EverQuest news, \"July Patch Cliff Notes\", 23 July 2015 \u2014 https://www.everquest.com/news/july-patch-cliff-notes"
         },
         {
+          "strength": "strong",
+          "kind": "dev-statement",
+          "summary": "Dzarn, on why SPA 416 duplicates SPA 1: \"SPA 416 functions exactly like SPA 1, it was added so that we could avoid stacking conflicts with only 12 spell slots.\" Same behaviour under a different SPA number to escape a conflict, which only makes sense if a conflict needs a shared effect within the slots. It explains a pattern visible across the dataset: AC_2 (416), Skill Damage Mod 2 (459), Skill Min_Damage Amt 2 (418) and Contact Ability 2 (419) are all duplicates that exist to dodge one. Rated below primary for two reasons: it presupposes the rule rather than stating it, and it reaches us through a third party transcribing a thread that no longer serves to readers, so the wording has not been checked against the original post.",
+          "source": "Dzarn, quoted in rumstil/eqspellparser core/SpellData.cs case 416 (May 2014), citing https://forums.daybreakgames.com/eq/index.php?threads/ac-vs-acv2.210028/"
+        },
+        {
           "strength": "supporting",
           "kind": "implementation",
           "summary": "CheckStackConflict compares effect ids at matching slot indexes, so the same SPA in different slots never collides.",
@@ -420,6 +426,6 @@
     }
   ],
   "notes": {
-    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here."
+    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here. A developer has described the same shape for a specific effect: on SPA 219 (Slay Undead), Dzarn \u2014 \"For stacking, Base1 is cumulative while Base2 takes the highest value between spells or AAs.\" Cumulative and highest-wins sitting in one effect, split across its two values, with the highest taken per bucket. That is independent of the 2015 patch notes above and says the buckets are real; it is about SPA 219 and not about the seven listed here. Relayed by rumstil/eqspellparser (core/SpellData.cs case 219, added November 2016) rather than read from the original post."
   }
 }
