@@ -83,6 +83,24 @@ export const REL_HELP = {
   familiar: 'Granted by a familiar.',
 };
 
+// How a slot is written out. "exact" is what the file says — Daybreak's SPA name
+// and the raw values, which is what a bug report or a claim should quote.
+// "phrased" is the eqspellparser-style reading, easier to read and one step
+// further from the source, which is why exact is the default.
+const READING_KEY = 'doesitstack.reading';
+let reading = 'exact';
+try {
+  const saved = window.localStorage?.getItem(READING_KEY);
+  if (saved === 'phrased' || saved === 'exact') reading = saved;
+} catch { /* storage blocked; the default stands */ }
+
+export const getReading = () => reading;
+export function setReading(next) {
+  reading = next === 'phrased' ? 'phrased' : 'exact';
+  try { window.localStorage?.setItem(READING_KEY, reading); } catch { /* not worth reporting */ }
+  return reading;
+}
+
 export let META = null, INDEX = null;
 const shardCache = new Map(), descCache = new Map();
 

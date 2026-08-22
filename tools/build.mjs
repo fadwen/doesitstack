@@ -27,6 +27,7 @@ import { generate as generateSpaJs } from './gen_spa_js.mjs';
 import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
 import { PRESETS } from '../web/presets.js';
+import { PHRASED } from '../web/phrasing.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -165,6 +166,15 @@ async function main() {
       console.warn(`preset "${preset.name}": ${gone.length} of ${preset.ids.length} spell ids `
                  + `no longer exist in this spell file (${gone.join(', ')}) — they will be skipped`);
   }
+
+  // How much of what people will actually look at has a plain-wording reading.
+  // Reported every build so the gap is a number rather than a feeling.
+  let slotsSeen = 0, slotsPhrased = 0;
+  for (const sp of spells)
+    for (const sl of sp.slots)
+      if (sl) { slotsSeen++; if (PHRASED.has(sl.spa)) slotsPhrased++; }
+  console.log(`plain wording: ${PHRASED.size} effects, covering `
+            + `${(100 * slotsPhrased / slotsSeen).toFixed(1)}% of slots in this file`);
 
   const spaMeta = JSON.parse(fs.readFileSync(path.join(HERE, 'spa_meta.json'), 'utf8'));
 

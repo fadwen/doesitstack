@@ -1,9 +1,10 @@
 import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
+import { phrase } from './phrasing.js';
 import {
   $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, load as loadData,
-  F_AURA, lasts,
+  F_AURA, lasts, getReading, setReading,
 } from './data.js';
 
 let META, INDEX;
@@ -24,6 +25,9 @@ async function boot() {
   for (const side of ['a', 'b']) wirePicker(side);
   $('#swap').onclick = () => { const t = picked.a; picked.a = picked.b; picked.b = t; syncAll(); };
   for (const id of ['#f-buffs', '#f-benef', '#lvl']) $(id).addEventListener('change', refresh);
+  const phraseBox = $('#f-phrase');
+  phraseBox.checked = getReading() === 'phrased';
+  phraseBox.addEventListener('change', () => { setReading(phraseBox.checked ? 'phrased' : 'exact'); render(); });
   if (META.repo_url) $('#repo-link').href = META.repo_url;
   window.addEventListener('hashchange', fromHash);
   await fromHash();
@@ -607,11 +611,20 @@ function slotCell(sp, i, lvl, mark) {
   const td = el('td');
   const head = el('div', 'slot-head');
   head.appendChild(el('span', 'slotno', String(i + 1)));
-  const name = el('span', mark ? 'nc-' + mark : null, META.spa_names[s.spa] || `SPA ${s.spa}`);
+  const v = calcValue(sp, i, lvl);
+  const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
+
+  const name = el('span', mark ? 'nc-' + mark : null, said || META.spa_names[s.spa] || `SPA ${s.spa}`);
   if (mark) name.title = MARK_TITLE[mark];
   head.appendChild(name);
+  // Say when there is no phrasing rather than quietly showing the exact name and
+  // letting it read as one. About 7% of slots are in this state.
+  if (getReading() === 'phrased' && !said) {
+    const nb = el('span', 'badge rel', 'as-is');
+    nb.title = 'No plain wording for this effect yet — showing the name from the spell file.';
+    head.appendChild(nb);
+  }
   td.appendChild(head);
-  const v = calcValue(sp, i, lvl);
   td.appendChild(el('div', 'spa', `SPA ${s.spa} · base ${s.base1}${s.base2 ? ' / ' + s.base2 : ''}${s.max ? ' · max ' + s.max : ''} · value ${v}`));
   return td;
 }

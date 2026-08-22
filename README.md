@@ -312,6 +312,37 @@ that would look far more authoritative than its evidence. Burn output also depen
 AAs, recast timers and the encounter, none of which is in the spell file — that is a
 simulator, not a stacking checker. A test asserts `analyzeSet` returns no score.
 
+## Two ways to read a slot
+
+The slot table shows what the file says: Daybreak's SPA name and the raw values.
+That is exact, and it is what a bug report or a claim should quote. It is also close to
+unreadable unless you already know the SPAs.
+
+**Plain wording** on either page switches to a phrased reading:
+
+| Exact | Plain wording |
+| --- | --- |
+| `Ff_ResistType` · SPA 135 · base 2 | Limit Resist: Fire |
+| `Ff_TargetType` · SPA 136 · base -2 | Limit Target: Exclude Caster AE |
+| `Ff_LevelMax` · SPA 134 · base 130 / 5 | Limit Max Level: 130 (lose 5% per level) |
+| `Fc_Damage_%` · SPA 124 · base 33 | Increase Spell Damage by 33% |
+| `StackingBlocker` · SPA 148 | Block new spell if slot 2 is 'AC' and < 500 |
+
+The phrasing is ported from [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser),
+Apache 2.0, and is a **third-party reading** — the same standing as the target-type labels.
+That is why the exact view is the default and this one has to be asked for. The choice is
+remembered in your browser.
+
+**217 effects have a phrasing, covering 93% of the slots in the current spell file**, and
+the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
+slot keeps its exact name and is marked **as-is** — never a guess. The raw
+`SPA n · base x · value y` line is always shown underneath, in both readings.
+
+Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
+than eqspellparser's own enum, so the two readings never disagree about what an effect is
+called; and in the exact reading a repeated limiter collapses to `TargetType ×5`, while
+in plain wording it does not, because there each one says something different.
+
 ## Searching
 
 The search box filters by name or spell id, narrowed by two things:
@@ -564,6 +595,8 @@ web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
 web/saved.js                       named sets in browser storage, pure and testable
 web/presets.js                     buff sets that ship with the site
+web/phrasing.js                    the plain-wording reading of a slot, ported from eqspellparser
+web/enums.js                       its lookup tables (Apache 2.0, see LICENSE-eqspellparser.txt)
 web/freshness.js                   how stale the shipped data is
 web/og.png                         1200x630 share card
 web/robots.txt, web/sitemap.xml    crawl metadata, address filled in at build time
@@ -616,8 +649,10 @@ parse protocol are in [CONTRIBUTING.md](CONTRIBUTING.md) for anyone who wants th
 - [EQEmu/Server](https://github.com/EQEmu/Server) — the stacking algorithm this engine is
   ported from. Corroborating, not authoritative
 - [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser) — spell file field layout,
-  the target type labels players actually use, and a decade of recorded developer statements
-  about individual SPAs that would otherwise be lost with the forum threads they came from
+  the target type labels players actually use, the plain-wording slot descriptions ported
+  here under Apache 2.0 (see [LICENSE-eqspellparser.txt](LICENSE-eqspellparser.txt)), and a
+  decade of recorded developer statements about individual SPAs that would otherwise be lost
+  with the forum threads they came from
 - [Lucy](https://lucy.allakhazam.com/) — the reference every EverQuest player already trusts
 
 Not affiliated with or endorsed by Daybreak Game Company. EverQuest is a trademark of

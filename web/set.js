@@ -10,9 +10,11 @@ import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, LUCY, F_BENEFICIAL, row,
   KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
+  getReading, setReading,
 } from './data.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 import { PRESETS, findPreset } from './presets.js';
+import { phrase } from './phrasing.js';
 
 let META, INDEX;
 const chosen = [];                                     // spells, in the order added
@@ -39,6 +41,9 @@ async function boot() {
   wirePicker();
   $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; sync(); };
   $('#lvl').addEventListener('change', render);
+  const phraseBox = $('#f-phrase');
+  phraseBox.checked = getReading() === 'phrased';
+  phraseBox.addEventListener('change', () => { setReading(phraseBox.checked ? 'phrased' : 'exact'); render(); });
   for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunSearch);
   $('#why-no-score').textContent = NO_SCORE;
   if (META.repo_url) $('#repo-link').href = META.repo_url;
@@ -464,17 +469,30 @@ function focusGroup(g) {
       // A focus often carries the same limiter several times over — five
       // Ff_TargetType slots naming five allowed targets. Five identical chips
       // say less than one chip and a count, with the values in the tooltip.
-      const byName = new Map();
-      for (const l of m.limiters) {
-        if (!byName.has(l.spa)) byName.set(l.spa, { ...l, values: [] });
-        byName.get(l.spa).values.push(l.base1);
-      }
       const lim = el('div', 'limiters');
-      for (const l of byName.values()) {
-        const label = l.name.replace(/^Ff_/, '');
-        const chip = el('span', 'badge rel', l.values.length > 1 ? `${label} ×${l.values.length}` : label);
-        chip.title = `${l.name} (SPA ${l.spa}) · ${l.values.length > 1 ? 'values' : 'base'} ${l.values.join(', ')}`;
-        lim.appendChild(chip);
+      if (getReading() === 'phrased') {
+        // Each limiter says something different, so there is nothing to collapse —
+        // "Limit Target: Exclude Caster AE" and "Exclude Caster PB" are the point.
+        for (const l of m.limiters) {
+          const said = phrase({ spa: l.spa, base1: l.base1, base2: l.base2, calc: 100, max: 0 }, l.base1, META.spa_names);
+          const chip = el('span', 'badge rel', said || l.name);
+          chip.title = `${l.name} (SPA ${l.spa}) · base ${l.base1}`;
+          lim.appendChild(chip);
+        }
+      } else {
+        // Exact reading: the same limiter often repeats, and five identical chips
+        // say less than one chip and a count.
+        const byName = new Map();
+        for (const l of m.limiters) {
+          if (!byName.has(l.spa)) byName.set(l.spa, { ...l, values: [] });
+          byName.get(l.spa).values.push(l.base1);
+        }
+        for (const l of byName.values()) {
+          const label = l.name.replace(/^Ff_/, '');
+          const chip = el('span', 'badge rel', l.values.length > 1 ? `${label} ×${l.values.length}` : label);
+          chip.title = `${l.name} (SPA ${l.spa}) · ${l.values.length > 1 ? 'values' : 'base'} ${l.values.join(', ')}`;
+          lim.appendChild(chip);
+        }
       }
       li.appendChild(lim);
     } else {
