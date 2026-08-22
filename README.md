@@ -310,10 +310,13 @@ that is a different question, and the claims answering it are typed `bonus_bucke
 | --- | --- |
 | `slow-cancels-haste` | **corroborated** — a slow removes haste entirely rather than netting off against it |
 | `haste-types-add` | **confirmed** — SPA 119 is overhaste, a separate bucket that adds on top of the SPA 11 melee haste; within either, the highest applies. Battlecry of the Vah Shir says "cumulative with most other effects that increase attack speed", and of the 152 spells whose description uses the word *overhaste*, all 152 carry SPA 119 and none carries SPA 371 |
-| `inhibit-melee-beats-haste` | **disputed** — SPA 371 against any SPA 11 haste is reported from play as 371 winning outright, where EQEmu subtracts the inhibit from the haste (`h += spellbonuses.haste - spellbonuses.inhibitmelee`) and only lets it dominate when there is no SPA 11 haste at all. Its own recorded parse reads `68 v1 + 46 item + 25 over + 35 inhib = 204%`. The two accounts agree on the no-haste case, so neither side is taken here |
 
-SPA 371 is not in the non-cumulative list and is not modelled: it is a cross-SPA
-interaction, and everything here is deliberately per-SPA and never merged across them.
+SPA 371 is Daybreak's `Slow` — a second slow mechanism, separate from a negative SPA 11,
+which EQEmu keeps in its own `inhibitmelee` field and combines differently again: it
+subtracts from a positive SPA 11 haste rather than replacing it, and only cancels
+everything when there is no SPA 11 haste at all. None of that is modelled here — 371 is
+not in the non-cumulative list, and a 371 against an 11 is a cross-SPA interaction, where
+everything in this tool is deliberately per-SPA and never merged.
 
 Values are compared at the caster levels you asked about, so which one applies can change
 when you change the level. Ties mark neither side as losing out.
@@ -787,14 +790,18 @@ tests/                             node:test — fixtures and claims run anywher
 - Caster level is a single input applied to both spells; the game tracks it per buff.
   It defaults to 130, the live cap — raise `MAX_PLAYER_LEVEL` in `tools/spells.mjs` on
   the expansion that raises it, and everything else follows from there.
-- Nine of the ten non-cumulative SPAs rest on uncited EQEmu implementation rather than
-  any primary source. See above, and `claims.json` for each one.
+- Eight of the eleven non-cumulative SPAs rest on uncited EQEmu implementation rather
+  than any primary source. See above, and `claims.json` for each one.
 - Most stacking rules are `unverified` for the same reason. The biggest remaining one is
   `slot-strength` — that an incoming spell must be at least as strong on **every** shared
   slot or be refused outright. Daybreak has stated the slot-index half (see below) but
   not this, and settling it would be the single most valuable contribution here.
-- Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max", not
-  Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
+- SPA 371 (`Slow`) is not modelled at all: not in the non-cumulative list, and its
+  interaction with SPA 11 haste is cross-SPA, which nothing here does. EQEmu treats it as
+  a separate `inhibitmelee` bucket that subtracts from haste rather than replacing it.
+- Plain wording covers 93.4% of the slots in the current file. The 221 effects without it
+  read as the name in the spell file and are marked **as-is**; `tools/phrasing_todo.mjs`
+  lists them worst-first.
 - **Unattributed** is still a residual — 17,656 rows nothing explains. The item
   database shrank the old "Item / other" bucket by a third; the rest is genuinely
   unaccounted for, and calling it "probably a clicky" would be a guess.

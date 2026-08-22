@@ -582,33 +582,6 @@
           "source": "EQEmu/Server zone/client_mods.cpp Client::CalcHaste, and zone/bonuses.cpp for the per-field accumulation"
         }
       ]
-    },
-    {
-      "id": "bonus-bucket/inhibit-melee-beats-haste",
-      "type": "bonus_bucket",
-      "spas": [
-        11,
-        371
-      ],
-      "slug": "inhibit-melee-beats-haste",
-      "assertion": "SPA 371 (Inhibit Melee) wins against any SPA 11 haste \u2014 the haste does not apply.",
-      "evidence": [
-        {
-          "strength": "strong",
-          "kind": "practitioner",
-          "summary": "Reported from play: SPA 371 against any SPA 11 haste, the 371 wins.",
-          "source": "Reported directly to this project, August 2026",
-          "who": "Matrim",
-          "standing": "Maintainer of this project, reporting behaviour observed on his level 130 character in the live game. Self-reported by the maintainer, which a reviewer should weigh: it is first-hand and reproducible by anyone with the buffs to hand, but it has not been independently parsed. Credited by character name at his request."
-        },
-        {
-          "strength": "supporting",
-          "kind": "implementation",
-          "refutes": true,
-          "summary": "EQEmu contradicts this where a SPA 11 haste is present: it subtracts the inhibit from the haste rather than replacing it \u2014 `h += spellbonuses.haste - spellbonuses.inhibitmelee` \u2014 and only lets the inhibit dominate when there is no SPA 11 haste at all. Its own recorded parse reads \"68 v1 + 46 item + 25 over + 35 inhib = 204%\" and concludes \"inhib will only negate all other hastes if you don\u2019t have v1\". The two accounts agree on the no-haste case and disagree on the case named here, so neither side is taken.",
-          "source": "EQEmu/Server zone/client_mods.cpp Client::CalcHaste, and the parse recorded in the comment above it"
-        }
-      ]
     }
   ],
   "notes": {
