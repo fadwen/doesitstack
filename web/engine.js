@@ -59,6 +59,24 @@ export const hasEffect     = (sp, spa) => (sp.slots || []).some(s => s && s.spa 
 
 // SPA 10 with base 0 and calc 100 is the client's "spacer"; 148/149 are commands,
 // not effects. All three are invisible to the slot-by-slot comparison.
+/**
+ * A slot with nothing in it for a reader.
+ *
+ * Deliberately narrower than isBlankSlot below. That one answers "does this
+ * take part in arbitration", and includes SPA 148 and 149 — which are the most
+ * informative rows in a slot table, not the least. Hiding a stacking blocker to
+ * tidy the display would remove the very thing most verdicts turn on.
+ *
+ * Only the client's spacer qualifies: SPA 10, base 0, calc 100. The 42 slots in
+ * the file with base 0 and some other calc are left visible, since a formula
+ * that is not the flat one may do something.
+ */
+export const isEmptySlot = (sp, i) => {
+  const s = slotOf(sp, i);
+  if (!s || s.spa === SPA.Blank) return true;
+  return s.spa === SPA.CHA && s.base1 === 0 && s.calc === 100;
+};
+
 export function isBlankSlot(sp, i) {
   const s = slotOf(sp, i);
   if (!s || s.spa === SPA.Blank) return true;

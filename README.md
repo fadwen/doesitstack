@@ -356,6 +356,22 @@ somebody came here to find out and `Ff_ResistType` is not:
 | `Fc_Damage_%` · SPA 124 · base 33 | Increase Spell Damage by 33% |
 | `StackingBlocker` · SPA 148 | Block new spell if slot 2 is 'AC' and < 500 |
 
+**Show hidden rows** brings back what the slot table leaves out. Only one thing qualifies
+today — the client's spacer slots, SPA 10 with base 0 and calc 100, of which there are
+90,871 in the file and nine in a single shaman epic click. The switch is named for the
+general case so anything else omitted later lands under it.
+
+Nothing is dropped silently: the table says how many rows it left out and offers to show
+them, because slot numbers jump when rows disappear and a reader should be told why. A row
+is only dropped when **both** spells are empty at that index — a spacer opposite a real
+effect keeps its row, with the cell reading *empty slot*.
+
+The rule is deliberately not "the value is zero". **39.5% of slots compute to zero**,
+including all 1,448 `StackingBlocker` slots, which are the single most informative rows in
+the table. There is a separate `isEmptySlot` for the display rather than reusing the
+engine's `isBlankSlot`, which counts 148 and 149 as blank because they take no part in
+arbitration — a different question with a very different answer.
+
 **SPA names** on either page switches back to the left-hand column. That matters more than
 it sounds: the phrasing is ported from
 [rumstil/eqspellparser](https://github.com/rumstil/eqspellparser), Apache 2.0, and is a

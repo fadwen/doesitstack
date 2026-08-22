@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
-import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration } from '../web/engine.js';
+import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration, isEmptySlot, isBlankSlot } from '../web/engine.js';
 import { isAuraEffect, classify, SPELL_REF_FIELDS } from '../tools/spells.mjs';
 import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
@@ -538,4 +538,40 @@ test('a spell haste and a bard haste are left alone', () => {
   };
   const r = analyzeSet([mk(1, 11, 0), mk(2, 98, 3), mk(3, 119, 5)]);
   assert.deepEqual(r.nonCumulative, [], 'three different haste types share nothing');
+});
+
+
+// --- rows worth drawing -----------------------------------------------------
+
+test('a stacking blocker is never treated as an empty row', () => {
+  // isBlankSlot includes 148 and 149 because they take no part in arbitration.
+  // isEmptySlot must not, or tidying the display would delete the single most
+  // informative row in a slot table — 1,448 slots in the file carry SPA 148.
+  const sp = { id: 1, name: 'Blocker', slots: [
+    { spa: 148, base1: 1, base2: 2, calc: 100, max: 500 },
+    { spa: 149, base1: 1, base2: 2, calc: 100, max: 500 },
+  ] };
+  assert.equal(isEmptySlot(sp, 0), false);
+  assert.equal(isEmptySlot(sp, 1), false);
+  assert.equal(isBlankSlot(sp, 0), true, 'still invisible to arbitration, which is a different question');
+});
+
+test('only the client spacer counts as an empty row', () => {
+  const sp = { id: 1, name: 'Mixed', slots: [
+    { spa: 10, base1: 0, base2: 0, calc: 100, max: 0 },    // the spacer
+    { spa: 10, base1: 40, base2: 0, calc: 100, max: 0 },   // real charisma
+    { spa: 10, base1: -30, base2: 0, calc: 100, max: 0 },  // a charisma debuff
+    { spa: 10, base1: 0, base2: 0, calc: 3000, max: 0 },   // base 0 but a scaling formula
+    { spa: 1, base1: 0, base2: 0, calc: 100, max: 0 },     // some other effect at zero
+  ] };
+  assert.equal(isEmptySlot(sp, 0), true);
+  assert.equal(isEmptySlot(sp, 1), false);
+  assert.equal(isEmptySlot(sp, 2), false, 'a debuff is not an empty row');
+  assert.equal(isEmptySlot(sp, 3), false, 'a formula that is not the flat one may do something');
+  assert.equal(isEmptySlot(sp, 4), false, 'value zero is not the test — 39% of slots compute to zero');
+});
+
+test('a missing slot is empty', () => {
+  assert.equal(isEmptySlot({ id: 1, slots: [null] }, 0), true);
+  assert.equal(isEmptySlot({ id: 1, slots: [] }, 3), true);
 });

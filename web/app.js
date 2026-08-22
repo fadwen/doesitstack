@@ -1,10 +1,10 @@
-import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, slotOf, SPA } from './engine.js';
+import { checkBoth, checkStack, calcValue, isBardSong, isGroupSpell, isEmptySlot, slotOf, SPA } from './engine.js';
 import { dataAge, itemDataAge } from './freshness.js';
 import { phrase } from './phrasing.js';
 import {
   $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, load as loadData,
-  F_AURA, lasts, getReading, setReading,
+  F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden,
 } from './data.js';
 
 let META, INDEX;
@@ -30,6 +30,10 @@ async function boot() {
   const exactBox = $('#f-exact');
   exactBox.checked = getReading() === 'exact';
   exactBox.addEventListener('change', () => { setReading(exactBox.checked ? 'exact' : 'phrased'); render(); });
+
+  const hiddenBox = $('#f-hidden');
+  hiddenBox.checked = getShowHidden();
+  hiddenBox.addEventListener('change', () => { setShowHidden(hiddenBox.checked); render(); });
   if (META.repo_url) $('#repo-link').href = META.repo_url;
   window.addEventListener('hashchange', fromHash);
   await fromHash();
@@ -538,9 +542,14 @@ function renderDetail(a, b, res, lvl) {
 
   // Live spells run well past twelve slots; show every slot either one uses.
   const span = Math.max(a.slots?.length || 0, b.slots?.length || 0);
+  // A row is only dropped when it is empty on BOTH sides — a spacer opposite a
+  // real effect still has to be drawn, or the two columns stop lining up.
+  const showHidden = getShowHidden();
+  let hiddenRows = 0;
   for (let i = 0; i < span; i++) {
     const sa = slotOf(a, i), sb = slotOf(b, i);
     if (!sa && !sb) continue;
+    if (!showHidden && isEmptySlot(a, i) && isEmptySlot(b, i)) { hiddenRows++; continue; }
     const tr = el('tr');
     tr.appendChild(slotCell(a, i, lvl, marks.a.get(i)));
     tr.appendChild(slotCell(b, i, lvl, marks.b.get(i)));
@@ -561,6 +570,16 @@ function renderDetail(a, b, res, lvl) {
   const scroller = el('div', 'table-scroll');
   scroller.appendChild(t);
   d.appendChild(scroller);
+  // Never omit anything silently — the slot numbers jump, and a reader should be
+  // told why rather than left to work it out.
+  if (hiddenRows) {
+    const note = el('p', 'legend',
+      `${hiddenRows} row${hiddenRows === 1 ? '' : 's'} hidden — both spells have an empty slot there. `);
+    const show = el('button', 'linkish', 'Show them');
+    show.onclick = () => { setShowHidden(true); $('#f-hidden').checked = true; render(); };
+    note.appendChild(show);
+    d.appendChild(note);
+  }
   const legend = nonCumulativeLegend(marks);
   if (legend) d.appendChild(legend);
 
@@ -617,18 +636,24 @@ function ruleProvenance(rules) {
 function slotCell(sp, i, lvl, mark) {
   const s = slotOf(sp, i);
   if (!s) return el('td', 'empty-slot', '—');
+  // A spacer opposite a real effect keeps its row for alignment, but the cell
+  // itself should read as nothing rather than as "CHA, base 0, no phrasing".
+  if (isEmptySlot(sp, i) && !getShowHidden()) return el('td', 'empty-slot', '—');
   const td = el('td');
   const head = el('div', 'slot-head');
   head.appendChild(el('span', 'slotno', String(i + 1)));
   const v = calcValue(sp, i, lvl);
   const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
 
-  const name = el('span', mark ? 'nc-' + mark : null, said || META.spa_names[s.spa] || `SPA ${s.spa}`);
-  if (mark) name.title = MARK_TITLE[mark];
+  const empty = isEmptySlot(sp, i);
+  const name = el('span', empty ? 'empty-name' : (mark ? 'nc-' + mark : null),
+    empty ? 'empty slot' : (said || META.spa_names[s.spa] || `SPA ${s.spa}`));
+  if (mark && !empty) name.title = MARK_TITLE[mark];
   head.appendChild(name);
   // Say when there is no phrasing rather than quietly showing the exact name and
-  // letting it read as one. About 7% of slots are in this state.
-  if (getReading() === 'phrased' && !said) {
+  // letting it read as one. About 7% of slots are in this state — a spacer is
+  // not one of them, it is understood perfectly and simply says nothing.
+  if (getReading() === 'phrased' && !said && !empty) {
     const nb = el('span', 'badge rel', 'as-is');
     nb.title = 'No plain wording for this effect yet — showing the name from the spell file.';
     head.appendChild(nb);

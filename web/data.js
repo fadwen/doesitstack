@@ -109,6 +109,22 @@ export function setReading(next) {
   return reading;
 }
 
+// Rows the slot table leaves out because they say nothing — today that is the
+// client's spacer slots and nothing else, but the control is named for the
+// general case so anything else omitted later lands under the same switch.
+const HIDDEN_KEY = 'doesitstack.showHidden';
+let showHidden = false;
+try {
+  showHidden = window.localStorage?.getItem(HIDDEN_KEY) === '1';
+} catch { /* storage blocked; the default stands */ }
+
+export const getShowHidden = () => showHidden;
+export function setShowHidden(next) {
+  showHidden = !!next;
+  try { window.localStorage?.setItem(HIDDEN_KEY, showHidden ? '1' : '0'); } catch { /* not worth reporting */ }
+  return showHidden;
+}
+
 export let META = null, INDEX = null;
 const shardCache = new Map(), descCache = new Map();
 
