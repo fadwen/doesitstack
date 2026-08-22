@@ -13,7 +13,7 @@ import { NON_CUMULATIVE_SPA, MAX_PLAYER_LEVEL } from '../web/spa.js';
 const SAVAGE_SPIRIT_17 = 70855;   // Berserker AA "Savage Spirit" rank 17
 const PROPHETS_GIFT    = 6273;    // Shaman epic 2.0 click
 
-test('the two effects Jeff asked about land together', SKIP, () => {
+test('the two effects this project started from land together', SKIP, () => {
   const a = spell(PROPHETS_GIFT), b = spell(SAVAGE_SPIRIT_17);
   const r = checkBoth(a, b);
   assert.equal(r.xThenY.verdict, 'independent');
