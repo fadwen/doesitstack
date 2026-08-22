@@ -12,6 +12,7 @@ import {
   KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
 } from './data.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
+import { PRESETS, findPreset } from './presets.js';
 
 let META, INDEX;
 const chosen = [];                                     // spells, in the order added
@@ -43,6 +44,11 @@ async function boot() {
   if (META.repo_url) $('#repo-link').href = META.repo_url;
   window.addEventListener('hashchange', fromHash);
   await fromHash();
+  // fromHash returns early when the hash already matches what is loaded, which on
+  // a first visit with no hash means "nothing to do" — so nothing had ever drawn
+  // the set list. Harmless while an empty page really was empty; not once presets
+  // needed to be on it.
+  render();
 }
 
 const NO_SCORE =
@@ -144,7 +150,11 @@ async function add(id) {
 // ---------- saved sets ------------------------------------------------------
 
 const ids = () => chosen.map(s => s.id);
-const baseline = () => (loadedFrom ? findSet(saved, loadedFrom) : null);
+// A personal set shadows a preset of the same name — yours wins for you, and the
+// preset is untouched for everyone else.
+const anySet = (name) => findSet(saved, name) || findPreset(name);
+const baseline = () => (loadedFrom ? anySet(loadedFrom) : null);
+const isPreset = (name) => !findSet(saved, name) && !!findPreset(name);
 const drifted = () => { const b = baseline(); return b ? !sameSet(b.ids, ids()) : false; };
 
 function persist(next) {
@@ -167,7 +177,7 @@ const saveAs = (name) => {
 };
 
 async function loadSet(name) {
-  const s = findSet(saved, name);
+  const s = anySet(name);
   if (!s) return;
   chosen.length = 0;
   for (const id of s.ids) {
@@ -242,7 +252,26 @@ function render() {
 
 function renderSaved() {
   const box = $('#saved'); box.innerHTML = '';
-  if (!saved.length && !chosen.length) return;
+  if (!saved.length && !chosen.length && !PRESETS.length) return;
+
+  if (PRESETS.length) {
+    const row = el('div', 'frow');
+    row.appendChild(el('span', 'flabel', 'Sets'));
+    const chips = el('div', 'chips');
+    for (const p of PRESETS) {
+      // Hidden once you have saved your own under the same name — at that point
+      // the chip below is yours and loading the original would be confusing.
+      if (findSet(saved, p.name)) continue;
+      const wrap = el('span', 'setchip' + (p.name === loadedFrom ? ' on' : ''));
+      const open = el('button', 'setchip-name as-button', `${p.name} (${p.ids.length})`);
+      open.title = p.note ? `${p.note}\n\nLoad it, change it, and you can always get back.` : `Load ${p.name}`;
+      open.onclick = () => loadSet(p.name);
+      wrap.appendChild(open);
+      wrap.appendChild(el('span', 'setchip-tag', 'built in'));
+      chips.appendChild(wrap);
+    }
+    if (chips.children.length) { row.appendChild(chips); box.appendChild(row); }
+  }
 
   const rowEl = el('div', 'frow');
   rowEl.appendChild(el('span', 'flabel', 'Saved'));
@@ -288,7 +317,11 @@ function renderSaved() {
       `Changed from ${b.name} — ${n > 0 ? `${n} added` : n < 0 ? `${-n} removed` : 'same size, different spells'}.`));
     const revert = el('button', 'chip wide', `Revert to ${b.name}`);
     revert.onclick = () => loadSet(b.name);
-    const update = el('button', 'chip wide', `Update ${b.name}`);
+    const own = isPreset(b.name);
+    const update = el('button', 'chip wide', own ? 'Save my version' : `Update ${b.name}`);
+    update.title = own
+      ? `Keeps your own copy under this name. It takes precedence for you and leaves the built-in set alone.`
+      : `Overwrite ${b.name} with what is on screen.`;
     update.onclick = () => saveAs(b.name);
     note.appendChild(revert);
     note.appendChild(update);

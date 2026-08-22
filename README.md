@@ -238,6 +238,21 @@ Two things come out of it:
   that needs per-cast context this tool does not have, so it shows them and leaves the
   judgement to you.
 
+### Sets that ship with the site
+
+[`web/presets.js`](web/presets.js) carries buff sets built into the page, so someone
+arriving with no idea what to type has something real to look at. **Common level 130
+buffs** is the shipped one — 23 effects a level 130 character typically has on in a raid.
+
+A preset behaves like a saved set once loaded: change it and you are offered the way back.
+Saving over its name keeps a **personal copy that takes precedence for you** and leaves
+the built-in set alone for everyone else.
+
+Spell ids are stable for a given spell, but a buff line gets new ids as new ranks ship, so
+a preset decays as the game moves on. The build checks every preset id against the dataset
+and names the ones that no longer resolve — otherwise the failure mode is a set that
+quietly shrinks and nobody notices.
+
 ### Saving a set
 
 A raid set is worth building once. Name it and it is kept in **that browser**, so you can
@@ -514,6 +529,7 @@ web/data.js                        loading and searching the dataset, shared by 
 web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
 web/saved.js                       named sets in browser storage, pure and testable
+web/presets.js                     buff sets that ship with the site
 web/freshness.js                   how stale the shipped data is
 web/og.png                         1200x630 share card
 web/robots.txt, web/sitemap.xml    crawl metadata, address filled in at build time

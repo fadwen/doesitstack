@@ -26,6 +26,7 @@ import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs } from './gen_spa_js.mjs';
 import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
+import { PRESETS } from '../web/presets.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
@@ -153,6 +154,17 @@ async function main() {
     sp.items ? sp.items.mask : 0,
   ]);
   writeJson(path.join(dataDir, 'index.json'), index);
+
+  // Preset sets ship with the site, so a spell id that stops resolving makes one
+  // quietly shrink rather than fail. Say so at build time — this is the only
+  // moment anybody would notice.
+  const known = new Set(spells.map(sp => sp.id));
+  for (const preset of PRESETS) {
+    const gone = preset.ids.filter(id => !known.has(id));
+    if (gone.length)
+      console.warn(`preset "${preset.name}": ${gone.length} of ${preset.ids.length} spell ids `
+                 + `no longer exist in this spell file (${gone.join(', ')}) — they will be skipped`);
+  }
 
   const spaMeta = JSON.parse(fs.readFileSync(path.join(HERE, 'spa_meta.json'), 'utf8'));
 
