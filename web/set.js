@@ -438,10 +438,14 @@ function groupShell(cls, title, subtitle) {
 }
 
 function nonCumulativeGroup(g) {
-  const n = groupShell('note-doubt', `${g.members.length} carry ${g.name}`,
-    g.confirmed
-      ? 'These do not add. The game keeps the larger value, so the rest are doing nothing while all of them are up.'
-      : 'These do not add — only one value counts. Which one is unverified, so none is marked as the one that applies.');
+  const status = META.claims?.[g.spa]?.status || 'unverified';
+  const said = {
+    confirmed: 'These do not add. The game keeps the larger value, so the rest are doing nothing while all of them are up.',
+    disputed: 'These are reported not to add, with only one value counting — but the sources disagree, and the EQEmu server adds them instead. Neither side is taken here.',
+    corroborated: 'These do not add — only one value counts. Which one is not settled, so none is marked as the one that applies.',
+    unverified: 'These do not add — only one value counts. Which one is unverified, so none is marked as the one that applies.',
+  }[status];
+  const n = groupShell('note-doubt', `${g.members.length} carry ${g.name}`, said);
   const ul = el('ul', 'group-members');
   for (const m of g.members) {
     // Same language as the pair view's slot table, so the colours mean one thing

@@ -245,3 +245,25 @@ test('the proc exceptions match how Daybreak names them', async () => {
   // 340 is not a focus at all, so excepting it is a no-op rather than a claim
   assert.doesNotMatch(db[340], /^(Fc_|Ff_)/);
 });
+
+test('a claim the sources disagree about is disputed, not merely unverified', () => {
+  // SPA 3: reported from play as highest-wins, while EQEmu adds the values.
+  // "Unverified" would have been wrong in a specific way — it says the claim
+  // rests on EQEmu, when EQEmu is the side arguing against it.
+  const mv = doc.claims.find(c => c.spa === 3);
+  assert.ok(mv, 'movement speed should be recorded');
+  assert.equal(mv.status, 'disputed');
+  const refuting = mv.evidence.filter(e => e.refutes);
+  assert.equal(refuting.length, 1);
+  assert.equal(refuting[0].kind, 'implementation');
+  assert.ok(mv.evidence.some(e => e.kind === 'practitioner' && !e.refutes));
+});
+
+test('the mount exception is written down rather than modelled', () => {
+  // A mount overrides a movement buff outright, and Holy Steed carries only
+  // SPA 113 with no SPA 3 — so it is not in the spell file and cannot be.
+  const note = doc.notes?.movement_and_mounts;
+  assert.ok(note, 'the mount caveat must be recorded');
+  assert.match(note, /113/);
+  assert.match(note, /cannot|could not/i);
+});

@@ -177,13 +177,18 @@ test('every indexed spell has a known kind', SKIP, () => {
 
 // --- non-cumulative effects -------------------------------------------------
 
-test('the non-cumulative list matches what EQEmu treats as highest-wins', SKIP, () => {
-  // zone/bonuses.cpp keeps the larger magnitude for these instead of summing.
-  // 11, 98 and 119 were missed on the first pass: haste is accumulated in a
-  // different switch from the effects that produced the rest of the list, so a
-  // reader following the damage modifiers never reaches it. Four buffs in one
-  // raid set carried SPA 11 and the site said nothing doubled up.
-  assert.deepEqual(NON_CUMULATIVE_SPA, [11, 98, 119, 185, 186, 459, 482, 496, 503, 505]);
+test('the non-cumulative list is what is claimed, not only what EQEmu implements', SKIP, () => {
+  // Most of these come from zone/bonuses.cpp keeping the larger magnitude where
+  // an ordinary bonus uses +=. 11, 98 and 119 were missed on the first pass —
+  // haste is accumulated in a different switch from the damage modifiers, so a
+  // reader following those never reaches it, and a raid set with four haste
+  // buffs reported that nothing doubled up.
+  //
+  // SPA 3 is here for the opposite reason: EQEmu *adds* movement speed, and the
+  // claim is a player report that contradicts it. The list is every effect
+  // claimed to be non-cumulative, whatever the status of that claim, because the
+  // site has to raise the overlap before it can say how sure it is.
+  assert.deepEqual(NON_CUMULATIVE_SPA, [3, 11, 98, 119, 185, 186, 459, 482, 496, 503, 505]);
 });
 
 test('the three haste types are separate buckets, not one', SKIP, () => {

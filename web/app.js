@@ -331,11 +331,18 @@ function nonCumulativeNote(overlaps) {
   const n = el('div', 'note');
   const names = [...new Set(overlaps.map(x => x.name))].join(', ');
   const spas = [...new Set(overlaps.map(x => x.spa))];
-  const unverified = spas.filter(s => !META.non_cumulative_confirmed.includes(s));
+  const statusOf = (spa) => META.claims?.[spa]?.status || 'unverified';
+  const unverified = spas.filter(s => statusOf(s) === 'unverified');
+  const disputed = spas.filter(s => statusOf(s) === 'disputed');
 
   let text = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
   if (unverified.length)
     text += ` Treat that as unverified for SPA ${unverified.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which nothing in that project backs up, and the game's own spell text never calls these non-cumulative.`;
+  // A disputed claim is not a weaker unverified one — the sources actively
+  // disagree, and saying "unverified because EQEmu says so" would be backwards
+  // when EQEmu is the side saying they do add.
+  if (disputed.length)
+    text += ` For SPA ${disputed.join(', ')} the sources disagree: it is reported this way from play, while the EQEmu server adds the values instead. Neither side is being taken here — see the evidence below.`;
   n.appendChild(el('p', null, text));
 
   const d = el('details', 'evidence');

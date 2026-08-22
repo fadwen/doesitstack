@@ -204,11 +204,12 @@ A handful of SPAs land on you together but are not added together; the game keep
 larger value. The tool warns when a stacking pair shares one, and shows the evidence
 behind the warning — because the evidence differs sharply between them.
 
-Ten qualify, identified from `zone/bonuses.cpp` in EQEmu, where they keep the larger
-magnitude instead of the `+=` an ordinary bonus uses: **11** Melee Speed, **98** Bard
+Eleven are claimed. Ten were identified from `zone/bonuses.cpp` in EQEmu, where they keep
+the larger magnitude instead of the `+=` an ordinary bonus uses: **11** Melee Speed, **98** Bard
 Haste, **119** Overhaste, **185** Skill Damage Mod 1, **186** Min Damage Done Mod, **459**
 Skill Damage Mod 2, **482** Skill Base Damage Mod, **496** Critical Melee Damage Mod Max,
-**503** Melee Damage Position Mod, **505** Damage Taken Position Mod.
+**503** Melee Damage Position Mod, **505** Damage Taken Position Mod. The eleventh, **3** Movement Rate, comes from the other direction — see
+below.
 
 The three haste effects were missed on the first pass. Haste is accumulated in a different
 switch from the damage modifiers, so a reader following the effects that produced the rest
@@ -220,10 +221,24 @@ comments call SPA 98 *"Stacks with V1 but does not Overcap"* and SPA 119 *"Stack
 Overcaps"*. Two spell hastes do not add; a spell haste and a bard haste do — which is why
 overlaps are reported per SPA and never merged across them.
 
-**Movement speed is deliberately not on this list**, though community guides often group it
-with haste. EQEmu adds SPA 3 (`newbon->movementspeed += base_value`) and leaves a comment
-asking *"should we let these stack?"* with a highest-wins alternative commented out beside
-it. That is an open question, not a finding.
+**Movement speed is the one the sources disagree about**, and it is the project's only
+`disputed` claim. It is reported from play that run buffs do not add — Selo's Accelerating
+Canto and Flight of Eagles sit in different slots, both hold, and having both is no faster
+than the better one. EQEmu does the opposite: it adds (`newbon->movementspeed +=
+base_value`) and leaves *"should we let these stack?"* beside a commented-out highest-wins
+alternative, so the emulator is openly unsure of itself.
+
+Rather than pick a side, the site raises the overlap and says the sources conflict. A
+`disputed` claim is not a weaker `unverified` one, and the wording distinguishes them —
+"unverified" means the claim rests on EQEmu alone, which would be exactly backwards here.
+
+**Mounts are an exception that cannot be modelled.** A mount overrides a player's movement
+buff outright rather than the larger winning: Spirit of Wolf is overwritten by Knight's
+Holy Steed whatever the values. That is not in the spell file — Holy Steed carries only SPA
+113 (SummonMount) and no SPA 3 at all, so a mount's speed does not exist as a spell effect.
+Compare a run buff against a mount here and you will be told they share no effect, which is
+true of the data and false of the game. Recorded in `claims.json` under
+`notes.movement_and_mounts`.
 
 **Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,963
 spells, exactly 53 descriptions contain the word "non-cumulative", and every one of them
