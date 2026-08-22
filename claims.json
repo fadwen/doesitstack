@@ -1,403 +1,425 @@
 {
- "version": 1,
- "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. Daybreak is the source of truth \u2014 the client's own files, its patch notes, its developers. EQEmu is the most complete public implementation of these rules and the reason this project exists, but it is a volunteer reimplementation of a 2013 client: it corroborates, it never settles. Most of the engine's rules are therefore unverified, which is the honest position rather than a gap to paper over. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md.",
- "evidence_strength": {
-  "primary": "Daybreak's own words \u2014 game text, a patch note, a named developer \u2014 or a parse that meets the protocol in CONTRIBUTING.md. Settles a claim.",
-  "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and credited by name; the standing that justifies the rating is recorded here rather than shown on the site.",
-  "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; never settles.",
-  "weak": "An unattributed community claim with no data and no name behind it. Recorded for context, never load-bearing."
- },
- "claims": [
-  {
-   "id": "non-cumulative/496",
-   "type": "non_cumulative",
-   "spa": 496,
-   "spa_name": "Critical_Melee_Damage_Mod_Max",
-   "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
-   "evidence": [
+  "version": 1,
+  "_readme": "Claims this project makes to users about how EverQuest behaves, each with the evidence behind it. Daybreak is the source of truth \u2014 the client's own files, its patch notes, its developers. EQEmu is the most complete public implementation of these rules and the reason this project exists, but it is a volunteer reimplementation of a 2013 client: it corroborates, it never settles. Most of the engine's rules are therefore unverified, which is the honest position rather than a gap to paper over. If you can settle one, open a PR against this file \u2014 see CONTRIBUTING.md.",
+  "evidence_strength": {
+    "primary": "Daybreak's own words \u2014 game text, a patch note, a named developer \u2014 or a parse that meets the protocol in CONTRIBUTING.md. Settles a claim.",
+    "strong": "A named practitioner with standing in the game reporting first-hand behaviour: a class representative, a raid guild's mechanics lead, a known theorycrafter. Also a Daybreak CSR statement. Acted on, and credited by name; the standing that justifies the rating is recorded here rather than shown on the site.",
+    "supporting": "Independent but second-hand \u2014 an emulator implementation, a datamined structure. Corroborates; never settles.",
+    "weak": "An unattributed community claim with no data and no name behind it. Recorded for context, never load-bearing."
+  },
+  "claims": [
     {
-     "strength": "primary",
-     "kind": "game-text",
-     "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 \u2014 and none says it without.",
-     "source": "dbstr_us.txt, shipped with the live client",
-     "check": {
-      "id": "desc-phrase-implies-spa",
-      "phrase": "non-cumulative",
-      "spa": 496
-     }
+      "id": "non-cumulative/496",
+      "type": "non_cumulative",
+      "spa": 496,
+      "spa_name": "Critical_Melee_Damage_Mod_Max",
+      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
+      "evidence": [
+        {
+          "strength": "primary",
+          "kind": "game-text",
+          "summary": "Of every spell in the file, exactly the ones whose description says 'non-cumulative' carry SPA 496 \u2014 and none says it without.",
+          "source": "dbstr_us.txt, shipped with the live client",
+          "check": {
+            "id": "desc-phrase-implies-spa",
+            "phrase": "non-cumulative",
+            "spa": 496
+          }
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=. Its commit asserted the behaviour with no source cited; that it matches the spell text is what makes it corroboration rather than the basis.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
+        }
+      ],
+      "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu keeps the larger magnitude in CritDmgModNoStack instead of summing, where an ordinary bonus uses +=. Its commit asserted the behaviour with no source cited; that it matches the spell text is what makes it corroboration rather than the basis.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
-    }
-   ],
-   "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
-  },
-  {
-   "id": "non-cumulative/185",
-   "type": "non_cumulative",
-   "spa": 185,
-   "spa_name": "DamageModifier",
-   "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') \u2014 commit body empty, no source cited"
-    }
-   ]
-  },
-  {
-   "id": "non-cumulative/186",
-   "type": "non_cumulative",
-   "spa": 186,
-   "spa_name": "MinDamageModifier",
-   "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) \u2014 no source cited"
-    }
-   ]
-  },
-  {
-   "id": "non-cumulative/459",
-   "type": "non_cumulative",
-   "spa": 459,
-   "spa_name": "DamageModifier2",
-   "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) \u2014 no source cited"
-    }
-   ]
-  },
-  {
-   "id": "non-cumulative/482",
-   "type": "non_cumulative",
-   "spa": 482,
-   "spa_name": "Skill_Base_Damage_Mod",
-   "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all \u2014 the behaviour is only visible in the code.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) \u2014 no source cited"
-    }
-   ]
-  },
-  {
-   "id": "non-cumulative/503",
-   "type": "non_cumulative",
-   "spa": 503,
-   "spa_name": "Melee_Damage_Position_Mod",
-   "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
-    }
-   ]
-  },
-  {
-   "id": "non-cumulative/505",
-   "type": "non_cumulative",
-   "spa": 505,
-   "spa_name": "Damage_Taken_Position_Mod",
-   "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
-     "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
-    }
-   ]
-  },
-  {
-   "id": "focus-best-only/all-focus-spas",
-   "type": "focus_best_only",
-   "slug": "all-focus-spas",
-   "spas": [],
-   "_spas_note": "Empty means 'every focus effect', taken from spa_meta.json focus_effects (EQEmu's Mob::IsFocusEffect). The build expands it, so a regenerated spa_meta.json picks up new foci automatically.",
-   "exceptions": [
-    339,
-    340,
-    383
-   ],
-   "assertion": "When more than one focus effect could apply to the same cast, only the best one applies \u2014 they do not add. The exceptions are the proc-type foci (339 TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc), which fire independently and can all land on one cast.",
-   "evidence": [
-    {
-     "strength": "strong",
-     "kind": "practitioner",
-     "who": "Sancus",
-     "summary": "'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
-     "source": "Feedback on the project, 2026-08-21",
-     "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
+      "id": "non-cumulative/185",
+      "type": "non_cumulative",
+      "spa": 185,
+      "spa_name": "DamageModifier",
+      "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') \u2014 commit body empty, no source cited"
+        }
+      ]
     },
     {
-     "strength": "strong",
-     "kind": "dev-statement",
-     "summary": "Daybreak's list names 339 Fc_CastProc and 383 Fc_CastProcNormalized \u2014 the two proc-type foci reported as able to fire together are, in the publisher's own naming, the cast-proc focus family. 340 is named Chance Spell and is not a focus at all, which is why it never enters the best-only set.",
-     "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+      "id": "non-cumulative/186",
+      "type": "non_cumulative",
+      "spa": 186,
+      "spa_name": "MinDamageModifier",
+      "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) \u2014 no source cited"
+        }
+      ]
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three named exceptions exactly.",
-     "source": "EQEmu/Server zone/spell_effects.cpp Mob::GetFocusEffect and zone/bonuses.cpp:4157,4167"
-    }
-   ],
-   "_exceptions_note": "Recorded as reported, all three. 340 Chance Spell is not Fc_/Ff_ prefixed so it is not in the focus set to begin with and the exception is a no-op \u2014 kept so the report is preserved verbatim rather than silently trimmed."
-  },
-  {
-   "id": "focus-stacking/not-on-client-ignore-list",
-   "type": "focus_stacking",
-   "slug": "not-on-client-ignore-list",
-   "spas": [],
-   "assertion": "Focus effects stack regardless of slot conflicts. Most focus SPAs are already exempt from slot arbitration, but some are missing from the client-derived ignore list the engine uses, so the tool may report a conflict between two focus buffs that in fact coexist.",
-   "evidence": [
-    {
-     "strength": "strong",
-     "kind": "practitioner",
-     "who": "Sancus",
-     "summary": "Focus SPAs \u2014 the Fc_ entries in Daybreak's enumerated SPA list \u2014 stack regardless of slot conflicts.",
-     "source": "Feedback on the project, 2026-08-21, citing Daybreak's enumerated SPA list",
-     "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
+      "id": "non-cumulative/459",
+      "type": "non_cumulative",
+      "spa": 459,
+      "spa_name": "DamageModifier2",
+      "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) \u2014 no source cited"
+        }
+      ]
     },
     {
-     "strength": "strong",
-     "kind": "dev-statement",
-     "summary": "Daybreak's own list names 81 SPAs with an Fc_ or Ff_ prefix, so which effects are focus effects is published rather than inferred. It establishes the category, not the stacking behaviour \u2014 but it is a superset of what EQEmu treats as focus, naming every one of those and three more (212, 497, 528).",
-     "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+      "id": "non-cumulative/482",
+      "type": "non_cumulative",
+      "spa": 482,
+      "spa_name": "Skill_Base_Damage_Mod",
+      "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all \u2014 the behaviour is only visible in the code.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) \u2014 no source cited"
+        }
+      ]
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is plainly meant to be exempt and the rest look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
-     "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking and IsFocusLimit"
+      "id": "non-cumulative/503",
+      "type": "non_cumulative",
+      "spa": 503,
+      "spa_name": "Melee_Damage_Position_Mod",
+      "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
+        }
+      ]
     },
     {
-     "strength": "weak",
-     "kind": "community",
-     "summary": "The folk belief that twincast effects 'do not stack' looked like a counterexample for SPA 399, since it sits below the ignore list's ceiling. It is not: two twincast buffs do both hold, and only the best twincast chance applies to a cast \u2014 which is the focus_best_only rule, not a stacking conflict. Recorded because the distinction is the thing people get wrong.",
-     "source": "Long-standing player report, reconciled against the focus_best_only claim"
-    }
-   ],
-   "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The set comes from the Fc_/Ff_ prefixes in Daybreak's published SPA list, unioned with EQEmu's focus lists, so it tracks the published source rather than freezing a list."
-  },
-  {
-   "id": "stacking-rule/slot-arbitration",
-   "type": "stacking_rule",
-   "slug": "slot-arbitration",
-   "assertion": "Two buffs conflict only where the same SPA sits in the same slot index, and an incoming spell must be at least as strong on every shared slot or it is refused outright.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "The core of CheckStackConflict: a slot-by-slot loop comparing effect ids at matching indexes, rejecting the incoming spell the moment any shared slot is weaker. This is the rule almost every verdict rests on, and nothing outside EQEmu establishes it.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "weaker-slot",
-    "overwrite",
-    "independent"
-   ]
-  },
-  {
-   "id": "stacking-rule/ignore-list",
-   "type": "stacking_rule",
-   "slug": "ignore-list",
-   "assertion": "84 SPAs \u2014 focus effects, counters, vision, limits \u2014 never cause a stacking conflict.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "EQEmu's IsEffectIgnoredInStacking, whose comment says the list was read out of the client: 'big ol' list according to the client, wasn't that nice!'. The tail past RoF2 is self-described as guesswork: 'lets assume these should go here.'",
-     "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking"
-    }
-   ]
-  },
-  {
-   "id": "stacking-rule/stacking-group",
-   "type": "stacking_rule",
-   "slug": "stacking-group",
-   "assertion": "Two spells sharing a Live stacking group never coexist; the higher rank wins, and a type 6 group will not be overwritten.",
-   "evidence": [
-    {
-     "strength": "strong",
-     "kind": "game-text",
-     "summary": "Daybreak ships Resources/SpellStackingGroups.txt with the client, mapping spells to a group, a rank and a type. The file's existence and structure are Daybreak's own; that the client uses it to prevent coexistence follows from its name and contents, but is not stated anywhere.",
-     "source": "Resources/SpellStackingGroups.txt, shipped with the live client"
+      "id": "non-cumulative/505",
+      "type": "non_cumulative",
+      "spa": 505,
+      "spa_name": "Damage_Taken_Position_Mod",
+      "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
+          "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
+        }
+      ]
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "The rank-wins and type-6 semantics are rumstil/eqspellparser's reading of the same file, not a documented rule.",
-     "source": "rumstil/eqspellparser core/SpellParser.cs"
-    }
-   ],
-   "engine_rules": [
-    "stacking-group"
-   ]
-  },
-  {
-   "id": "stacking-rule/same-spell",
-   "type": "stacking_rule",
-   "slug": "same-spell",
-   "assertion": "Recasting a spell refreshes it at equal or higher caster level, and is refused at a lower one.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "CheckStackConflict's same-id branch, with exceptions for stackable DoTs, Mana Burn, Eye of Zomm and Improved Taunt.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "same-spell"
-   ]
-  },
-  {
-   "id": "stacking-rule/bard-song",
-   "type": "stacking_rule",
-   "slug": "bard-song",
-   "assertion": "A bard song and a non-song beneficial spell always stack.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "An explicit early return in CheckStackConflict when exactly one of the pair is a bard song and neither is detrimental.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "bard-song"
-   ]
-  },
-  {
-   "id": "stacking-rule/stacking-commands",
-   "type": "stacking_rule",
-   "slug": "stacking-commands",
-   "assertion": "SPA 148 blocks, and SPA 149 overwrites, a spell whose named slot holds a named effect below a threshold.",
-   "evidence": [
-    {
-     "strength": "supporting",
-     "kind": "game-text",
-     "summary": "The SPAs and their operands are in the client's own spell data \u2014 2,142 slots across the file encode a target slot in base2 and a threshold in max \u2014 so the mechanism plainly exists. How the client acts on it is not stated.",
-     "source": "spells_us.txt, live client"
+      "id": "focus-best-only/all-focus-spas",
+      "type": "focus_best_only",
+      "slug": "all-focus-spas",
+      "spas": [],
+      "_spas_note": "Empty means 'every focus effect', taken from spa_meta.json focus_effects (EQEmu's Mob::IsFocusEffect). The build expands it, so a regenerated spa_meta.json picks up new foci automatically.",
+      "exceptions": [
+        339,
+        340,
+        383
+      ],
+      "assertion": "When more than one focus effect could apply to the same cast, only the best one applies \u2014 they do not add. The exceptions are the proc-type foci (339 TriggerOnCast, 340 SpellTrigger, 383 SympatheticProc), which fire independently and can all land on one cast.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "who": "Sancus",
+          "summary": "'The only ones where the effects actually can work on the same spell are SPA 383 and SPA 340, all other foci are best works only... I guess 339 too.'",
+          "source": "Feedback on the project, 2026-08-21",
+          "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
+        },
+        {
+          "strength": "strong",
+          "kind": "dev-statement",
+          "summary": "Daybreak's list names 339 Fc_CastProc and 383 Fc_CastProcNormalized \u2014 the two proc-type foci reported as able to fire together are, in the publisher's own naming, the cast-proc focus family. 340 is named Chance Spell and is not a focus at all, which is why it never enters the best-only set.",
+          "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's focus aggregation keeps the best rather than summing: `if (Total > 0 && realTotal >= 0 && Total > realTotal) realTotal = Total;` across the item, AA and spell buckets. Procs are routed separately through focusSympatheticProc and focusTriggerOnCast, matching the three named exceptions exactly.",
+          "source": "EQEmu/Server zone/spell_effects.cpp Mob::GetFocusEffect and zone/bonuses.cpp:4157,4167"
+        }
+      ],
+      "_exceptions_note": "Recorded as reported, all three. 340 Chance Spell is not Fc_/Ff_ prefixed so it is not in the focus set to begin with and the exception is a no-op \u2014 kept so the report is preserved verbatim rather than silently trimmed."
     },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "The block/overwrite semantics, and the 2018 change letting detrimental spells bypass SPA 148, are EQEmu's.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "spa-148",
-    "spa-149"
-   ]
-  },
-  {
-   "id": "stacking-rule/complete-heal",
-   "type": "stacking_rule",
-   "slug": "complete-heal",
-   "assertion": "A Complete Heal buff never stacks or overwrites.",
-   "evidence": [
+      "id": "focus-stacking/not-on-client-ignore-list",
+      "type": "focus_stacking",
+      "slug": "not-on-client-ignore-list",
+      "spas": [],
+      "assertion": "Focus effects stack regardless of slot conflicts. Most focus SPAs are already exempt from slot arbitration, but some are missing from the client-derived ignore list the engine uses, so the tool may report a conflict between two focus buffs that in fact coexist.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "practitioner",
+          "who": "Sancus",
+          "summary": "Focus SPAs \u2014 the Fc_ entries in Daybreak's enumerated SPA list \u2014 stack regardless of slot conflicts.",
+          "source": "Feedback on the project, 2026-08-21, citing Daybreak's enumerated SPA list",
+          "standing": "Wizard class representative; raids with Realm of Insanity. Reporting first-hand on mechanics central to his own class."
+        },
+        {
+          "strength": "strong",
+          "kind": "dev-statement",
+          "summary": "Daybreak's own list names 81 SPAs with an Fc_ or Ff_ prefix, so which effects are focus effects is published rather than inferred. It establishes the category, not the stacking behaviour \u2014 but it is a superset of what EQEmu treats as focus, naming every one of those and three more (212, 497, 528).",
+          "source": "Daybreak's enumerated SPA list, https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/ (kept verbatim at tools/reference/daybreak-spa-list.txt)"
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "Of the 44 SPAs EQEmu treats as focus effects, 31 are already on the stacking ignore list, so the category is plainly meant to be exempt and the rest look like gaps. SPA 460 Ff_Override_NotFocusable is in EQEmu's own IsFocusLimit() but missing from IsEffectIgnoredInStacking() \u2014 an internal inconsistency. The list's tail is self-described as guesswork: 'Spell effects implemented after ROF2, following same pattern, lets assume these should go here.'",
+          "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking and IsFocusLimit"
+        },
+        {
+          "strength": "weak",
+          "kind": "community",
+          "summary": "The folk belief that twincast effects 'do not stack' looked like a counterexample for SPA 399, since it sits below the ignore list's ceiling. It is not: two twincast buffs do both hold, and only the best twincast chance applies to a cast \u2014 which is the focus_best_only rule, not a stacking conflict. Recorded because the distinction is the thing people get wrong.",
+          "source": "Long-standing player report, reconciled against the focus_best_only claim"
+        }
+      ],
+      "_spas_note": "Empty means 'every focus effect or focus limit that is not on the stacking ignore list'. The set comes from the Fc_/Ff_ prefixes in Daybreak's published SPA list, unioned with EQEmu's focus lists, so it tracks the published source rather than freezing a list."
+    },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "An unconditional block in CheckStackConflict whenever both spells carry SPA 101 in the same slot.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "complete-heal"
-   ]
-  },
-  {
-   "id": "stacking-rule/snare-vs-movement",
-   "type": "stacking_rule",
-   "slug": "snare-vs-movement",
-   "assertion": "A snare already in place refuses an incoming movement buff, but a snare cast onto an existing buff simply lands.",
-   "evidence": [
+      "id": "stacking-rule/slot-arbitration",
+      "type": "stacking_rule",
+      "slug": "slot-arbitration",
+      "assertion": "Two buffs conflict only where the same SPA sits in the same slot index; the same effect in different slots does not conflict.",
+      "evidence": [
+        {
+          "strength": "primary",
+          "kind": "patch-notes",
+          "summary": "Daybreak, describing the reworked spell critical damage effect: \"All modifiers stack (assuming they are in different slots).\" Stated as a property of the slot system rather than of that one effect, and the only public statement of it by Daybreak found so far. Corroborated by their own patch practice: the 11 February 2026 update notes fix stacking conflicts by moving effects between slot indexes \u2014 \"Moved the Strength debuff in the Grip of Mori DoT line from slot 2 to slot 5 to avoid stacking conflicts.\"",
+          "source": "Daybreak, EverQuest news, \"July Patch Cliff Notes\", 23 July 2015 \u2014 https://www.everquest.com/news/july-patch-cliff-notes"
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "CheckStackConflict compares effect ids at matching slot indexes, so the same SPA in different slots never collides.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "independent"
+      ]
+    },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "A signed comparison on SPA 3 inside the slot loop. The asymmetry is deliberate in the code and unexplained.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "snare"
-   ]
-  },
-  {
-   "id": "stacking-rule/dot-vs-regen",
-   "type": "stacking_rule",
-   "slug": "dot-vs-regen",
-   "assertion": "A damage-over-time effect will not overwrite regeneration, but blocks a regeneration spell cast after it.",
-   "evidence": [
+      "id": "stacking-rule/slot-strength",
+      "type": "stacking_rule",
+      "slug": "slot-strength",
+      "assertion": "Where two buffs do share a slot, the incoming spell must be at least as strong on every shared slot or it is refused outright; if it is stronger it overwrites.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "The comparison half of CheckStackConflict: a slot-by-slot loop that rejects the incoming spell the moment any shared slot is weaker. Split out from slot-arbitration when Daybreak was found to have stated the slot-index rule but not this one \u2014 nothing outside EQEmu establishes the all-or-nothing refusal.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "weaker-slot",
+        "overwrite"
+      ]
+    },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "A branch on SPA 0 where both spells have a duration, keyed on which of the pair is detrimental.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "dot-blocks-regen"
-   ]
-  },
-  {
-   "id": "stacking-rule/single-vs-group",
-   "type": "stacking_rule",
-   "slug": "single-vs-group",
-   "assertion": "The single-target version of a spell line will not replace the group version already on you.",
-   "evidence": [
+      "id": "stacking-rule/ignore-list",
+      "type": "stacking_rule",
+      "slug": "ignore-list",
+      "assertion": "84 SPAs \u2014 focus effects, counters, vision, limits \u2014 never cause a stacking conflict.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "EQEmu's IsEffectIgnoredInStacking, whose comment says the list was read out of the client: 'big ol' list according to the client, wasn't that nice!'. The tail past RoF2 is self-described as guesswork: 'lets assume these should go here.'",
+          "source": "EQEmu/Server common/spdat.cpp IsEffectIgnoredInStacking"
+        }
+      ]
+    },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "The final check in CheckStackConflict, applied when every slot matches and every value is equal.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
-    }
-   ],
-   "engine_rules": [
-    "single-vs-group"
-   ]
-  },
-  {
-   "id": "stacking-rule/mana-burn",
-   "type": "stacking_rule",
-   "slug": "mana-burn",
-   "assertion": "A Mana Burn spell never stacks with itself.",
-   "evidence": [
+      "id": "stacking-rule/stacking-group",
+      "type": "stacking_rule",
+      "slug": "stacking-group",
+      "assertion": "Two spells sharing a Live stacking group never coexist; the higher rank wins, and a type 6 group will not be overwritten.",
+      "evidence": [
+        {
+          "strength": "strong",
+          "kind": "game-text",
+          "summary": "Daybreak ships Resources/SpellStackingGroups.txt with the client, mapping spells to a group, a rank and a type. The file's existence and structure are Daybreak's own; that the client uses it to prevent coexistence follows from its name and contents, but is not stated anywhere.",
+          "source": "Resources/SpellStackingGroups.txt, shipped with the live client"
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "The rank-wins and type-6 semantics are rumstil/eqspellparser's reading of the same file, not a documented rule.",
+          "source": "rumstil/eqspellparser core/SpellParser.cs"
+        }
+      ],
+      "engine_rules": [
+        "stacking-group"
+      ]
+    },
     {
-     "strength": "supporting",
-     "kind": "implementation",
-     "summary": "A dedicated branch in CheckStackConflict, separate from the ordinary same-spell handling. The code carries its own doubt: 'mana burn spells we need to use the stacking command blocks live actually checks those first, we should probably rework to that too'.",
-     "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+      "id": "stacking-rule/same-spell",
+      "type": "stacking_rule",
+      "slug": "same-spell",
+      "assertion": "Recasting a spell refreshes it at equal or higher caster level, and is refused at a lower one.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "CheckStackConflict's same-id branch, with exceptions for stackable DoTs, Mana Burn, Eye of Zomm and Improved Taunt.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "same-spell"
+      ]
+    },
+    {
+      "id": "stacking-rule/bard-song",
+      "type": "stacking_rule",
+      "slug": "bard-song",
+      "assertion": "A bard song and a non-song beneficial spell always stack.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "An explicit early return in CheckStackConflict when exactly one of the pair is a bard song and neither is detrimental.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "bard-song"
+      ]
+    },
+    {
+      "id": "stacking-rule/stacking-commands",
+      "type": "stacking_rule",
+      "slug": "stacking-commands",
+      "assertion": "SPA 148 blocks, and SPA 149 overwrites, a spell whose named slot holds a named effect below a threshold.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "game-text",
+          "summary": "The SPAs and their operands are in the client's own spell data \u2014 2,142 slots across the file encode a target slot in base2 and a threshold in max \u2014 so the mechanism plainly exists. How the client acts on it is not stated.",
+          "source": "spells_us.txt, live client"
+        },
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "The block/overwrite semantics, and the 2018 change letting detrimental spells bypass SPA 148, are EQEmu's.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "spa-148",
+        "spa-149"
+      ]
+    },
+    {
+      "id": "stacking-rule/complete-heal",
+      "type": "stacking_rule",
+      "slug": "complete-heal",
+      "assertion": "A Complete Heal buff never stacks or overwrites.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "An unconditional block in CheckStackConflict whenever both spells carry SPA 101 in the same slot.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "complete-heal"
+      ]
+    },
+    {
+      "id": "stacking-rule/snare-vs-movement",
+      "type": "stacking_rule",
+      "slug": "snare-vs-movement",
+      "assertion": "A snare already in place refuses an incoming movement buff, but a snare cast onto an existing buff simply lands.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "A signed comparison on SPA 3 inside the slot loop. The asymmetry is deliberate in the code and unexplained.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "snare"
+      ]
+    },
+    {
+      "id": "stacking-rule/dot-vs-regen",
+      "type": "stacking_rule",
+      "slug": "dot-vs-regen",
+      "assertion": "A damage-over-time effect will not overwrite regeneration, but blocks a regeneration spell cast after it.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "A branch on SPA 0 where both spells have a duration, keyed on which of the pair is detrimental.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "dot-blocks-regen"
+      ]
+    },
+    {
+      "id": "stacking-rule/single-vs-group",
+      "type": "stacking_rule",
+      "slug": "single-vs-group",
+      "assertion": "The single-target version of a spell line will not replace the group version already on you.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "The final check in CheckStackConflict, applied when every slot matches and every value is equal.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "single-vs-group"
+      ]
+    },
+    {
+      "id": "stacking-rule/mana-burn",
+      "type": "stacking_rule",
+      "slug": "mana-burn",
+      "assertion": "A Mana Burn spell never stacks with itself.",
+      "evidence": [
+        {
+          "strength": "supporting",
+          "kind": "implementation",
+          "summary": "A dedicated branch in CheckStackConflict, separate from the ordinary same-spell handling. The code carries its own doubt: 'mana burn spells we need to use the stacking command blocks live actually checks those first, we should probably rework to that too'.",
+          "source": "EQEmu/Server zone/spells.cpp Mob::CheckStackConflict"
+        }
+      ],
+      "engine_rules": [
+        "mana-burn"
+      ]
     }
-   ],
-   "engine_rules": [
-    "mana-burn"
-   ]
+  ],
+  "notes": {
+    "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket. Daybreak described this per-bucket behaviour directly when they reworked spell critical damage: \"Only the best modifier from AAs was added, and only the best modifier from spells was added\" (July Patch Cliff Notes, 23 July 2015, https://www.everquest.com/news/july-patch-cliff-notes). Note what that page is and is not evidence for: it names the mechanic and Daybreak's own term for it (\"best only\"), and it confirms the buckets are separate and each best-only, but it describes spell critical damage being changed *away* from that behaviour \u2014 so it does not speak to the seven SPAs listed here."
   }
- ],
- "notes": {
-  "bonus_buckets": "For every non_cumulative claim: the larger value wins within one bonus bucket. EQEmu sums the spell, AA and worn-item buckets at use time (zone/mob.cpp), and 185/459/482/503/505 are additive when they arrive as a worn item bonus rather than a buff. Two buffs \u2014 the case this tool compares \u2014 are both in the spell bucket."
- }
 }

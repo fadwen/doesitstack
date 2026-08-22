@@ -165,11 +165,35 @@ test('rule claims name a slug, not a SPA', () => {
   assert.ok(problems.some(p => p.includes('not a SPA')));
 });
 
-test('the rule nearly every verdict rests on is honest about its provenance', () => {
+test('the slot-index rule cites Daybreak, not only the emulator', () => {
+  // Daybreak stated this one themselves: "All modifiers stack (assuming they are
+  // in different slots)". If that citation is ever removed the claim must fall
+  // back to unverified rather than staying confirmed on nothing.
   const core = doc.claims.find(c => c.slug === 'slot-arbitration');
   assert.ok(core);
+  assert.equal(core.status, 'confirmed');
+  const primary = core.evidence.filter(e => e.strength === 'primary');
+  assert.equal(primary.length, 1);
+  assert.equal(primary[0].kind, 'patch-notes');
+  assert.match(primary[0].source, /everquest\.com/);
+  assert.notEqual(primary[0].kind, 'implementation', 'an emulator can never be the primary source');
+});
+
+test('the strength-comparison rule is still honest about its provenance', () => {
+  // Split out of slot-arbitration: Daybreak stated the slot-index rule but not
+  // the all-or-nothing refusal, and one primary source promoting a composite
+  // claim would have confirmed a half nobody has evidenced.
+  const core = doc.claims.find(c => c.slug === 'slot-strength');
+  assert.ok(core, 'the comparison half must exist as its own claim');
   assert.equal(core.status, 'unverified');
   assert.ok(core.evidence.every(e => e.kind === 'implementation'));
+});
+
+test('the two halves cover the engine rules the split inherited', () => {
+  // weaker-slot and overwrite turn on strength; independent turns on slot index.
+  const of = slug => doc.claims.find(c => c.slug === slug).engine_rules;
+  assert.deepEqual(of('slot-arbitration'), ['independent']);
+  assert.deepEqual(of('slot-strength'), ['weaker-slot', 'overwrite']);
 });
 
 test('evidence cannot be rated above its kind ceiling', () => {

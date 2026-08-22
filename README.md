@@ -53,6 +53,26 @@ re-reads `spells_us.txt` with a separate parser that keeps its own field offsets
 diffs every spell against the built dataset — 2.5 million values, exiting non-zero on a
 single mismatch.
 
+### The one rule Daybreak has stated
+
+`slot-arbitration` — that the same SPA in *different* slots does not conflict — is
+`confirmed`, and not from the emulator. Daybreak said it themselves while reworking spell
+critical damage:
+
+> "All modifiers stack (assuming they are in different slots)."
+>
+> — [July Patch Cliff Notes](https://www.everquest.com/news/july-patch-cliff-notes), 23 July 2015
+
+Their patch practice matches it: the [11 February 2026 update notes](https://www.everquest.com/update-notes/eq-update-notes-2-11-26) fix conflicts by
+moving effects between slot indexes — *"Moved the Strength debuff in the Grip of Mori DoT
+line from slot 2 to slot 5 to avoid stacking conflicts."*
+
+That claim used to be one sentence covering two rules, and the second half — that a spell
+weaker on any shared slot is refused outright — has no such statement behind it. One
+primary source would have promoted both, so it is now a separate `slot-strength` claim
+that stays `unverified`. A verdict of "no conflict" cites the confirmed rule; a refusal
+cites the unverified one.
+
 ### Why the rules are the weak part
 
 The stacking algorithm is ported from EQEmu, and that is the least well-sourced thing
@@ -507,9 +527,10 @@ tests/                             node:test — fixtures and claims run anywher
   the expansion that raises it, and everything else follows from there.
 - Six of the seven non-cumulative SPAs rest on uncited EQEmu implementation rather than
   any primary source. See above, and `claims.json` for each one.
-- Most stacking rules are `unverified` for the same reason, including `slot-arbitration`,
-  the rule nearly every answer rests on. Settling that one would be the single most
-  valuable contribution here.
+- Most stacking rules are `unverified` for the same reason. The biggest remaining one is
+  `slot-strength` — that an incoming spell must be at least as strong on **every** shared
+  slot or be refused outright. Daybreak has stated the slot-index half (see below) but
+  not this, and settling it would be the single most valuable contribution here.
 - Slot effects are named, not phrased — you get "Critical Melee Damage Mod Max", not
   Lucy's full "Increase Critical Melee Damage by 300% of Base Damage".
 - **Unattributed** is still a residual — 17,656 rows nothing explains. The item
