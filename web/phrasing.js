@@ -53,7 +53,12 @@ export function phrase(slot, value, names = {}) {
     case 7:   return up('STA', value);
     case 8:   return up('INT', value);
     case 9:   return up('WIS', value);
-    case 10:  return base1 === 0 ? null : up('CHA', value);   // 0 is the blank-slot spacer
+    // 90,913 of the 91,257 SPA 10 slots carry base 0 and are padding, but the
+    // remaining 344 are real charisma effects — Charisma +40, Glamour, and
+    // debuffs like Skunk Spray at -30 — so only base 0 is treated as blank.
+    // A deliberate divergence from eqspellparser, which suppresses base1 <= 1
+    // and so hides every CHA debuff along with the padding.
+    case 10:  return base1 === 0 ? null : up('CHA', value);
     case 11:  return pct('Melee Haste', value - 100);
     case 15:  return up('Current Mana', value);
     case 55:  return up('Rune', value);

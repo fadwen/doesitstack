@@ -43,10 +43,22 @@ test('direction follows the sign, as the source does', () => {
   assert.equal(phrase(slot(124, -10), -10), 'Decrease Spell Damage by 10%');
 });
 
-test('the blank-slot spacer stays blank', () => {
-  // SPA 10 with base 0 is padding, not a CHA buff — 91,257 slots of it.
+test('the blank-slot spacer stays blank, but real charisma effects do not', () => {
+  // 90,913 of the 91,257 SPA 10 slots carry base 0 and are padding. The other
+  // 344 are real: Charisma +40, Glamour, Alluring Aura. Treating the whole SPA
+  // as filler would have silently dropped them.
   assert.equal(phrase(slot(10, 0), 0), null);
   assert.equal(phrase(slot(10, 25), 25), 'Increase CHA by 25');
+  assert.equal(phrase(slot(10, 40), 40), 'Increase CHA by 40');
+});
+
+test('charisma debuffs are phrased, where eqspellparser hides them', () => {
+  // A deliberate divergence. eqspellparser returns null for base1 <= 1, which
+  // catches the padding but also every debuff — Skunk Spray at -30 and
+  // Fellspine at -50 are real effects and say so here.
+  assert.equal(phrase(slot(10, -30), -30), 'Decrease CHA by 30');
+  assert.equal(phrase(slot(10, -50), -50), 'Decrease CHA by 50');
+  assert.equal(phrase(slot(10, -1), -1), 'Decrease CHA by 1');
 });
 
 test('the stacking commands are spelled out, since everything here turns on them', () => {

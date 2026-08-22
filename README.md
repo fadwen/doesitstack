@@ -158,7 +158,7 @@ On top of that sit the special cases:
 | Focus effects | Exempt from slot arbitration — they stack regardless of slot |
 | Ignore list | 84 further SPAs (counters, vision, limits…) never cause a conflict |
 | SPA 148 / 149 | Explicit block and overwrite commands carried by the spell itself |
-| Blank slots | SPA 254, and SPA 10 spacers with base 0, are invisible to arbitration |
+| Blank slots | SPA 254, and SPA 10 spacers with base 0, are invisible to arbitration. 344 of the 91,257 SPA 10 slots carry a real charisma value and are not spacers |
 | Bard songs | A song and a non-song beneficial spell always stack |
 | Negative AC | AC debuffs skip arbitration, so things like Sun's Corona and Glacier Breath coexist |
 | Snare vs. run speed | A snare already in place refuses a movement buff |
