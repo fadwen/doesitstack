@@ -364,7 +364,12 @@ general case so anything else omitted later lands under it.
 Nothing is dropped silently: the table says how many rows it left out and offers to show
 them, because slot numbers jump when rows disappear and a reader should be told why. A row
 is only dropped when **both** spells are empty at that index — a spacer opposite a real
-effect keeps its row, with the cell reading *empty slot*.
+effect keeps its row, with the cell dashed like an absent slot.
+
+**An effect is never renamed.** Whichever reading is on, the name shown is the effect's own
+— `CHA` in the exact reading, its phrasing in the other. An earlier version substituted the
+words "empty slot" for the name, which was wrong in both and especially so in the exact
+reading, whose whole purpose is to show what the file says.
 
 The rule is deliberately not "the value is zero". **39.5% of slots compute to zero**,
 including all 1,448 `StackingBlocker` slots, which are the single most informative rows in

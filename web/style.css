@@ -190,4 +190,4 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
   border:1px solid var(--line);border-radius:999px;padding:1px 6px;margin-right:4px}
 button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);font:inherit;
   cursor:pointer;text-decoration:underline}
-.empty-name{color:var(--muted);font-style:italic}
+.empty-name{color:var(--muted)}

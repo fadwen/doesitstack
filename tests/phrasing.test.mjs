@@ -109,3 +109,11 @@ test('the choice is limited to the two readings that exist', () => {
   assert.equal(setReading(undefined), 'phrased');
   assert.equal(getReading(), 'phrased');
 });
+
+test('a spacer keeps the effect name it has in the file', () => {
+  // The display may dim a spacer or drop its row, but must not rename it. The
+  // exact reading exists so a slot can be quoted as the file has it, and a word
+  // of the tool's own in place of "CHA" defeats that entirely.
+  assert.equal(phrase(slot(10, 0), 0), null, 'no phrasing, so the caller falls back to the name');
+  assert.equal(phrase(slot(10, 0), 0, { 10: 'CHA' }), null, 'and never to a substitute of its own');
+});

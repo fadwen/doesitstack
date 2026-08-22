@@ -645,10 +645,15 @@ function slotCell(sp, i, lvl, mark) {
   const v = calcValue(sp, i, lvl);
   const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
 
+  // The name is always the effect's own — the file's in the exact reading, the
+  // phrasing in the other. Substituting a word of mine for "CHA" was wrong in
+  // both, and specifically wrong in the exact reading, which exists precisely so
+  // a reader can quote what the file says.
   const empty = isEmptySlot(sp, i);
   const name = el('span', empty ? 'empty-name' : (mark ? 'nc-' + mark : null),
-    empty ? 'empty slot' : (said || META.spa_names[s.spa] || `SPA ${s.spa}`));
+    said || META.spa_names[s.spa] || `SPA ${s.spa}`);
   if (mark && !empty) name.title = MARK_TITLE[mark];
+  if (empty) name.title = 'A spacer slot — the client pads unused slots with SPA 10 at base 0.';
   head.appendChild(name);
   // Say when there is no phrasing rather than quietly showing the exact name and
   // letting it read as one. About 7% of slots are in this state — a spacer is
