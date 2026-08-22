@@ -411,6 +411,40 @@ than eqspellparser's own enum, so the two readings never disagree about what an 
 called; and in the exact reading a repeated limiter collapses to `TargetType ×5`, while
 in plain wording it does not, because there each one says something different.
 
+### A phrasing that names another spell
+
+`Cast: [Spell 6097] on Fade` is eqspellparser's line and it is what the ported `case`
+returns. The page then resolves the id: the row reads **Cast: Savage Spirit Penance on
+Fade**, the name is a button, and clicking it opens that spell's effects underneath the
+row rather than replacing what you were comparing. It nests three deep, which is enough
+for a proc that fires a spell that has a recourse of its own.
+
+An id that is not in your spell file is left exactly as written and is not offered as a
+link — 980 of the 17,485 references in the current file point at spells that are no longer
+in it. Only the plain wording does this; the exact reading prints `base 6097` untouched,
+because that reading exists to be quoted.
+
+### Ported means ported
+
+A `case` here is a translation of eqspellparser's line, not a paraphrase of the SPA name.
+Several were written the second way and were simply wrong — SPA 147 read `Heal to -25% of
+Max HP` for an effect that takes a quarter of your health, 162 and 163 had swapped jobs,
+191 was labelled `Silence` for an effect that inhibits melee, and 501 had the sign and the
+units of a cast-time change both wrong. Nothing compared the two files, so nothing said so.
+
+```bash
+node tools/phrasing_audit.mjs --eqsp ../eqspellparser          # lines that disagree
+node tools/phrasing_audit.mjs --eqsp ../eqspellparser --all    # and lines that say less
+```
+
+**MISMATCH** means the labels disagree, and is almost always a defect. **THINNER** means
+the label matches but the source says more — a cap, a PvP figure, a `(v507)` marker — which
+is information dropped rather than a mistake; 56 lines are in that state. A divergence is
+allowed, but the comment above the `case` has to contain the words *deliberate divergence*
+and then say why, which is what exempts it from the audit. Two do: SPA 10, where
+eqspellparser hides every charisma debuff along with the padding, and SPA 101, where it
+prints a historical figure that is not in the slot.
+
 ## Searching
 
 The search box filters by name or spell id, narrowed by two things:

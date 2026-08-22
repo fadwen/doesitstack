@@ -117,3 +117,61 @@ test('a spacer keeps the effect name it has in the file', () => {
   assert.equal(phrase(slot(10, 0), 0), null, 'no phrasing, so the caller falls back to the name');
   assert.equal(phrase(slot(10, 0), 0, { 10: 'CHA' }), null, 'and never to a substitute of its own');
 });
+
+test('the effects that were written rather than ported now match the source', () => {
+  // Every one of these said something the effect does not do. Savage Spirit
+  // Penance is the one that surfaced it: slot 1 is SPA 147 at base -25, max
+  // 200000, which the file means as "take a quarter of your health", and which
+  // this read out as "Heal to -25% of Max HP".
+  assert.equal(phrase(slot(147, -25, 0, 200000), -25),
+    'Decrease Current HP by 25% up to 200000');
+  // 162 and 163 had swapped jobs: 162 is the percentage, 163 is the hit count.
+  assert.equal(phrase(slot(162, 30, 500, 10000), 30),
+    'Absorb Melee Damage: 30%, Max Per Hit: 500, Total: 10000');
+  assert.equal(phrase(slot(163, 4, 0, 1200), 4), 'Absorb 4 Hits or Spells, Max Per Hit: 1200');
+  // 191 inhibits melee, not casting — it was labelled "Silence".
+  assert.equal(phrase(slot(191), 0), 'Inhibit Combat');
+  assert.equal(phrase(slot(96), 0), 'Inhibit Spell Casting');
+  // 232 is a chance, not a spell reference; base2 is not a spell id here.
+  assert.equal(phrase(slot(232, 5), 5), 'Increase Chance to Trigger Divine Intervention by 5%');
+  assert.equal(phrase(slot(55, 0, 0, 0), 8000), 'Absorb Damage: 100%, Total: 8000');
+});
+
+test('under a second, a stun is only an interrupt', () => {
+  assert.equal(phrase(slot(21, 500), 500), 'Interrupt Casting');
+  assert.equal(phrase(slot(21, 4000, 2000), 4000), 'Stun for 4s (2s in PvP)');
+});
+
+test('an effect that needs a field of the spell says nothing, rather than the wrong thing', () => {
+  // Instrument Modifier reads the spell's skill and Teleport reads its zone
+  // string. Neither is in the slot, which is all this function is given, so both
+  // fall back to the exact name and carry the "as-is" badge.
+  assert.equal(phrase(slot(179, 200), 200), null);
+  assert.equal(phrase(slot(145, 1), 1), null);
+});
+
+test('the second batch of written-not-ported lines matches the source too', () => {
+  // Found by tools/phrasing_audit.mjs rather than by anyone reading a spell.
+  assert.equal(phrase(slot(360, 25, 6097), 25), 'Add Killshot Proc: [Spell 6097] (25% Chance)');
+  assert.equal(phrase(slot(427, 6097, 4), 6097), 'Cast: [Spell 6097] on Skill Use (4)');
+  // 428 takes its skill from base1; this read base2 and called it a proc modifier.
+  assert.equal(phrase(slot(428, 4), 4), 'Limit Skill: Abjuration');
+  // 501 is milliseconds, and a positive figure makes casting faster, not slower.
+  assert.equal(phrase(slot(501, 1500), 1500), 'Decrease Casting Times by 1.5s');
+  assert.equal(phrase(slot(501, -1500), -1500), 'Increase Casting Times by 1.5s');
+  assert.equal(phrase(slot(507, 50, 150), 50),
+    'Increase Spell Damage by 5% to 15% (v507, Before DoT Crit, After DD Crit)');
+});
+
+test('a floor-and-ceiling pair reads as a range, and a single figure does not', () => {
+  assert.equal(phrase(slot(507, 100, 100), 100),
+    'Increase Spell Damage by 10% (v507, Before DoT Crit, After DD Crit)');
+});
+
+test('a reference to a spell outside this file stays as the file wrote it', () => {
+  // Summon Horse points at spell 1, which no longer exists. The page must leave
+  // "[Spell 1]" alone rather than offer a link to nothing, so the token has to
+  // survive phrasing intact for the renderer to make that call.
+  assert.equal(phrase(slot(113, 1), 1), 'Summon Mount: [Spell 1]');
+  assert.match(phrase(slot(373, 6097), 6097), /\[Spell 6097\]/);
+});

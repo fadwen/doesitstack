@@ -3,7 +3,7 @@ import { dataAge, itemDataAge } from './freshness.js';
 import { phrase } from './phrasing.js';
 import {
   $, el, link, escape, LUCY, LUCY_ITEM, F_BENEFICIAL, row,
-  KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, load as loadData,
+  KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, nameOf, load as loadData,
   F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden,
 } from './data.js';
 
@@ -633,6 +633,84 @@ function ruleProvenance(rules) {
   return wrap;
 }
 
+// A phrased effect can name another spell — "Cast: [Spell 6097] on Fade". The
+// phrasing itself keeps eqspellparser's token, because that is the ported line
+// and a test compares it; resolving the id to a name is a presentation choice
+// made here, where the index is to hand.
+//
+// A deliberate divergence from eqspellparser and from Lucy, which both print the
+// number: the number is unreadable on its own and the name is one lookup away.
+// The id stays in the tooltip so it is still quotable.
+const SPELL_REF = /\[Spell (\d+)\]/g;
+// Deep enough for a proc that fires a spell that has a recourse; shallow enough
+// that a spell referencing itself cannot open forever.
+const REF_DEPTH = 3;
+
+function writePhrasing(node, text, host, depth) {
+  let at = 0, m;
+  SPELL_REF.lastIndex = 0;
+  while ((m = SPELL_REF.exec(text))) {
+    const id = +m[1], named = nameOf(id);
+    // Not in this spell file — say so as the file does rather than offer a
+    // link to nothing. Old spells do get removed.
+    if (!named) continue;
+    node.appendChild(document.createTextNode(text.slice(at, m.index)));
+    node.appendChild(depth < REF_DEPTH ? refButton(id, named, host, depth) : el('span', 'spell-ref-flat', named));
+    at = m.index + m[0].length;
+  }
+  node.appendChild(document.createTextNode(text.slice(at)));
+}
+
+function refButton(id, named, host, depth) {
+  const b = el('button', 'spell-ref', named);
+  b.type = 'button';
+  b.title = `Spell ${id} — show what it does`;
+  b.setAttribute('aria-expanded', 'false');
+  b.onclick = async () => {
+    const open = b.getAttribute('aria-expanded') === 'true';
+    b.setAttribute('aria-expanded', String(!open));
+    if (open) { host.querySelector(`:scope > .ref-panel[data-for="${id}"]`)?.remove(); return; }
+    const panel = el('div', 'ref-panel');
+    panel.dataset.for = String(id);
+    panel.appendChild(el('div', 'ref-loading', 'loading…'));
+    host.appendChild(panel);
+    const sp = await spellById(id);
+    panel.textContent = '';
+    if (!sp) { panel.appendChild(el('div', 'ref-loading', 'not in this spell file')); return; }
+    panel.appendChild(refBody(sp, depth));
+  };
+  return b;
+}
+
+/** The referenced spell, read the same way as the row that pointed at it. */
+function refBody(sp, depth) {
+  const box = el('div');
+  const h = el('div', 'ref-head');
+  h.appendChild(el('strong', null, sp.name));
+  h.appendChild(el('span', 'ref-meta',
+    ` · #${sp.id} · ${KIND_LABEL[sp.kind] || sp.kind} · ${durText(sp.duration, sp.aura)} · `));
+  h.appendChild(link(LUCY(sp.id), 'Lucy'));
+  box.appendChild(h);
+  const lvl = parseInt($('#lvl').value, 10) || META.max_level;
+  const ul = el('ul', 'ref-slots');
+  for (let i = 0; i < (sp.slots?.length || 0); i++) {
+    const s = slotOf(sp, i);
+    if (!s || isEmptySlot(sp, i)) continue;
+    const v = calcValue(sp, i, lvl);
+    const li = el('li');
+    const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
+    const line = el('span');
+    if (said) writePhrasing(line, said, li, depth + 1);
+    else line.textContent = META.spa_names[s.spa] || `SPA ${s.spa}`;
+    li.appendChild(line);
+    li.appendChild(el('span', 'spa', ` SPA ${s.spa} · base ${s.base1} · value ${v}`));
+    ul.appendChild(li);
+  }
+  if (!ul.childElementCount) ul.appendChild(el('li', 'ref-loading', 'no effects'));
+  box.appendChild(ul);
+  return box;
+}
+
 function slotCell(sp, i, lvl, mark) {
   const s = slotOf(sp, i);
   if (!s) return el('td', 'empty-slot', '—');
@@ -650,8 +728,12 @@ function slotCell(sp, i, lvl, mark) {
   // both, and specifically wrong in the exact reading, which exists precisely so
   // a reader can quote what the file says.
   const empty = isEmptySlot(sp, i);
-  const name = el('span', empty ? 'empty-name' : (mark ? 'nc-' + mark : null),
-    said || META.spa_names[s.spa] || `SPA ${s.spa}`);
+  const text = said || META.spa_names[s.spa] || `SPA ${s.spa}`;
+  const name = el('span', empty ? 'empty-name' : (mark ? 'nc-' + mark : null));
+  // A phrasing that names another spell should be able to show it. Only the
+  // phrased reading gets this: the exact reading is there to be quoted, and a
+  // spell name is not what the file says.
+  if (said) writePhrasing(name, text, td, 0); else name.textContent = text;
   if (mark && !empty) name.title = MARK_TITLE[mark];
   if (empty) name.title = 'A spacer slot — the client pads unused slots with SPA 10 at base 0.';
   head.appendChild(name);

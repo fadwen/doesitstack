@@ -191,3 +191,25 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);font:inherit;
   cursor:pointer;text-decoration:underline}
 .empty-name{color:var(--muted)}
+
+/* A phrased effect that names another spell. It reads as part of the sentence
+   until you look at it, because most of the time you are not asking about it. */
+.spell-ref {
+  font: inherit; color: inherit; background: none; padding: 0; cursor: pointer;
+  border: 0; border-bottom: 1px dashed currentColor; text-align: left;
+}
+.spell-ref:hover, .spell-ref:focus-visible { border-bottom-style: solid; }
+.spell-ref[aria-expanded="true"] { border-bottom-style: solid; }
+.spell-ref-flat { border-bottom: 1px dotted currentColor; }
+.ref-panel {
+  margin: .4rem 0 .1rem; padding: .4rem .55rem;
+  border-left: 2px solid var(--line, #ccc); background: rgba(127, 127, 127, .08);
+  border-radius: 0 4px 4px 0;
+}
+.ref-head { font-size: .92em; }
+
+.ref-meta { opacity: .75; }
+.ref-loading { opacity: .7; font-style: italic; }
+.ref-slots { margin: .3rem 0 0; padding-left: 1.1rem; }
+.ref-slots li { margin: .15rem 0; font-size: .92em; }
+.ref-slots .spa { opacity: .7; }

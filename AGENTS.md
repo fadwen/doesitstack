@@ -69,6 +69,13 @@ broken this repo before.
   in the commit message. Divergence from EQEmu may be right, but it must be deliberate
   and written down. Every rule the engine can cite needs a `stacking_rule` claim; a test
   checks that by scanning `engine.js`.
+- **A phrasing** — a `case` in `web/phrasing.js` is a translation of eqspellparser's
+  line, not a paraphrase of the SPA name. Run
+  `node tools/phrasing_audit.mjs --eqsp ../eqspellparser`; it must report zero
+  MISMATCH. A divergence is allowed and sometimes right, but the comment above the
+  `case` has to say *deliberate divergence* and then say why — that is what exempts
+  it. Return `null` before guessing: an effect that needs a field of the spell rather
+  than of the slot cannot be phrased here at all.
 - **The parser** — run `npm run verify:data`. It re-reads the spell file with a second
   parser that keeps its own field offsets, so the two disagreeing is the signal. Update
   both or the check is worthless.

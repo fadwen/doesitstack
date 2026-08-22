@@ -12,6 +12,13 @@
 // Daybreak's published list rather than eqspellparser's own enum, so the two
 // views never disagree about what an effect is called.
 //
+// Ported means ported. Some of these lines were originally written here from the
+// SPA name alone, which is guessing, and several of those guesses were wrong —
+// SPA 147 said "Heal to -25% of Max HP" for an effect that takes a quarter of
+// your health. `node tools/phrasing_audit.mjs --eqsp <checkout>` lists every line
+// that no longer matches the source; a divergence is allowed, but it has to be
+// deliberate and it has to say why, like the SPA 10 note below.
+//
 // This is a third-party reading, like the target-type labels. It is a
 // convenience, not a source — which is why the exact view is the default and
 // this one has to be asked for.
@@ -21,6 +28,16 @@ import { SpellResist, SpellTarget, SpellTargetRestrict, SpellSkill, SpellClasses
 const num = (n) => Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 const up = (name, v) => `${v < 0 ? 'Decrease' : 'Increase'} ${name} by ${num(Math.abs(v))}`;
 const pct = (name, v) => `${v < 0 ? 'Decrease' : 'Increase'} ${name} by ${num(Math.abs(v))}%`;
+// Several effects carry a floor in base1 and a ceiling in base2. A negative pair
+// is stored the other way round, and a positive pair with min > max is bad data
+// the source ignores rather than prints backwards. Ported from FormatPercentRange.
+const pctRange = (name, min, max) => {
+  if (min < 0) { if (min < max) [min, max] = [max, min]; }
+  else if (min > max) max = min;
+  const dir = max < 0 ? 'Decrease' : 'Increase';
+  return min === max ? `${dir} ${name} by ${num(Math.abs(min))}%`
+    : `${dir} ${name} by ${num(Math.abs(min))}% to ${num(Math.abs(max))}%`;
+};
 
 function time(seconds) {
   if (seconds < 120) return `${num(seconds)}s`;
@@ -61,7 +78,7 @@ export function phrase(slot, value, names = {}) {
     case 10:  return base1 === 0 ? null : up('CHA', value);
     case 11:  return pct('Melee Haste', value - 100);
     case 15:  return up('Current Mana', value);
-    case 55:  return up('Rune', value);
+    case 55:  return `Absorb Damage: 100%, Total: ${num(value)}`;
     case 58:  return 'Illusion';
     case 59:  return up('Damage Shield', -value);
     case 69:  return up('Max HP', value);
@@ -74,17 +91,21 @@ export function phrase(slot, value, names = {}) {
     case 116: return up('Curse Counter', value);
     case 35:  return up('Disease Counter', value);
     case 36:  return up('Poison Counter', value);
-    case 21:  return `Stun for ${time(base1 / 1000)}`;
-    case 162: return up('Melee Mitigation', value);
-    case 163: return `Absorb Melee Damage: ${base1}% for up to ${max}`;
+    // Under a second it does not stun, it only interrupts — saying "Stun for 0.5s"
+    // reads as a stun that is merely short, which is a different thing.
+    case 21:  return base1 < 1000 ? 'Interrupt Casting'
+              : `Stun for ${time(base1 / 1000)}` + (base2 && base2 !== base1 ? ` (${time(base2 / 1000)} in PvP)` : '');
+    case 162: return `Absorb Melee Damage: ${base1}%`
+              + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
+    case 163: return `Absorb ${base1} Hits or Spells` + (max > 0 ? `, Max Per Hit: ${max}` : '');
     case 189: return up('Current Endurance', value);
     case 190: return up('Max Endurance', value);
-    case 191: return 'Silence';
+    case 191: return 'Inhibit Combat';
     case 209: return `Dispel Beneficial (${value})`;
     case 214: return pct('Max HP', value / 100);
-    case 232: return `Cast: ${effectName(base2)} on Fatal Damage`;
+    case 232: return pct('Chance to Trigger Divine Intervention', base1);
     case 262: return up(fromEnum(SpellSkill, base2) + ' Cap', value);
-    case 360: return `Cast: [Spell ${base2}] on Kill Shot`;
+    case 360: return `Add Killshot Proc: [Spell ${base2}] (${base1}% Chance)`;
     case 374: return `Cast: [Spell ${base2}]` + (base1 < 100 ? ` (${base1}% Chance)` : '');
     case 340: return `Cast: [Spell ${base2}]` + (base1 < 100 ? ` (${base1}% Chance)` : '');
     case 470: return `Cast: Best in [Group ${base2}]`;
@@ -96,14 +117,14 @@ export function phrase(slot, value, names = {}) {
     case 176: return pct('Dual Wield Chance', value);
     case 177: return pct('Double Attack Chance', value);
     case 182: return pct('Weapon Delay', -value);
-    case 184: return pct('Accuracy', value);
+    case 184: return pct(`Chance to Hit with ${skill()}`, value);
     case 193: return `${skill()} Attack for ${base1}`;
     case 185: return pct(`${skill()} Damage`, base1);
     case 186: return pct(`Min ${skill()} Damage`, value);
     case 220: return up(`${skill()} Damage Bonus`, base1);
     case 279: return pct('Flurry Chance', value);
     case 364: return pct('Triple Attack Chance', value);
-    case 428: return `${skill()} Proc Modifier: ${base1}`;
+    case 428: return `Limit Skill: ${fromEnum(SpellSkill, base1)}`;
     case 459: return pct(`${skill()} Damage`, base1);
     case 482: return pct(`Base ${skill()} Damage`, value);
     case 496: return pct(`Critical ${skill()} Damage`, base1) + ' of Base Damage (Non Stacking)';
@@ -179,16 +200,24 @@ export function phrase(slot, value, names = {}) {
     case 87:  return pct('Magnification', value);
     case 89:  return pct('Player Size', value - 100);
     case 91:  return `Summon Corpse (up to level ${base1})`;
-    case 96:  return 'Silence';
+    // Named for the pair rather than for the player's word: 96 inhibits casting,
+    // 191 inhibits melee. Calling one of them "Silence" hid that they are a pair.
+    case 96:  return 'Inhibit Spell Casting';
+    // A deliberate divergence: eqspellparser prints the historical figure,
+    // "Increase Current HP by 7500". The effect is the Donal's BP complete heal
+    // and the number is not in the slot, so naming the effect beats quoting it.
     case 101: return 'Complete Heal (with duration)';
     case 108: return `Summon Familiar: [Spell ${base1}]`;
     case 113: return `Summon Mount: [Spell ${base1}]`;
-    case 147: return `Heal to ${base1}% of Max HP`;
+    case 147: return pct('Current HP', value) + ` up to ${max}`;
     case 153: return `Balance Group HP with ${value}% Penalty`;
     case 158: return pct('Chance to Reflect Spell', base1);
     case 159: return up('All Stats', value);
     case 167: return `Add Pet Proc: [Spell ${base1}]`;
-    case 179: return `Reduce Aggro Radius to ${base1}`;
+    // 179 is Instrument Modifier and 145 is Teleport; both read a field that
+    // belongs to the spell, not the slot, and this function only sees the slot.
+    // Better to say nothing and wear the "as-is" badge than to say the wrong thing.
+    case 179: return null;
     case 194: return 'Fade (Drop Aggro)';
     case 199: return `Taunt`;
     case 201: return `Add Ranged Proc: [Spell ${base1}]`;
@@ -200,9 +229,9 @@ export function phrase(slot, value, names = {}) {
     case 383: return `Cast: [Spell ${base2}] on Spell Use (Base1=${base1})`;
     case 406: return `Cast: [Spell ${base1}] on Max Hits`;
     case 419: return `Add Proc: [Spell ${base1}]` + (base2 ? ` with ${base2}% Rate Mod` : '');
-    case 424: return `Gravitate (${base1})`;
+    case 424: return `Gradual ${base1 > 0 ? 'Push' : 'Pull'} to ${base2}' away (Force=${Math.abs(base1)})`;
     case 425: return 'Fly';
-    case 427: return `Add Skill Proc: [Spell ${base1}]`;
+    case 427: return `Cast: [Spell ${base1}] on Skill Use (${base2})`;
     case 429: return `Add Skill Proc on Success: [Spell ${base1}]`;
     case 475: return `Cast: [Spell ${base1}] (Non-Item)`;
 
@@ -213,7 +242,7 @@ export function phrase(slot, value, names = {}) {
     case 48:  return up('Poison Resist', value);
     case 49:  return up('Disease Resist', value);
     case 50:  return up('Magic Resist', value);
-    case 145: return `Banish to [Zone ${base1}]`;
+    case 145: return null;
     case 152: return `Summon Pet x${base1} for ${time(max)}`;
     case 161: return `Absorb Spell Damage: ${base1}%`
                    + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
@@ -235,7 +264,8 @@ export function phrase(slot, value, names = {}) {
     case 483: return pct('Spell Damage Taken', base1) + ' (After Crit)';
     case 484: return up('Spell Damage Taken', base1) + ' (After Crit)';
     case 497: return 'Limit: Focus Proc Cannot Be Bypassed';
-    case 507: return pct('Spell Effectiveness', base1);
+    case 507: return pctRange('Spell Damage', base1 / 10, base2 / 10)
+              + ' (v507, Before DoT Crit, After DD Crit)';
     case 508: return up('Spell Effectiveness', base1);
 
     // --- and a further pass over what remained -----------------------------
@@ -280,7 +310,8 @@ export function phrase(slot, value, names = {}) {
     case 498: return pct('Chance of Extra 1H Primary Attack', base1);
     case 499: return pct('Chance of Extra 1H Secondary Attack', base1);
     case 500: return pct('Spell Haste', base1);
-    case 501: return up('Cast Time', base1);
+    case 501: return `${base1 < 0 ? 'Increase' : 'Decrease'} Casting Times by `
+              + `${num(Math.abs(base1 / 1000))}s`;
     case 512: return up('Proc Timer', base1);
     case 519: return up('Luck', base1);
     case 520: return pct('Luck', base1);

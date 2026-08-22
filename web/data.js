@@ -138,6 +138,25 @@ export async function load() {
 
 export const kindHelp = k => (META.items ? KIND_HELP[k] : KIND_HELP_NO_ITEMS[k] || KIND_HELP[k]) || '';
 
+// Name lookup without a fetch. A phrased effect that says "Cast: [Spell 6097]"
+// has to decide, while it is being drawn, whether 6097 is in this spell file at
+// all — an id that is not cannot be offered as something to open. The index is
+// already in memory and carries every id and name, so this costs one pass.
+let nameById = null;
+export function nameOf(id) {
+  if (!nameById) {
+    nameById = new Map();
+    for (const r of INDEX) nameById.set(r[row.id], r[row.name]);
+  }
+  return nameById.get(id) || null;
+}
+
+// "Cast: [Spell 6097] on Fade" -> "Cast: Savage Spirit Penance on Fade".
+// A token whose id is not in this spell file is left exactly as written, because
+// there is nothing honest to put in its place.
+export const named = text =>
+  text.replace(/\[Spell (\d+)\]/g, (whole, id) => nameOf(+id) || whole);
+
 // index rows carry item relationships as a bitmask so a result list can show
 // tags without fetching a shard. Bit order matches meta.items.rel.
 export const relsOf = mask => (META.items?.rel || []).filter((_, i) => mask & (1 << i));
