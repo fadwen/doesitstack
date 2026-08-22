@@ -15,7 +15,8 @@
 // slot arbitration: two spells in the same stacking group never coexist.
 
 import {
-  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED, IGNORED_BY_CLAIM,
+  SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED,
+  NON_CUMULATIVE_STATUS, NON_CUMULATIVE_OFFSET, IGNORED_BY_CLAIM,
   FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_LIMIT, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
@@ -393,6 +394,39 @@ export function sharedStackingGroups(a, b) {
  * for the provenance note); the wording is confirmed by the live spell text for
  * SPA 496, whose descriptions say "non-cumulative" outright.
  */
+/**
+ * The bonus EQEmu actually compares. Haste is stored as a percentage of normal
+ * speed, so 168 is a 68% bonus and 90 is a 10% slow — comparing the stored number
+ * would call a slow the bigger buff.
+ */
+export const ncBonus = (spa, value) => value - (NON_CUMULATIVE_OFFSET[spa] || 0);
+
+/**
+ * Which of two values the game keeps, or null where it cannot be said.
+ *
+ * Not "the larger". EQEmu keeps the value furthest from zero on the side of zero
+ * it is already on:
+ *
+ *     if (v < 0 && cur > v) cur = v;        // among negatives, the most negative
+ *     else if (v > 0 && cur < v) cur = v;   // among positives, the largest
+ *
+ * — the same shape in all seven of the damage-mod cases, and in the haste cases
+ * once the 100 is taken off. The difference is not academic: SPA 505 is negative
+ * in every one of its 22 slots in the current file, and SPA 3 in 1,297 of 1,515,
+ * so "the larger" would name the weaker effect the winner on both.
+ *
+ * Opposite signs return null. Those two branches never displace each other on
+ * their own terms, so which one is left standing depends on the order the server
+ * happened to apply them in, and that is not something this tool can know.
+ */
+export function ncWinner(spa, valueA, valueB) {
+  const a = ncBonus(spa, valueA), b = ncBonus(spa, valueB);
+  if (a === b) return 'tie';
+  if (a === 0 || b === 0) return null;
+  if ((a > 0) !== (b > 0)) return null;
+  return Math.abs(a) > Math.abs(b) ? 'a' : 'b';
+}
+
 export function nonCumulativeOverlap(a, b, opts = {}) {
   const levelA = opts.levelA ?? MAX_PLAYER_LEVEL, levelB = opts.levelB ?? MAX_PLAYER_LEVEL;
   const out = [];
@@ -404,14 +438,17 @@ export function nonCumulativeOverlap(a, b, opts = {}) {
       const sb = slotOf(b, j);
       if (!sb || sb.spa !== sa.spa || i === j) continue;
       const valueA = calcValue(a, i, levelA), valueB = calcValue(b, j, levelB);
-      // A winner is only named where the claim is confirmed. For the other six
-      // SPAs we are asserting that the values do not add, on EQEmu's bonus
-      // accumulation alone — saying which one the game keeps would dress an
-      // unverified claim as a fact, and several of these could plausibly favour
-      // the more negative value rather than the larger one.
+      // The winner is named whatever the confidence, because it is not a second
+      // claim: every non_cumulative claim already asserts which value applies, and
+      // withholding it left the tool refusing to answer the question its own claim
+      // had answered. What varies with the evidence is how it is said, which is the
+      // view's job — `status` is passed through for it.
       const confirmed = NON_CUMULATIVE_CONFIRMED.includes(sa.spa);
-      const winner = !confirmed ? null : valueA === valueB ? 'tie' : valueA > valueB ? 'a' : 'b';
-      out.push({ spa: sa.spa, name: spaName(sa.spa), slotA: i, slotB: j, valueA, valueB, confirmed, winner });
+      const winner = ncWinner(sa.spa, valueA, valueB);
+      out.push({
+        spa: sa.spa, name: spaName(sa.spa), slotA: i, slotB: j, valueA, valueB,
+        confirmed, status: NON_CUMULATIVE_STATUS[sa.spa] || 'unverified', winner,
+      });
     }
   }
   return out;
@@ -543,11 +580,18 @@ export function analyzeSet(spells, opts = {}) {
         value: Math.max(...carried.map(c => c.value)),
       };
     });
-    // Same discipline as the pair view: a winner only where the claim is
-    // confirmed. Ties keep every tied member as applying.
-    const best = Math.max(...members.map(m => m.value));
-    for (const m of members) m.applies = confirmed ? m.value === best : null;
-    return { spa, name: spaName(spa), confirmed, members, coexist: coexist(idxs) };
+    // Same rule as the pair view, over more than two: the bonus furthest from
+    // zero applies, and only among members on the same side of zero. A set holding
+    // both a haste and a slow has no single answer, so none is marked.
+    const bonuses = members.map(m => ncBonus(spa, m.value));
+    const mixed = bonuses.some(v => v > 0) && bonuses.some(v => v < 0);
+    const best = Math.max(...bonuses.map(Math.abs));
+    for (let i = 0; i < members.length; i++)
+      members[i].applies = mixed || bonuses[i] === 0 ? null : Math.abs(bonuses[i]) === best;
+    return {
+      spa, name: spaName(spa), confirmed, status: NON_CUMULATIVE_STATUS[spa] || 'unverified',
+      mixed, members, coexist: coexist(idxs),
+    };
   });
 
   const focusShared = (list) => groupsFor(spa => list.includes(spa)).map(([spa, idxs]) => ({

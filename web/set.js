@@ -439,18 +439,35 @@ function groupShell(cls, title, subtitle) {
 
 function nonCumulativeGroup(g) {
   const status = META.claims?.[g.spa]?.status || 'unverified';
-  const said = {
-    confirmed: 'These do not add. The game keeps the larger value, so the rest are doing nothing while all of them are up.',
-    disputed: 'These are reported not to add, with only one value counting — but the sources disagree, and the EQEmu server adds them instead. Neither side is taken here.',
-    corroborated: 'These do not add — only one value counts. Which one is not settled, so none is marked as the one that applies.',
-    unverified: 'These do not add — only one value counts. Which one is unverified, so none is marked as the one that applies.',
-  }[status];
+  // The one that applies is named in every case the data allows, and the sentence
+  // says what that naming rests on. Saying nothing was the worse option: a set of
+  // four haste buffs where one is plainly the biggest is exactly what someone opens
+  // this page to find out.
+  const said = g.mixed
+    ? 'These do not add, but they are on opposite sides of zero — a bonus against a penalty. '
+      + 'They never displace each other on their own terms, so which one stands depends on the '
+      + 'order the server applied them in, and none is marked.'
+    : {
+      confirmed: 'These do not add. Only the value furthest from zero applies, so the rest are '
+        + 'doing nothing while all of them are up.',
+      disputed: 'Only one of these applies, if they do not add — but the sources disagree. It is '
+        + 'reported from play that only the better value counts, while the EQEmu server adds them '
+        + 'together instead. The one marked is the one the first reading would keep.',
+      corroborated: 'These do not add — only the value furthest from zero applies. That rests on '
+        + 'corroborating evidence rather than a settled source.',
+      unverified: 'These do not add — only the value furthest from zero applies. That they do not '
+        + 'add is unverified: it rests on EQEmu\u2019s bonus accumulation, which nothing in that '
+        + 'project backs up.',
+    }[status];
   const n = groupShell('note-doubt', `${g.members.length} carry ${g.name}`, said);
   const ul = el('ul', 'group-members');
+  const soft = status !== 'confirmed' ? ' nc-soft' : '';
   for (const m of g.members) {
     // Same language as the pair view's slot table, so the colours mean one thing
-    // across the site: green applies, struck-through is ignored, orange unknown.
-    const cls = m.applies === true ? 'nc-wins' : m.applies === false ? 'nc-loses' : 'nc-unsure';
+    // across the site: green applies, struck-through is ignored, orange unknown,
+    // and faint wherever the claim behind it is not settled.
+    const cls = m.applies === true ? 'nc-wins' + soft
+      : m.applies === false ? 'nc-loses' + soft : 'nc-unsure';
     const li = el('li');
     const s = el('span', cls);
     s.appendChild(spellLink(m.name, m.id));

@@ -12,8 +12,8 @@
       "id": "non-cumulative/3",
       "type": "non_cumulative",
       "spa": 3,
-      "spa_name": "MovementSpeed",
-      "assertion": "Two buffs carrying SPA 3 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 3 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "strong",
@@ -30,14 +30,16 @@
           "summary": "EQEmu contradicts this: it ADDS movement speed rather than keeping the larger \u2014 `newbon->movementspeed += base_value;` \u2014 and leaves the comment \"should we let these stack?\" beside a commented-out highest-wins alternative. The emulator is openly unsure, which is why this is recorded as a disagreement rather than either side being accepted.",
           "source": "EQEmu/Server zone/bonuses.cpp, the MovementSpeed case"
         }
-      ]
+      ],
+      "spa_name": "MovementSpeed"
     },
     {
       "id": "non-cumulative/11",
       "type": "non_cumulative",
       "spa": 11,
-      "spa_name": "AttackSpeed",
-      "assertion": "Two buffs carrying SPA 11 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 11 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
+      "offset": 100,
       "evidence": [
         {
           "strength": "supporting",
@@ -45,14 +47,16 @@
           "summary": "SPA 11 is the ordinary spell haste every raid carries. Keeps the larger value: `if ((effect_value - 100) > new_bonus->haste) new_bonus->haste = effect_value - 100;`. Accumulated into its own `haste` field, separate from the two other haste types, and never added to another SPA 11 buff. Found the same way as the other entries here \u2014 a spell-bonus path that keeps the larger magnitude where an ordinary bonus uses +=. It was missed on the first pass because haste is handled in a different switch from the effects that produced the rest of this list.",
           "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
         }
-      ]
+      ],
+      "spa_name": "AttackSpeed"
     },
     {
       "id": "non-cumulative/98",
       "type": "non_cumulative",
       "spa": 98,
-      "spa_name": "AttackSpeed2",
-      "assertion": "Two buffs carrying SPA 98 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 98 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
+      "offset": 100,
       "evidence": [
         {
           "strength": "supporting",
@@ -60,14 +64,15 @@
           "summary": "SPA 98 is bard haste. Keeps the larger value into `hastetype2`, which EQEmu's own comment describes as \"Stacks with V1 but does not Overcap\" \u2014 a separate bucket from SPA 11 that adds to it, while two SPA 98 buffs do not add to each other.",
           "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
         }
-      ]
+      ],
+      "spa_name": "AttackSpeed2"
     },
     {
       "id": "non-cumulative/119",
       "type": "non_cumulative",
       "spa": 119,
-      "spa_name": "AttackSpeed3",
-      "assertion": "Two buffs carrying SPA 119 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 119 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -75,14 +80,15 @@
           "summary": "SPA 119 is overhaste. Keeps the larger value into `hastetype3`, commented \"Stacks and Overcaps\" \u2014 again its own bucket, adding to the other two while not adding to itself.",
           "source": "EQEmu/Server zone/bonuses.cpp, ApplySpellsBonuses \u2014 the AttackSpeed, AttackSpeed2 and AttackSpeed3 cases. No commit message or source cited for the behaviour, as with the rest of this list."
         }
-      ]
+      ],
+      "spa_name": "AttackSpeed3"
     },
     {
       "id": "non-cumulative/185",
       "type": "non_cumulative",
       "spa": 185,
-      "spa_name": "DamageModifier",
-      "assertion": "Two buffs carrying SPA 185 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 185 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -90,14 +96,15 @@
           "summary": "EQEmu's spell-bonus path keeps the larger magnitude. Its worn-item path adds instead, so the two disagree by design.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal, 'Fix stacking issues with SE_DamageModifier and SE_MinDamageModifier') \u2014 commit body empty, no source cited"
         }
-      ]
+      ],
+      "spa_name": "DamageModifier"
     },
     {
       "id": "non-cumulative/186",
       "type": "non_cumulative",
       "spa": 186,
-      "spa_name": "MinDamageModifier",
-      "assertion": "Two buffs carrying SPA 186 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 186 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -105,14 +112,15 @@
           "summary": "EQEmu's spell-bonus path keeps the larger magnitude.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal) \u2014 no source cited"
         }
-      ]
+      ],
+      "spa_name": "MinDamageModifier"
     },
     {
       "id": "non-cumulative/459",
       "type": "non_cumulative",
       "spa": 459,
-      "spa_name": "DamageModifier2",
-      "assertion": "Two buffs carrying SPA 459 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 459 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -120,14 +128,15 @@
           "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit 6fc5f8fb (2016-01-10, mackal); effect first implemented in da70a45d (2014-06-17, KayenEQ) \u2014 no source cited"
         }
-      ]
+      ],
+      "spa_name": "DamageModifier2"
     },
     {
       "id": "non-cumulative/482",
       "type": "non_cumulative",
       "spa": 482,
-      "spa_name": "Skill_Base_Damage_Mod",
-      "assertion": "Two buffs carrying SPA 482 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 482 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -135,14 +144,15 @@
           "summary": "EQEmu's spell-bonus path keeps the larger magnitude; the worn-item path adds. The commit message does not mention stacking at all \u2014 the behaviour is only visible in the code.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit fee8772b (2021-07-29, KayenEQ, PR #1474) \u2014 no source cited"
         }
-      ]
+      ],
+      "spa_name": "Skill_Base_Damage_Mod"
     },
     {
       "id": "non-cumulative/496",
       "type": "non_cumulative",
       "spa": 496,
-      "spa_name": "Critical_Melee_Damage_Mod_Max",
-      "assertion": "Two buffs carrying SPA 496 both land, but only the larger value applies \u2014 the game does not add them.",
+      "assertion": "Two buffs carrying SPA 496 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative. The game does not add them \u2014 its own spell text says \"non-cumulative\".",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "primary",
@@ -162,14 +172,15 @@
           "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454): 'SE_Critical_Melee_Damage_Mod_Max 496 - This is a non stackable melee critical modifier'"
         }
       ],
+      "spa_name": "Critical_Melee_Damage_Mod_Max",
       "_note": "An earlier version of this file said Daybreak's SPA list never covered 496, based on a 2014 pastebin mirror that stops at 471. The published list runs to 528 and names 496 'Critical Melee Damage Mod Max' \u2014 the mirror was stale, not the source. Corrected once the real list was to hand; the claim itself never rested on that point."
     },
     {
       "id": "non-cumulative/503",
       "type": "non_cumulative",
       "spa": 503,
-      "spa_name": "Melee_Damage_Position_Mod",
-      "assertion": "Two buffs carrying SPA 503 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 503 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -177,14 +188,15 @@
           "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
         }
-      ]
+      ],
+      "spa_name": "Melee_Damage_Position_Mod"
     },
     {
       "id": "non-cumulative/505",
       "type": "non_cumulative",
       "spa": 505,
-      "spa_name": "Damage_Taken_Position_Mod",
-      "assertion": "Two buffs carrying SPA 505 both land, but only the larger value applies.",
+      "assertion": "Two buffs carrying SPA 505 both land, but only one value applies: the one furthest from zero on the side of zero it is already on. Among positive values that is the largest; among negative values it is the most negative.",
+      "keep": "magnitude",
       "evidence": [
         {
           "strength": "supporting",
@@ -192,7 +204,8 @@
           "summary": "EQEmu keeps the larger magnitude unless the bonus arrives as an additive worn-item bonus.",
           "source": "EQEmu/Server zone/bonuses.cpp, commit 8a2a1b15 (2021-07-14, KayenEQ, PR #1454) \u2014 no source cited"
         }
-      ]
+      ],
+      "spa_name": "Damage_Taken_Position_Mod"
     },
     {
       "id": "focus-best-only/all-focus-spas",

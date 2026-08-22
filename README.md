@@ -268,30 +268,51 @@ says so in the warning.
 
 Two caveats apply to all seven:
 
-- The larger value wins **within one bonus bucket**. Spell, AA and worn-item bonuses are
+- The value that applies wins **within one bonus bucket**. Spell, AA and worn-item bonuses are
   summed at use time, so a worn item effect and a buff can still add. Two buffs — the
   case this tool compares — are both in the spell bucket.
 - 185, 459, 482, 503 and 505 are additive when they arrive as a worn item bonus rather
   than as a buff.
 
-That difference in confidence is visible in the slot-by-slot table, not just in the
-warning under the verdict. Where both buffs hold and share one of these SPAs, the two
-slots are marked — and how they are marked depends on what can be justified:
+### Which value applies
+
+Not "the larger". EQEmu keeps the value **furthest from zero on the side of zero it is
+already on** — among positives the largest, among negatives the most negative:
+
+```cpp
+if (v < 0 && cur > v) cur = v;        // among negatives, the most negative
+else if (v > 0 && cur < v) cur = v;   // among positives, the largest
+```
+
+the same shape in all seven damage-mod cases, and in the three haste cases once the 100
+is taken off (haste is stored as a percentage of normal speed, so 168 is a 68% bonus and
+90 is a 10% slow). The difference is not academic: **505 is negative in all 22 of its
+slots** in the current file and **3 in 1,297 of its 1,515**, so reading it as "the larger"
+would name the weaker effect the winner on both.
+
+Two values on **opposite sides of zero** name nobody. They never displace each other on
+their own terms, so which one is left standing depends on the order the server applied
+them in, and that is not something this tool can know.
+
+Values are compared at the caster levels you asked about, so which one applies can change
+when you change the level. Ties mark neither side as losing out.
+
+### How firmly it is said
+
+The value that applies is named whatever the evidence, because it is not a second claim —
+every `non_cumulative` claim in `claims.json` already asserts which value applies, and
+withholding it left the tool declining to answer a question its own claim had answered.
+What the evidence changes is how firmly it is drawn:
 
 | | |
 | --- | --- |
-| **Confirmed** (496 only) | the larger value is marked as the one that applies, the other as ignored |
-| **Unverified** (the other six) | both sides are flagged, and neither is called the winner |
+| **Confirmed** (496 only) | marked solid, and the tooltip adds nothing |
+| **Corroborated** | marked faintly; the tooltip says it rests on corroboration, not a settled source |
+| **Unverified** (the nine) | marked faintly; the tooltip says the claim rests on EQEmu's bonus accumulation, which nothing in that project backs up |
+| **Disputed** (3 only) | marked faintly; the tooltip says the sources disagree, and that the mark follows the practitioner reading rather than EQEmu, which adds them |
 
-Naming a winner for the other six would be a second claim on top of an unverified one:
-we would be asserting not only that the values do not add, but which one the game keeps
-— and several of these could plausibly favour the more negative value rather than the
-larger one. Values are compared at the caster levels you asked about, so who wins can
-change when you change the level. Ties mark neither side as losing out.
-
-Status is derived from evidence, not written by hand, so **adding a primary source
-removes the hedging on the next build with no code change** — and promotes that SPA's
-slots from "one of these counts" to a named winner. If you can settle one of the nine,
+Status is derived from evidence, not written by hand, so **adding a primary source removes
+the hedging on the next build with no code change**. If you can settle one of the nine,
 see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
 ## A whole buff set

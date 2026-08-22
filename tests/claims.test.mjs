@@ -293,3 +293,25 @@ test('a note may still be a plain paragraph', () => {
   assert.equal(typeof doc.notes.movement_and_mounts, 'string');
   assert.deepEqual(validate({ version: 1, claims: [], notes: { x: 'a sentence long enough to matter' } }), []);
 });
+
+test('a non-cumulative claim says which value applies, and says it correctly', () => {
+  // The assertion used to read "only the larger value applies", which is wrong
+  // wherever the effect is negative — and SPA 505 is negative in every slot it
+  // occupies. The engine reads this wording, so getting it wrong here would name
+  // the weaker effect the winner on the page.
+  for (const c of doc.claims.filter(x => x.type === 'non_cumulative')) {
+    assert.match(c.assertion, /furthest from zero/, `${c.id} must state the rule, not "the larger"`);
+    assert.equal(c.keep, 'magnitude', `${c.id} needs a keep rule the generator can act on`);
+  }
+});
+
+test('haste carries the offset that makes a slow read as a slow', () => {
+  // 11 and 98 store a percentage of normal speed: 168 is a 68% bonus and 90 is a
+  // 10% slow. Without the offset every haste beats every slow and the slow reads
+  // as the smaller buff rather than the opposite thing it is.
+  const off = Object.fromEntries(doc.claims.filter(c => c.type === 'non_cumulative').map(c => [c.spa, c.offset]));
+  assert.equal(off[11], 100);
+  assert.equal(off[98], 100);
+  assert.equal(off[119], undefined, 'SPA 119 is stored as the bonus itself');
+  assert.equal(off[496], undefined);
+});

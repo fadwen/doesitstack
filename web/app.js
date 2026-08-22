@@ -371,14 +371,14 @@ function nonCumulativeNote(overlaps) {
   const unverified = spas.filter(s => statusOf(s) === 'unverified');
   const disputed = spas.filter(s => statusOf(s) === 'disputed');
 
-  let text = `Both carry ${names}. The game does not add these together — while both buffs are up, only the larger value counts. Stacking here does not mean the numbers add.`;
+  let text = `Both carry ${names}. The game does not add these together — while both buffs are up, only the value furthest from zero counts. Stacking here does not mean the numbers add.`;
   if (unverified.length)
     text += ` Treat that as unverified for SPA ${unverified.join(', ')}: it rests on how the EQEmu server accumulates the bonus, which nothing in that project backs up, and the game's own spell text never calls these non-cumulative.`;
   // A disputed claim is not a weaker unverified one — the sources actively
   // disagree, and saying "unverified because EQEmu says so" would be backwards
   // when EQEmu is the side saying they do add.
   if (disputed.length)
-    text += ` For SPA ${disputed.join(', ')} the sources disagree: it is reported this way from play, while the EQEmu server adds the values instead. Neither side is being taken here — see the evidence below.`;
+    text += ` For SPA ${disputed.join(', ')} the sources disagree: it is reported this way from play, while the EQEmu server adds the values instead. The marked value is the one the first reading would keep — see the evidence below.`;
   n.appendChild(el('p', null, text));
 
   const d = el('details', 'evidence');
@@ -568,56 +568,84 @@ function focusBestOnlyNote(focus) {
 /**
  * Which slots carry an effect that does not add with the other buff's copy of it.
  *
- * Two shapes, because the confidence differs. Where the claim is confirmed we know
- * the game keeps the larger value, so the slot that applies is marked as taking
- * precedence and the other as losing out. Where it is not, all we are asserting is
- * that the numbers do not add — so both sides are flagged and neither is called the
- * winner. Returns Map(slot index -> 'wins' | 'loses' | 'unsure') per side.
+ * The value that applies is named whatever the confidence — every non_cumulative
+ * claim asserts which one applies, so withholding it was the tool declining to
+ * answer a question its own claim had answered. What the confidence changes is how
+ * firmly it is drawn and what the tooltip says, not whether it is said.
+ *
+ * Returns Map(slot index -> {kind, firm, status}) per side, where kind is
+ * 'wins' | 'loses' | 'unsure' and unsure means there is no answer to give: the two
+ * values are on opposite sides of zero and the server decides by order.
  */
 function nonCumulativeMarks(overlaps) {
   const marks = { a: new Map(), b: new Map() };
   // A slot can appear in more than one pair. Losing is the strongest thing we can
   // say about a slot, so it is never downgraded by a later pair.
   const rank = { loses: 3, wins: 2, unsure: 1 };
-  const set = (side, slot, mark) => {
+  const set = (side, slot, kind, o) => {
     const had = marks[side].get(slot);
-    if (!had || rank[mark] > rank[had]) marks[side].set(slot, mark);
+    if (had && rank[kind] <= rank[had.kind]) return;
+    marks[side].set(slot, { kind, firm: o.status === 'confirmed', status: o.status, spa: o.spa });
   };
   for (const o of overlaps) {
-    if (!o.confirmed) { set('a', o.slotA, 'unsure'); set('b', o.slotB, 'unsure'); continue; }
+    if (!o.winner) { set('a', o.slotA, 'unsure', o); set('b', o.slotB, 'unsure', o); continue; }
     // A tie loses nothing either way — that value applies whichever buff supplies it.
-    if (o.winner === 'tie') { set('a', o.slotA, 'wins'); set('b', o.slotB, 'wins'); continue; }
-    set('a', o.slotA, o.winner === 'a' ? 'wins' : 'loses');
-    set('b', o.slotB, o.winner === 'b' ? 'wins' : 'loses');
+    if (o.winner === 'tie') { set('a', o.slotA, 'wins', o); set('b', o.slotB, 'wins', o); continue; }
+    set('a', o.slotA, o.winner === 'a' ? 'wins' : 'loses', o);
+    set('b', o.slotB, o.winner === 'b' ? 'wins' : 'loses', o);
   }
   return marks;
 }
 
-const MARK_TITLE = {
-  wins: 'Does not add with the other buff\u2019s copy of this effect. This is the larger value, so this is the one that applies.',
-  loses: 'Does not add with the other buff\u2019s copy of this effect. The other buff\u2019s value is larger, so this one does nothing while both are up.',
-  unsure: 'Reported not to add with the other buff\u2019s copy of this effect — only one value counts. Which one is unverified, so neither is marked as winning.',
+// How sure the page is allowed to sound. The claim's status is derived from its
+// evidence, so this is the evidence speaking rather than a tone chosen here.
+const HOW_SURE = {
+  confirmed: '',
+  corroborated: ' This rests on corroborating evidence rather than a settled source.',
+  unverified: ' That this effect does not add is unverified — it rests on EQEmu\u2019s bonus'
+    + ' accumulation, which nothing in that project backs up.',
+  disputed: ' The sources disagree about this one: it is reported from play that only the'
+    + ' better value counts, while the EQEmu server adds the two together instead.'
+    + ' Neither side is taken here.',
 };
 
+const markTitle = (m) => ({
+  wins: 'Does not add with the other buff\u2019s copy of this effect. This is the value furthest'
+    + ' from zero, so this is the one that applies.',
+  loses: 'Does not add with the other buff\u2019s copy of this effect. The other buff\u2019s value is'
+    + ' further from zero, so this one does nothing while both are up.',
+  unsure: 'Does not add with the other buff\u2019s copy of this effect, but the two are on opposite'
+    + ' sides of zero \u2014 a bonus against a penalty. They never displace each other on their'
+    + ' own terms, so which one stands depends on the order the server applied them in.',
+}[m.kind] + (HOW_SURE[m.status] || ''));
+
 function nonCumulativeLegend(marks) {
-  const kinds = new Set([...marks.a.values(), ...marks.b.values()]);
-  if (!kinds.size) return null;
+  const all = [...marks.a.values(), ...marks.b.values()];
+  if (!all.length) return null;
+  const kinds = new Set(all.map(m => m.kind));
+  const soft = all.some(m => !m.firm);
   const p = el('p', 'legend');
   p.appendChild(document.createTextNode('Marked effects do not add together — '));
   let first = true;
-  const add = (cls, label) => {
-    if (!kinds.has(cls)) return;
+  const add = (kind, label) => {
+    if (!kinds.has(kind)) return;
     if (!first) p.appendChild(document.createTextNode(' · '));
     first = false;
-    p.appendChild(el('span', 'nc-' + cls, label));
+    // The sample text carries the styling it describes, so the legend does not
+    // depend on the reader naming a colour.
+    p.appendChild(el('span', markClass({ kind, firm: !soft || kind === 'unsure' }), label));
   };
-  // The sample text carries the styling it describes, so the legend does not
-  // depend on the reader naming a colour.
   add('wins', 'this value applies');
   add('loses', 'this one is ignored');
-  add('unsure', 'which one applies is unverified');
+  add('unsure', 'no way to say which applies');
+  if (soft) p.appendChild(document.createTextNode(
+    '. Drawn faintly where the claim behind it is not settled — hover any of them for what it rests on.'));
   return p;
 }
+
+// Faint where the evidence is. One class for the colour, one for the confidence,
+// so a reader can see at a glance which verdicts are load-bearing.
+const markClass = (m) => 'nc-' + m.kind + (m.firm ? '' : ' nc-soft');
 
 function renderDetail(a, b, res, lvl) {
   const d = $('#detail'); d.hidden = false; d.innerHTML = '';
@@ -826,12 +854,12 @@ function slotCell(sp, i, lvl, mark) {
   // a reader can quote what the file says.
   const empty = isEmptySlot(sp, i);
   const text = said || META.spa_names[s.spa] || `SPA ${s.spa}`;
-  const name = el('span', empty ? 'empty-name' : (mark ? 'nc-' + mark : null));
+  const name = el('span', empty ? 'empty-name' : (mark ? markClass(mark) : null));
   // A phrasing that names another spell should be able to show it. Only the
   // phrased reading gets this: the exact reading is there to be quoted, and a
   // spell name is not what the file says.
   if (said) writePhrasing(name, text, td, 0); else name.textContent = text;
-  if (mark && !empty) name.title = MARK_TITLE[mark];
+  if (mark && !empty) name.title = markTitle(mark);
   if (empty) name.title = 'A spacer slot — the client pads unused slots with SPA 10 at base 0.';
   head.appendChild(name);
   // Say when there is no phrasing rather than quietly showing the exact name and

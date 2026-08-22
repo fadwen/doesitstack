@@ -166,6 +166,11 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 .report .note h4{margin:0;font-size:14px}
 .group-members{margin:8px 0 0;padding-left:18px}
 .group-members li{margin-bottom:6px}
+/* A set member is a link inside the mark, and a link carries its own colour — so
+   the verdict was being drawn and then painted over. It read as four equal names
+   with no winner, which is the one thing this box exists to say. */
+.group-members .nc-wins a, .group-members .nc-loses a, .group-members .nc-unsure a
+  {color:inherit;text-decoration:inherit;text-decoration-color:inherit}
 .limiters{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
 .dirverdict{font-weight:600}
 .report table.slots td:first-child{min-width:150px}
@@ -232,3 +237,7 @@ button.linkish{border:0;background:none;padding:0;color:var(--accent,#7cc4ff);fo
 /* Where else to read a spell. Deliberately quiet: these are other people's
    readings, not sources, and they should not compete with the verdict. */
 .elsewhere a{white-space:nowrap}
+
+/* A verdict that rests on an unsettled claim is drawn faintly. The colour still
+   says which value applies; the weight says how much to lean on it. */
+.nc-soft{opacity:.72;text-decoration-style:dotted}

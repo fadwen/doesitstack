@@ -47,14 +47,38 @@ test('equal values are a tie, so neither buff is shown as losing out', () => {
   assert.equal(tied.winner, 'tie');
 });
 
-test('an unconfirmed non-cumulative SPA names no winner at all', () => {
-  // SPA 185 rests on EQEmu's bonus accumulation alone. We assert the values do
-  // not add; asserting which one survives would be a second, unearned claim —
-  // and some of these could plausibly favour the more negative value.
+test('an unconfirmed non-cumulative SPA still names the value that applies', () => {
+  // It is not a second claim. non-cumulative/185 already asserts which value
+  // applies; refusing to say left the tool declining to answer a question its own
+  // claim had answered. The confidence is carried on `status` for the view to say.
   const o = ncPair(185, 2, 185, 110);
   assert.equal(o.confirmed, false);
-  assert.equal(o.winner, null);
+  assert.equal(o.status, 'unverified');
+  assert.equal(o.winner, 'b');
   assert.deepEqual([o.valueA, o.valueB], [2, 110]);
+});
+
+test('among negatives it is the most negative that applies, not the larger', () => {
+  // The rule is "furthest from zero on the side it is already on", which is what
+  // EQEmu does. SPA 505 is negative in all 22 of its slots in the current file, so
+  // reading it as "the larger" would name the weaker mitigation the winner.
+  assert.equal(ncPair(505, -7, 505, -11).winner, 'b');
+  assert.equal(ncPair(185, -100, 185, -40).winner, 'a');
+});
+
+test('opposite signs name nobody, because the server decides by order', () => {
+  // A buff and a debuff of the same effect never displace each other on their own
+  // terms — whichever is left standing depends on the order they were applied in.
+  assert.equal(ncPair(185, 60, 185, -40).winner, null);
+  assert.equal(ncPair(185, 0, 185, 40).winner, null, 'and a zero is not a bonus at all');
+});
+
+test('haste is compared after the 100 comes off, so a slow is not a big buff', () => {
+  // 168 is a 68% haste and 90 is a 10% slow. Comparing the stored numbers would
+  // make every haste beat every slow and call the slow a bonus.
+  assert.equal(ncPair(11, 168, 11, 160).winner, 'a');
+  assert.equal(ncPair(11, 168, 11, 90).winner, null, 'a haste and a slow are opposite signs');
+  assert.equal(ncPair(11, 80, 11, 60).winner, 'b', 'and the deeper slow is the one that lands');
 });
 
 test('the winner is decided at the caster levels asked about, not the cap', () => {
@@ -406,10 +430,18 @@ test('a confirmed non-cumulative effect names which member applies, across the s
   assert.deepEqual(g.members.map(m => [m.name, m.applies]), [['Low', false], ['High', true], ['Mid', false]]);
 });
 
-test('an unverified non-cumulative effect names none of them', () => {
+test('an unverified non-cumulative effect still names the one that applies', () => {
   const set = [setSpell(1, 'A', [1, [185, 40]]), setSpell(2, 'B', [2, [185, 100]])];
   const g = analyzeSet(set).nonCumulative[0];
   assert.equal(g.confirmed, false);
+  assert.equal(g.status, 'unverified');
+  assert.deepEqual(g.members.map(m => m.applies), [false, true]);
+});
+
+test('a set holding both a buff and a debuff of one effect names nobody', () => {
+  const set = [setSpell(1, 'A', [1, [185, 60]]), setSpell(2, 'B', [2, [185, -40]])];
+  const g = analyzeSet(set).nonCumulative[0];
+  assert.equal(g.mixed, true);
   assert.deepEqual(g.members.map(m => m.applies), [null, null]);
 });
 
@@ -523,8 +555,17 @@ test('several haste buffs in different slots are reported as not adding', () => 
   assert.ok(g, 'and the set view must say that only one of them counts');
   assert.equal(g.members.length, 4);
   assert.equal(g.coexist, true);
-  // unverified, so no winner is named even though the largest is obvious
-  assert.ok(g.members.every(m => m.applies === null));
+  // The set this preset ships: four haste buffs, and Hastening of Elluria at 168
+  // is a 68% bonus against 60, 60 and 50. It holds with the other three and they
+  // do nothing, which is the whole point of showing the set.
+  assert.equal(g.status, 'unverified', 'said as an unverified claim, but said');
+  const applies = Object.fromEntries(g.members.map(m => [m.name, m.applies]));
+  assert.deepEqual(applies, {
+    'Symphony of Battle': false,
+    'Celeritous Unity': false,
+    'Hastening of Elluria': true,
+    'Illusion Benefit Greater Jann': false,
+  });
 });
 
 test('a spell haste and a bard haste are left alone', () => {
