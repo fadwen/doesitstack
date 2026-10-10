@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Does it stack? — EverQuest buff stacking checker</title>
+<meta name="description" content="Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2312141a'/%3E%3Crect x='7' y='18' width='18' height='4' rx='1' fill='%237cc4ff'/%3E%3Crect x='7' y='12' width='18' height='4' rx='1' fill='%235fd39a'/%3E%3Crect x='7' y='6' width='18' height='4' rx='1' fill='%23f2c35c'/%3E%3C/svg%3E">
+<link rel="canonical" href="https://fadwen.github.io/doesitstack/index.html">
+<meta name="theme-color" content="#12141a">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Does it stack?">
+<meta property="og:title" content="Does it stack? — EverQuest buff stacking checker">
+<meta property="og:description" content="Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.">
+<meta property="og:url" content="https://fadwen.github.io/doesitstack/index.html">
+<meta property="og:image" content="https://fadwen.github.io/doesitstack/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Does it stack? — slot-by-slot buff arbitration for EverQuest">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Does it stack? — EverQuest buff stacking checker">
+<meta name="twitter:description" content="Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.">
+<meta name="twitter:image" content="https://fadwen.github.io/doesitstack/og.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Does it stack?","alternateName":"EverQuest buff stacking checker","url":"https://fadwen.github.io/doesitstack/","description":"Check whether two EverQuest buffs, disciplines, songs or AA effects stack, with the slot-by-slot reason why.","applicationCategory":"GameApplication","operatingSystem":"Any","browserRequirements":"Requires JavaScript","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"about":{"@type":"VideoGame","name":"EverQuest"}}</script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>Does it stack?</h1>
+    <nav class="views" aria-label="Views">
+      <a class="view on" href="index.html" aria-current="page">Compare two</a>
+      <a class="view" href="set.html">Whole buff set</a>
+    </nav>
+    <p class="tag">Slot-by-slot buff arbitration for EverQuest — spells, disciplines, songs and AA effects.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="pickers">
+    <div class="picker" data-side="a">
+      <label class="picker-label" for="q-a">Buff already on you</label>
+      <input id="q-a" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
+      <div class="results" id="results-a" hidden></div>
+      <div class="chosen" id="chosen-a"></div>
+    </div>
+    <div class="swap-col"><button id="swap" class="swap" title="Swap the two spells">⇄</button></div>
+    <div class="picker" data-side="b">
+      <label class="picker-label" for="q-b">Buff being cast</label>
+      <input id="q-b" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
+      <div class="results" id="results-b" hidden></div>
+      <div class="chosen" id="chosen-b"></div>
+    </div>
+  </section>
+
+  <section class="filters">
+    <div class="frow">
+      <span class="flabel">Source</span>
+      <div class="chips" id="kinds"></div>
+    </div>
+    <div class="frow">
+      <span class="flabel">Class</span>
+      <div class="chips" id="classes"></div>
+    </div>
+    <div class="frow opts">
+      <label><input type="checkbox" id="f-buffs" checked> Only effects with a duration</label>
+      <label><input type="checkbox" id="f-benef"> Beneficial only</label>
+      <label class="lvl">Caster level <input type="number" id="lvl" min="1" max="130" value="130"></label>
+      <label><input type="checkbox" id="f-exact"> SPA names</label>
+      <label title="Rows the table leaves out because they carry no effect — currently the client's spacer slots."><input type="checkbox" id="f-hidden"> Show hidden rows</label>
+    </div>
+  </section>
+
+  <section id="verdict" class="verdict" hidden></section>
+  <section id="detail" class="detail" hidden></section>
+
+  <section id="empty" class="empty">
+    <p>Pick two effects to see whether they can sit on you at the same time.</p>
+    <p class="examples">Try
+      <a href="#a=6273&amp;b=70855">Prophet's Gift of the Ruchu vs Savage Spirit XVII</a>.
+    </p>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  <p id="build"></p>
+  <p id="stale" hidden></p>
+  <p>Spell data is read from the EverQuest client's own files — not scraped — but by whoever published this copy, so it is only as current as the build above. <a id="repo-link" href="https://github.com/fadwen/doesitstack" target="_blank" rel="noopener">Run your own copy</a> to check against your install. The stacking rules are ported from the <a href="https://github.com/EQEmu/Server" target="_blank" rel="noopener">EQEmu server</a> — the most complete public implementation of them, but a volunteer reimplementation targeting a 2013 client, not Daybreak's own account of how the game works. Every rule records where it came from, and most of them are unverified. Not affiliated with Daybreak Game Company.</p>
+  <p id="credits" class="credits"></p>
+</footer>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
