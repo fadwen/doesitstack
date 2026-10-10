@@ -15,6 +15,8 @@
 //   dist/data/index.json      one small row per spell, for the search box
 //   dist/data/spells/NN.json  full spell records, fetched only for the pair you pick
 //   dist/data/desc/NN.json    descriptions with their template tokens resolved
+//   dist/data/items/NN.json   every item granting a spell, for spells with more
+//                             than the record names; fetched only on request
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -120,8 +122,9 @@ async function main() {
   fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dataDir, 'spells'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'desc'), { recursive: true });
+  fs.mkdirSync(path.join(dataDir, 'items'), { recursive: true });
 
-  const shards = new Map(), descs = new Map();
+  const shards = new Map(), descs = new Map(), itemLists = new Map();
   for (const sp of spells) {
     const b = Math.floor(sp.id / BUCKET);
     if (!shards.has(b)) shards.set(b, {});
@@ -130,9 +133,16 @@ async function main() {
       if (!descs.has(b)) descs.set(b, {});
       descs.get(b)[sp.id] = { d: sp.desc, l: sp.land_self };
     }
+    // The full list only where the record's handful is not already all of it.
+    // Same [item id, item name, rel index] shape as the record's sample.
+    if (sp.items && sp.items.count > sp.items.items.length) {
+      if (!itemLists.has(b)) itemLists.set(b, {});
+      itemLists.get(b)[sp.id] = sp.items.all.map(([id, name, rel]) => [id, name, REL.indexOf(rel)]);
+    }
   }
   for (const [b, payload] of shards) writeJson(path.join(dataDir, 'spells', `${b}.json`), payload);
   for (const [b, payload] of descs) writeJson(path.join(dataDir, 'desc', `${b}.json`), payload);
+  for (const [b, payload] of itemLists) writeJson(path.join(dataDir, 'items', `${b}.json`), payload);
 
   // Search index, one row per spell:
   //   [id, name, target, flags, duration_ticks, "BER 254|SHM 70", category,
@@ -266,7 +276,7 @@ async function main() {
   const walk = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e =>
     e.isDirectory() ? walk(path.join(d, e.name)) : (total += fs.statSync(path.join(d, e.name)).size));
   walk(dataDir);
-  console.log(`wrote ${path.relative(ROOT, out) || out}: ${(total / 1e6).toFixed(1)} MB across ${shards.size + descs.size + 2} data files`);
+  console.log(`wrote ${path.relative(ROOT, out) || out}: ${(total / 1e6).toFixed(1)} MB across ${shards.size + descs.size + itemLists.size + 2} data files`);
 }
 
 main();

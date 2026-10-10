@@ -630,6 +630,10 @@ the data underneath us; a *renamed* column is a hard build failure rather than s
 wrong tags. Only spells present in the current spell file get tagged, which is what makes
 stale item data produce fewer tags instead of tags pointing nowhere.
 
+A card names three items; "and N other items" opens the rest, grouped by how each item
+grants the spell. That list ships with the site rather than linking to a SoDeq search,
+whose results stop at 50 items and whose query format is not published.
+
 Nothing is scraped.
 
 ### Links off this site
@@ -701,6 +705,7 @@ dist/data/meta.json          SPA names, ignore list, claims, build stamp
 dist/data/index.json         one small row per spell — feeds the search box (~775 KB gzipped)
 dist/data/spells/NN.json     full records, sharded by id; only the two you pick get fetched
 dist/data/desc/NN.json       descriptions with their #1/%z template tokens resolved
+dist/data/items/NN.json      every item granting a spell, for the "N other items" list; fetched on click
 ```
 
 `dist/` is deliberately not committed. Re-run the build after each patch day.

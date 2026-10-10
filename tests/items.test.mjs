@@ -96,6 +96,20 @@ test('only a bounded number of named items ship per spell', async () => {
   assert.equal(e.items.length, KEEP_PER_SPELL);
 });
 
+test('the full list keeps every item, grouped by relationship', async () => {
+  // "and 80 other items" opens this list, so it has to be all of them — the
+  // card's count and the list's length are the same number said twice.
+  const rows = [HEADER];
+  for (const i of [9, 3, 7, 1]) rows.push(item({ id: i, name: `Item ${i}`, worn: 5 }));
+  rows.push(item({ id: 8, name: 'Clicky', click: 5 }));
+  rows.push(item({ id: 2, name: 'Both', click: 5, worn: 5 }));
+  const e = (await loadItems(write('full.txt', rows))).bySpell.get(5);
+  assert.equal(e.all.length, e.count);
+  assert.deepEqual(e.all.map(i => [i[0], i[2]]),
+    [[2, 'click'], [8, 'click'], [1, 'worn'], [2, 'worn'], [3, 'worn'], [7, 'worn'], [9, 'worn']],
+    'relationship priority first, then lowest item id — the same order every build');
+});
+
 test('the pick is deterministic, so two builds of one dump agree', async () => {
   const rows = [HEADER];
   for (const i of [9, 3, 7, 1]) rows.push(item({ id: i, name: `Item ${i}`, click: 5 }));

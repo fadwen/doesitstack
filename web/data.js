@@ -145,7 +145,7 @@ export function setShowHidden(next) {
 }
 
 export let META = null, INDEX = null;
-const shardCache = new Map(), descCache = new Map();
+const shardCache = new Map(), descCache = new Map(), itemCache = new Map();
 
 export async function load() {
   [META, INDEX] = await Promise.all([
@@ -189,6 +189,17 @@ async function descOf(id) {
   const b = Math.floor(id / META.bucket);
   if (!descCache.has(b)) descCache.set(b, fetch(`data/desc/${b}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
   return (await descCache.get(b))[id] || null;
+}
+
+/**
+ * Every item granting this spell, as [item id, item name, rel index], grouped
+ * by relationship. Only spells with more items than their record names have a
+ * list; null means there is none, or it could not be fetched.
+ */
+export async function itemsOf(id) {
+  const b = Math.floor(id / META.bucket);
+  if (!itemCache.has(b)) itemCache.set(b, fetch(`data/items/${b}.json`).then(r => r.ok ? r.json() : {}).catch(() => ({})));
+  return (await itemCache.get(b))[id] || null;
 }
 
 /** compact record -> the shape engine.js expects */

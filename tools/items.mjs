@@ -32,7 +32,11 @@ const COLUMN = {
 
 const ID_COLUMN = 'id', NAME_COLUMN = 'name', UPDATED_COLUMN = 'updated';
 
-/** How many named items we keep per spell. The rest become a count. */
+/**
+ * How many named items ride along in a spell's record. The rest become a count
+ * on the card, and the full list ships separately in data/items/, fetched only
+ * when someone asks for it.
+ */
 export const KEEP_PER_SPELL = 3;
 
 /** Default location, alongside the other inputs the repo never commits. */
@@ -108,8 +112,11 @@ export async function loadItems(file, spellIds = null) {
   // tag we show — otherwise a spell tagged click+proc can end up displaying
   // three clicks and no proc. Remaining slots fill by relationship priority.
   // Ties break on lowest item id, which keeps the pick stable across dumps.
+  // `all` keeps every item in that same order, for the full list a card loads
+  // on demand; it is already grouped by relationship.
   for (const e of bySpell.values()) {
     e.items.sort((a, b) => REL.indexOf(a[2]) - REL.indexOf(b[2]) || a[0] - b[0]);
+    e.all = e.items;
     const pick = [], seen = new Set();
     for (const it of e.items) if (!seen.has(it[2])) { seen.add(it[2]); pick.push(it); }
     for (const it of e.items) {

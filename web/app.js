@@ -4,7 +4,7 @@ import { phrase } from './phrasing.js';
 import {
   $, el, link, escape, LUCY, LUCY_HISTORY, RAIDLOOT, SODEQ_ITEM, THIRD_PARTY_LAG, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, nameOf, load as loadData,
-  F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden,
+  F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden, itemsOf,
 } from './data.js';
 
 let META, INDEX;
@@ -235,18 +235,11 @@ function spellCard(sp) {
   sub.textContent = bits.join(' · ') + ' · ';
   sub.appendChild(elsewhere(sp.id));
   c.appendChild(sub);
-  if (sp.it) c.appendChild(itemSource(sp.it));
+  if (sp.it) c.appendChild(itemSource(sp.it, sp.id));
   if (sp.desc?.d) { const d = el('p', 'sub', sp.desc.d.replace(/<BR>/gi, ' ')); d.style.marginTop = '8px'; c.appendChild(d); }
   return c;
 }
 
-/**
- * "Click · Proc — Mystic Cloak, The Sword of Rile and 4 others"
- *
- * `it` is [relationship bitmask, total item count, [[item id, name, rel index]]].
- * Only a few named items ship; the count carries the rest, and the links above
- * cover anyone who wants the full list.
- */
 /**
  * Where else to read this spell.
  *
@@ -279,7 +272,14 @@ function elsewhere(id) {
   return span;
 }
 
-function itemSource([mask, count, items]) {
+/**
+ * "Click · Proc — Mystic Cloak, The Sword of Rile and 4 other items"
+ *
+ * `it` is [relationship bitmask, total item count, [[item id, name, rel index]]].
+ * Only a few named items ride along in the record; "N other items" opens the
+ * full list, fetched from data/items/ the first time it is asked for.
+ */
+function itemSource([mask, count, items], spellId) {
   const wrap = el('div', 'sub item-source');
   const tags = el('span', 'rel-tags');
   for (const rel of relsOf(mask)) {
@@ -297,8 +297,60 @@ function itemSource([mask, count, items]) {
     wrap.appendChild(a);
   });
   const rest = count - named;
-  if (rest > 0) wrap.appendChild(document.createTextNode(` and ${rest} other item${rest === 1 ? '' : 's'}`));
+  if (rest > 0) {
+    wrap.appendChild(document.createTextNode(' and '));
+    const label = `${rest} other item${rest === 1 ? '' : 's'}`;
+    const more = el('button', 'linkish', label);
+    more.type = 'button';
+    more.setAttribute('aria-expanded', 'false');
+    let list = null;
+    more.addEventListener('click', async () => {
+      if (list) {
+        list.hidden = !list.hidden;
+        more.setAttribute('aria-expanded', String(!list.hidden));
+        return;
+      }
+      more.disabled = true;
+      more.textContent = 'loading…';
+      const all = await itemsOf(spellId);
+      more.disabled = false;
+      more.textContent = label;
+      list = all ? itemList(all) : el('div', 'sub item-list-missing', 'The full list could not be loaded.');
+      wrap.after(list);
+      more.setAttribute('aria-expanded', 'true');
+    });
+    wrap.appendChild(more);
+  }
   return wrap;
+}
+
+/**
+ * Every item granting a spell, grouped by how it grants it. A list can run to
+ * thousands, so it scrolls inside its own box rather than stretching the card.
+ */
+function itemList(all) {
+  const box = el('div', 'item-list');
+  const groups = new Map();
+  for (const [id, name, rel] of all) {
+    if (!groups.has(rel)) groups.set(rel, []);
+    groups.get(rel).push([id, name]);
+  }
+  for (const [rel, entries] of groups) {
+    const key = META.items.rel[rel];
+    const h = el('div', 'item-list-head', `${REL_LABEL[key] || key} (${entries.length})`);
+    h.title = REL_HELP[key] || '';
+    box.appendChild(h);
+    const ul = el('ul');
+    for (const [id, name] of entries) {
+      const li = el('li');
+      const a = el('a', null, name);
+      a.href = SODEQ_ITEM(id); a.target = '_blank'; a.rel = 'noopener';
+      li.appendChild(a);
+      ul.appendChild(li);
+    }
+    box.appendChild(ul);
+  }
+  return box;
 }
 
 function render() {
