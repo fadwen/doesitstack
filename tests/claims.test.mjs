@@ -188,12 +188,21 @@ test('only confirmed and corroborated claims are acted on', () => {
 
 // --- the engine's own rules -------------------------------------------------
 
-test('every rule the engine can cite is registered as a claim', async () => {
+test('every rule the engine can cite is registered as a claim, and every registered rule exists', async () => {
   const engine = await readFile(new URL('../web/engine.js', import.meta.url), 'utf8');
   const cited = new Set([...engine.matchAll(/done\(-?[01], '([a-z0-9-]+)'/g)].map(m => m[1]));
   const covered = new Set(doc.claims.filter(c => c.type === 'stacking_rule').flatMap(c => c.engine_rules || []));
   const missing = [...cited].filter(r => !covered.has(r));
   assert.deepEqual(missing, [], `these rules decide verdicts with no claim behind them: ${missing.join(', ')}`);
+  // The other direction. A claim naming a rule engine.js does not spell that way
+  // is keyed into meta.json as rule:<name> and never looked up by any verdict.
+  const stale = [...covered].filter(r => !cited.has(r));
+  assert.deepEqual(stale, [], `these claims cite rules the engine never reports: ${stale.join(', ')}`);
+  // ignore-list is the one rule claim with no engine_rules, and rightly: an
+  // ignored SPA is a `continue` in the slot walk, not a verdict, so there is no
+  // done() to cite it from. Anything else without one is a claim nobody wired up.
+  const uncitable = doc.claims.filter(c => c.type === 'stacking_rule' && !c.engine_rules).map(c => c.id);
+  assert.deepEqual(uncitable, ['stacking-rule/ignore-list']);
 });
 
 test('rule claims name a slug, not a SPA', () => {
