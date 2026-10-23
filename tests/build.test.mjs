@@ -3,9 +3,14 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { fx } from './fixtures.mjs';
-import { compact, shard, BUCKET } from '../tools/build.mjs';
+import { compact, shard, outProblem, BUCKET } from '../tools/build.mjs';
 import { REL } from '../tools/items.mjs';
+
+const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 // The fixtures stop at what the engine reads; the build also expects the
 // parser's description, reference and category fields.
@@ -55,6 +60,17 @@ test('spells shard by id bucket, descriptions only where there is one', () => {
   assert.deepEqual(Object.keys(shards.get(0)), ['278', '512']);
   assert.deepEqual(descs.get(0), { 278: { d: 'Faster.', l: '' } });
   assert.deepEqual(descs.get(35), { 70855: { d: '', l: 'You rage.' } });
+});
+
+test('--out is emptied each build, so it has to be somewhere that is safe to empty', () => {
+  // The repo root, anything outside it, and a tracked directory are all refused
+  // before a byte is parsed. Only a previous build, an empty dir or nothing passes.
+  assert.match(outProblem(path.resolve(ROOT)), /repo itself/);
+  assert.match(outProblem(path.resolve(ROOT, '..')), /not inside/);
+  assert.match(outProblem(path.join(os.tmpdir(), 'dis-out')), /not inside/);
+  assert.match(outProblem(path.join(ROOT, 'web')), /does not look like a previous build/);
+  assert.match(outProblem(path.join(ROOT, 'tools')), /does not look like a previous build/);
+  assert.equal(outProblem(path.join(ROOT, 'dist-that-does-not-exist-yet')), null);
 });
 
 test('an items shard entry exists only when the record does not already name every item', () => {

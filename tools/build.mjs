@@ -105,6 +105,23 @@ function siteUrl(repo) {
     : `https://${owner.toLowerCase()}.github.io/${name}/`;
 }
 
+/**
+ * Whether --out may be emptied and written. The whole directory is wiped each
+ * build, so a file dropped from web/ actually leaves dist/ — the old build wiped
+ * only data/ and anything else stayed forever. An rm -rf on an argument earns a
+ * sanity check first: inside the repo, never the repo itself, and either a
+ * previous build's output (it has data/meta.json), an empty directory or nothing.
+ * Returns the problem as a string, or null when it is fine.
+ */
+export function outProblem(out) {
+  const rel = path.relative(ROOT, out);
+  if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel))
+    return `${out} is not inside the repo, or is the repo itself`;
+  if (fs.existsSync(out) && fs.readdirSync(out).length && !fs.existsSync(path.join(out, 'data', 'meta.json')))
+    return `${out} is not empty and does not look like a previous build (no data/meta.json)`;
+  return null;
+}
+
 /** Where this checkout came from, so the site can link people at the source. */
 function repoUrl() {
   try {
@@ -120,6 +137,8 @@ async function main() {
   const eqDir = arg('eq-dir', findEqDir());
   if (!eqDir) throw new Error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
   const out = path.resolve(ROOT, arg('out', 'dist'));
+  const outBad = outProblem(out);
+  if (outBad) throw new Error(`refusing to build into --out: ${outBad}`);
   const level = parseInt(arg('level', String(MAX_PLAYER_LEVEL)), 10);
   console.log(`using ${eqDir}`);
 
@@ -145,8 +164,9 @@ async function main() {
     console.log(`items: ${path.relative(ROOT, itemFile)} not found — building without item tags (npm run fetch)`);
   }
 
+  // Checked at the top, wiped only now: a parse failure leaves the last build usable.
+  fs.rmSync(out, { recursive: true, force: true });
   const dataDir = path.join(out, 'data');
-  fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dataDir, 'spells'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'desc'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'items'), { recursive: true });
