@@ -24,9 +24,8 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadAll, applyItemSources, isAuraEffect, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { loadItems, defaultItemFile, REL } from './items.mjs';
-import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs } from './gen_spa_js.mjs';
-import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
+import { SPA_LIST_SOURCE } from './spa_names.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
 import { PRESETS } from '../web/presets.js';
 import { PHRASED } from '../web/phrasing.js';
@@ -139,8 +138,17 @@ async function main() {
   const out = path.resolve(ROOT, arg('out', 'dist'));
   const outBad = outProblem(out);
   if (outBad) throw new Error(`refusing to build into --out: ${outBad}`);
-  const level = parseInt(arg('level', String(MAX_PLAYER_LEVEL)), 10);
+  // Number, not parseInt: `--level abc` used to build a NaN dataset without a word.
+  const levelArg = arg('level', String(MAX_PLAYER_LEVEL));
+  const level = Number(levelArg);
+  if (!Number.isInteger(level) || level < 1) throw new Error(`--level must be a positive whole number, got "${levelArg}"`);
   console.log(`using ${eqDir}`);
+
+  // web/spa.js first, and once. engine.js imports those tables as a module, and
+  // meta.json below carries the same lists for the page; taking both from one
+  // call is what keeps them from drifting apart. Generated from repo files only,
+  // so a clone without the game can still run the tests.
+  const spa = generateSpaJs();
 
   const t0 = Date.now();
   // The engine's calculator scales the AC and haste tokens in descriptions, so a
@@ -159,7 +167,9 @@ async function main() {
   if (items) {
     const { tagged, reclassified } = applyItemSources(spells, items.bySpell);
     console.log(`items: ${tagged} spells tagged from ${items.itemCount} items ` +
-                `(${reclassified} reclassified, ${items.dropped} dropped as unknown, dump updated ${items.updated})`);
+                `(${reclassified} reclassified, ${items.dropped} dropped as unknown, dump updated ${items.updated}, fetched ${items.fetched})`);
+    if (items.malformed)
+      console.warn(`items: ${items.malformed} row(s) skipped as malformed — ${items.malformedRows.join('; ')}`);
   } else {
     console.log(`items: ${path.relative(ROOT, itemFile)} not found — building without item tags (npm run fetch)`);
   }
@@ -218,30 +228,26 @@ async function main() {
   console.log(`plain wording: ${PHRASED.size} effects, covering `
             + `${(100 * slotsPhrased / slotsSeen).toFixed(1)}% of slots in this file`);
 
-  const spaMeta = JSON.parse(fs.readFileSync(path.join(HERE, 'spa_meta.json'), 'utf8'));
-
   // "non-cumulative" mods: both buffs land, but the game keeps the larger value
   // instead of adding them. The list and the confidence behind each entry come
   // from claims.json, so new evidence changes what the site says without a code
-  // change. See CONTRIBUTING.md.
-  const claimsDoc = loadClaims();
-  const nonCumulative = byType(claimsDoc, 'non_cumulative').sort((a, b) => a.spa - b.spa);
-  const NON_CUMULATIVE_SPA = nonCumulative.map(c => c.spa);
-  const NON_CUMULATIVE_CONFIRMED = nonCumulative.filter(c => c.status === 'confirmed').map(c => c.spa);
+  // change. See CONTRIBUTING.md. The lists themselves came out of the spa.js
+  // generation at the top.
+  const { claimsDoc } = spa;
   const tally = claimsDoc.claims.reduce((m, c) => ({ ...m, [c.status]: (m[c.status] || 0) + 1 }), {});
   console.log('claims: ' + Object.entries(tally).map(([k, v]) => `${v} ${k}`).join(', '));
-  const { names: spaNames } = resolveNames(spaMeta.spa_names);
   const meta = {
     built: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     spell_file_date: fs.statSync(path.join(eqDir, 'spells_us.txt')).mtime.toISOString().slice(0, 10),
     spell_count: spells.length,
     // null when the build ran without item data, so the UI can say "unknown"
-    // rather than "no item casts this".
+    // rather than "no item casts this". The file's own mtime is deliberately
+    // not here: nothing on the page read it, and it made two builds from the
+    // same dump differ. It is in the build log instead.
     items: items && {
       source: 'https://items.sodeq.org/',
       rel: REL,
       updated: items.updated,       // newest row in the dump — the data's real age
-      fetched: items.fetched,       // when we last pulled it
       item_count: items.itemCount,
       spell_count: items.spellCount,
     },
@@ -251,11 +257,11 @@ async function main() {
     kinds: KINDS,
     targets: TARGET_NAMES,
     resists: RESIST_NAMES,
-    spa_names: spaNames,
+    spa_names: spa.spaNames,
     spa_names_source: SPA_LIST_SOURCE,
-    ignored_in_stacking: spaMeta.ignored_in_stacking,
-    non_cumulative: NON_CUMULATIVE_SPA,
-    non_cumulative_confirmed: NON_CUMULATIVE_CONFIRMED,
+    ignored_in_stacking: spa.ignoredInStacking,
+    non_cumulative: spa.spas,
+    non_cumulative_confirmed: spa.confirmed,
     // Keyed by SPA for the non-cumulative notes and by claim id for the rest.
     claims: Object.fromEntries(claimsDoc.claims.flatMap(c => {
       const payload = {
@@ -276,10 +282,6 @@ async function main() {
     repo_url: repoUrl(),
   };
   writeJson(path.join(dataDir, 'meta.json'), meta);
-
-  // engine.js imports these as a module rather than fetching them; generated from
-  // repo files only, so a clone without the game can still run the tests.
-  generateSpaJs();
 
   // Text assets carry {{SITE_URL}} / {{BUILD_DATE}} placeholders so the address
   // is not baked into the repo. With no remote to derive one from, any line that

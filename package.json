@@ -7,7 +7,7 @@
   "scripts": {
     "fetch": "node tools/fetch_items.mjs",
     "gen": "node tools/gen_spa_js.mjs",
-    "build": "node tools/gen_spa_js.mjs && node tools/build.mjs",
+    "build": "node tools/build.mjs",
     "serve": "npm run build && node tools/serve.mjs",
     "pretest": "node tools/gen_spa_js.mjs",
     "test": "node --test",

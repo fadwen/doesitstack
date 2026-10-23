@@ -85,7 +85,11 @@ export function generate() {
     + `export const FOCUS_CONTESTED = ${JSON.stringify(contested)};\n`
     + `export const MAX_PLAYER_LEVEL = ${MAX_PLAYER_LEVEL};\n`;
   fs.writeFileSync(path.join(ROOT, 'web', 'spa.js'), js);
-  return { spaNames, spas, confirmed, nonCumulative, focusSpas: focusSpaList, focusBestOnly, focusLimit: focusLimitList, focusExceptions, contested, exemptedByClaim, fallback };
+  // claimsDoc and the ignore list ride along so the site build, which needs the
+  // same tables for meta.json, takes them from here rather than deriving them a
+  // second time and risking the two drifting apart.
+  return { spaNames, spas, confirmed, nonCumulative, focusSpas: focusSpaList, focusBestOnly, focusLimit: focusLimitList, focusExceptions, contested, exemptedByClaim, fallback,
+           claimsDoc, ignoredInStacking: spaMeta.ignored_in_stacking };
 }
 
 // `file://${process.argv[1]}` looks equivalent but is not: on Windows argv[1] is a
