@@ -29,7 +29,7 @@ const CHECKS = {
 
 const eqDir = arg('eq-dir', findEqDir());
 if (!eqDir) {
-  console.error('Could not find an EverQuest install. Pass --eq-dir explicitly.');
+  console.error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
   process.exit(1);
 }
 

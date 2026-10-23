@@ -52,7 +52,7 @@ function rawSpell(line) {
 }
 
 const eqDir = arg('eq-dir', findEqDir());
-if (!eqDir) { console.error('Could not find an EverQuest install. Pass --eq-dir explicitly.'); process.exit(1); }
+if (!eqDir) { console.error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.'); process.exit(1); }
 const distDir = path.resolve(ROOT, arg('dist', 'dist'));
 if (!fs.existsSync(path.join(distDir, 'data', 'meta.json'))) {
   console.error(`No built dataset in ${distDir} — run \`npm run build\` first.`);
