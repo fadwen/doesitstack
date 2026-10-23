@@ -7,8 +7,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 const read = f => readFile(new URL(f, root), 'utf8');
@@ -62,6 +63,20 @@ test('only the fetch script touches the network', async () => {
   for (const f of ['tools/build.mjs', 'tools/items.mjs', 'tools/spells.mjs', 'tools/verify_dataset.mjs']) {
     const src = await read(f);
     assert.doesNotMatch(src, /\bnode:https?\b|\bfetch\s*\(/, `${f} must not make network calls — that belongs in tools/fetch_items.mjs`);
+  }
+});
+
+test('importing a tool runs nothing — the direct-run guards hold', () => {
+  // Each of these has a `node tools/x.mjs` mode behind a guard, so a test can
+  // import its functions. Under `node -e` there is no argv[1] at all, which is
+  // how a guard written as pathToFileURL(process.argv[1]) used to throw on import.
+  for (const f of ['tools/build.mjs', 'tools/fetch_items.mjs', 'tools/gen_spa_js.mjs',
+                   'tools/serve.mjs', 'tools/verify_claims.mjs', 'tools/verify_dataset.mjs']) {
+    const url = pathToFileURL(path.join(repoRoot, f)).href;
+    const r = spawnSync(process.execPath, ['-e', `import(${JSON.stringify(url)})`],
+                        { cwd: repoRoot, encoding: 'utf8', timeout: 30_000 });
+    assert.equal(r.status, 0, `${f}: ${r.stderr}`);
+    assert.equal(r.stdout + r.stderr, '', `${f} did something on import`);
   }
 });
 

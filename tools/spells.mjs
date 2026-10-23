@@ -121,7 +121,8 @@ export function calcDuration(calc, cap, level = MAX_PLAYER_LEVEL) {
 export const AURA_DURATION_CALC = 51;
 export const isAuraEffect = sp => sp.dur_calc === AURA_DURATION_CALC;
 
-function parseSpellLine(f, level) {
+/** One split spells_us.txt line -> spell record. Exported so the verifier's independent reading can be held against it. */
+export function parseSpellLine(f, level) {
   const s = {
     id: int(f[F.ID]),
     name: f[F.NAME].trim(),

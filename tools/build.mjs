@@ -21,7 +21,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadAll, applyItemSources, isAuraEffect, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { loadItems, defaultItemFile, REL } from './items.mjs';
 import { load as loadClaims, byType } from './claims.mjs';
@@ -33,9 +33,11 @@ import { PHRASED } from '../web/phrasing.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
-const BUCKET = 2000;
+/** Spells per data shard: ids 0-1999 in 0.json, and so on. meta.json carries it for the page. */
+export const BUCKET = 2000;
 
-function compact(sp) {
+/** The record a spell shard carries — the parser's output, trimmed to what the page reads. */
+export function compact(sp) {
   const rec = {
     id: sp.id, name: sp.name, levels: sp.levels, beneficial: sp.beneficial, target: sp.target,
     resist: sp.resist, duration: sp.duration, dur_calc: sp.dur_calc, dur_cap: sp.dur_cap,
@@ -57,6 +59,30 @@ function compact(sp) {
   // bitmask is duplicated into the search index so filtering needs no shard.
   if (sp.items) rec.it = [sp.items.mask, sp.items.count, sp.items.items.map(([id, name, rel]) => [id, name, REL.indexOf(rel)])];
   return rec;
+}
+
+/**
+ * Group the spells into the per-bucket payloads the page fetches on demand:
+ * the records, the descriptions where a spell has one, and the full item list
+ * where the record's handful is not already all of it.
+ */
+export function shard(spells) {
+  const shards = new Map(), descs = new Map(), itemLists = new Map();
+  for (const sp of spells) {
+    const b = Math.floor(sp.id / BUCKET);
+    if (!shards.has(b)) shards.set(b, {});
+    shards.get(b)[sp.id] = compact(sp);
+    if (sp.desc || sp.land_self) {
+      if (!descs.has(b)) descs.set(b, {});
+      descs.get(b)[sp.id] = { d: sp.desc, l: sp.land_self };
+    }
+    // Same [item id, item name, rel index] shape as the record's sample.
+    if (sp.items && sp.items.count > sp.items.items.length) {
+      if (!itemLists.has(b)) itemLists.set(b, {});
+      itemLists.get(b)[sp.id] = sp.items.all.map(([id, name, rel]) => [id, name, REL.indexOf(rel)]);
+    }
+  }
+  return { shards, descs, itemLists };
 }
 
 const writeJson = (file, obj) => fs.writeFileSync(file, JSON.stringify(obj));
@@ -92,10 +118,7 @@ function repoUrl() {
 
 async function main() {
   const eqDir = arg('eq-dir', findEqDir());
-  if (!eqDir) {
-    console.error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
-    process.exit(1);
-  }
+  if (!eqDir) throw new Error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
   const out = path.resolve(ROOT, arg('out', 'dist'));
   const level = parseInt(arg('level', String(MAX_PLAYER_LEVEL)), 10);
   console.log(`using ${eqDir}`);
@@ -128,22 +151,7 @@ async function main() {
   fs.mkdirSync(path.join(dataDir, 'desc'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'items'), { recursive: true });
 
-  const shards = new Map(), descs = new Map(), itemLists = new Map();
-  for (const sp of spells) {
-    const b = Math.floor(sp.id / BUCKET);
-    if (!shards.has(b)) shards.set(b, {});
-    shards.get(b)[sp.id] = compact(sp);
-    if (sp.desc || sp.land_self) {
-      if (!descs.has(b)) descs.set(b, {});
-      descs.get(b)[sp.id] = { d: sp.desc, l: sp.land_self };
-    }
-    // The full list only where the record's handful is not already all of it.
-    // Same [item id, item name, rel index] shape as the record's sample.
-    if (sp.items && sp.items.count > sp.items.items.length) {
-      if (!itemLists.has(b)) itemLists.set(b, {});
-      itemLists.get(b)[sp.id] = sp.items.all.map(([id, name, rel]) => [id, name, REL.indexOf(rel)]);
-    }
-  }
+  const { shards, descs, itemLists } = shard(spells);
   for (const [b, payload] of shards) writeJson(path.join(dataDir, 'spells', `${b}.json`), payload);
   for (const [b, payload] of descs) writeJson(path.join(dataDir, 'desc', `${b}.json`), payload);
   for (const [b, payload] of itemLists) writeJson(path.join(dataDir, 'items', `${b}.json`), payload);
@@ -283,4 +291,13 @@ async function main() {
   console.log(`wrote ${path.relative(ROOT, out) || out}: ${(total / 1e6).toFixed(1)} MB across ${shards.size + descs.size + itemLists.size + 2} data files`);
 }
 
-main();
+// Guarded so compact() and shard() can be imported by the tests without a build
+// starting. argv[1] first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    // One line, not a stack. A missing dbstr_us.txt is an ENOENT with the path in
+    // it, and that is the whole story; the trace underneath it was noise.
+    console.error(`build failed: ${err.message}`);
+    process.exit(1);
+  });
+}
