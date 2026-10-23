@@ -56,8 +56,16 @@ function resolveColumns(header) {
   return {
     id: at.get(ID_COLUMN), name: at.get(NAME_COLUMN), updated: at.get(UPDATED_COLUMN),
     rel: REL.map(r => [r, at.get(COLUMN[r])]),
+    width: header.length,
   };
 }
+
+/**
+ * The share of rows that may be malformed before the whole file is distrusted.
+ * A few are the dump's problem and cost a few tags; a flood means the format
+ * changed under us and nothing read since the header can be relied on.
+ */
+export const MALFORMED_SHARE = 0.01;
 
 /**
  * Parse the dump into a spell id -> item relationship map.
@@ -78,19 +86,34 @@ export async function loadItems(file, spellIds = null) {
     input: fs.createReadStream(file), crlfDelay: Infinity,
   });
 
-  let col = null, itemCount = 0, dropped = 0, updated = '';
-  const bySpell = new Map();
+  let col = null, rows = 0, itemCount = 0, dropped = 0, malformed = 0, updated = '';
+  const bySpell = new Map(), malformedRows = [];
 
   for await (const line of rl) {
     if (!line) continue;
     const f = line.split('|');
     if (!col) { col = resolveColumns(f); continue; }
+    rows++;
+
+    // Resolving columns by name only holds if every row has the header's count.
+    // A `|` inside a name — the dump really has "Iksar Right Hand '=\|-'" —
+    // shifts every field after it one to the right, and the by-name offsets then
+    // read a neighbour's column. And parseInt('12abc') is 12, so an id is checked
+    // as digits rather than parsed and hoped for.
+    const bad = f.length !== col.width ? `${f.length} columns where the header has ${col.width}`
+              : !/^\d+$/.test(f[col.id]) ? `id "${f[col.id]}" is not a number`
+              : null;
+    if (bad) {
+      malformed++;
+      if (malformedRows.length < 3) malformedRows.push(`line ${rows + 1}: ${bad}`);
+      continue;
+    }
     itemCount++;
 
     const u = f[col.updated];
     if (u && u > updated) updated = u;
 
-    const itemId = parseInt(f[col.id], 10);
+    const itemId = Number(f[col.id]);
     if (!itemId) continue;
     const itemName = f[col.name];
 
@@ -106,6 +129,11 @@ export async function loadItems(file, spellIds = null) {
     }
   }
   if (!col) throw new Error(`${file} is empty — no header row.`);
+  if (malformed > rows * MALFORMED_SHARE)
+    throw new Error(
+      `${file}: ${malformed} of ${rows} rows are malformed — the dump format has changed.\n` +
+      `  ${malformedRows.join('\n  ')}\n` +
+      `Check the file against COLUMN in tools/items.mjs, then rebuild.`);
 
   // Keep a deterministic handful per spell so the build is reproducible.
   // One item per relationship first, so the sample actually illustrates every
@@ -132,6 +160,9 @@ export async function loadItems(file, spellIds = null) {
     itemCount,
     spellCount: bySpell.size,
     dropped,
+    /** Rows skipped for not fitting the header, and the first few, for the build log. */
+    malformed,
+    malformedRows,
     /** Newest per-row timestamp in the dump — the item data's real age. */
     updated: updated ? updated.slice(0, 10) : null,
     /** When the file itself landed on disk, for a "you have not fetched lately" hint. */
