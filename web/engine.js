@@ -4,7 +4,7 @@
 // EQEmu's Mob::CheckStackConflict (zone/spells.cpp), which itself mirrors the
 // RoF2 client. Server-only inputs that we cannot know from spell data alone
 // (existing spell bonuses, Screech/AStacker buff state, NPC-vs-NPC DoT rules,
-// resurrection sickness) are omitted and called out in `caveats`.
+// resurrection sickness) are omitted; the README's "Known gaps" lists them.
 //
 // Vocabulary: `a` is the buff already on you, `b` is the one being cast.
 //   'independent' -> no shared slot/effect, both sit on you at once
@@ -22,13 +22,12 @@ import {
 
 export const SPA = {
   CurrentHP: 0, ArmorClass: 1, ATK: 2, MovementSpeed: 3, CHA: 10, AttackSpeed: 11,
-  CompleteHeal: 101, Screech: 123, StackingBlock: 148, StackingOverwrite: 149,
+  CompleteHeal: 101, StackingBlock: 148, StackingOverwrite: 149,
   ManaBurn: 350, BardAEDot: 334, ImprovedTaunt: 444, AttackSpeed2: 98, ACv2: 416,
-  Blank: 254,
+  GravityEffect: 424, Blank: 254,
 };
 
 const SPELL_EYE_OF_ZOMM = 331;
-const SPELL_MANA_BURN   = 2751;
 
 // EQEmu's EFFECT_COUNT is a hard 12, because that is what the RoF2 client held.
 // EverQuest allows up to 100. Modern bard songs run past 20 and the longest spell in
@@ -53,7 +52,7 @@ const focusContested = new Set(FOCUS_CONTESTED);
 export const slotOf = (sp, i) => (sp.slots && sp.slots[i]) || null;
 export const spaOf  = (sp, i) => { const s = slotOf(sp, i); return s ? s.spa : SPA.Blank; };
 
-export const isBardSong    = sp => sp.levels[BARD_INDEX] < 255 && !sp.is_skill;
+export const isBardSong    = sp => (sp.levels?.[BARD_INDEX] ?? 255) < 255 && !sp.is_skill;
 export const isGroupSpell  = sp => sp.target === ST_GROUP || sp.target === ST_AE_BARD || sp.target === ST_GROUP_TELEPORT;
 export const isDetrimental = sp => !sp.beneficial;
 export const hasEffect     = (sp, spa) => (sp.slots || []).some(s => s && s.spa === spa);
@@ -85,19 +84,32 @@ export function isBlankSlot(sp, i) {
   return s.spa === SPA.StackingBlock || s.spa === SPA.StackingOverwrite;
 }
 
+// IsStackableDOT (common/spdat.cpp): a detrimental duration spell that is not
+// flagged unstackable *and* actually damages — carries a Current HP or Gravity
+// effect. Without the last clause a snare recast at a lower level would slip
+// past the same-spell level check as if it were a DoT.
 export function isStackableDot(sp) {
-  return !(sp.unstackable_dot || sp.beneficial || !sp.dur_calc);
+  if (sp.unstackable_dot || sp.beneficial || !sp.dur_calc) return false;
+  return hasEffect(sp, SPA.CurrentHP) || hasEffect(sp, SPA.GravityEffect);
 }
 
-// Mob::CalcSpellEffectValue_formula. `ticsRemaining` only matters for the
-// degenerating formulas (107/108/120/122/1000-1999), which we evaluate at cast time.
-export function calcValue(sp, i, level = MAX_PLAYER_LEVEL, ticsRemaining = 0) {
+// Mob::CalcSpellEffectValue_formula (zone/spell_effects.cpp).
+//
+// The degenerating formulas (107/108/120/122/1000-1999) lose a step per tick.
+// Left unsaid, `ticsRemaining` means "at cast": nothing has elapsed and the slot
+// is worth its base, which is what eqspellparser prints and what a verdict about
+// landing should be judged on. EQEmu's own first evaluation runs with
+// ticsremaining already set to the full duration, which its `max(tics - 1, 0)`
+// turns into one elapsed tick — one step short of base. Pass a tick count to ask
+// about a later point in the buff.
+export function calcValue(sp, i, level = MAX_PLAYER_LEVEL, ticsRemaining = null) {
   const s = slotOf(sp, i);
   if (!s || isBlankSlot(sp, i)) return 0;
   const { calc: formula, base1: base, max } = s;
   const ubase = Math.abs(base);
   const sign = (max < base && max !== 0) ? -1 : 1;
   const durTics = () => {
+    if (ticsRemaining == null) return 0;
     const total = calcDuration(sp.dur_calc, sp.dur_cap, level);
     return Math.max(total - Math.max(ticsRemaining - 1, 0), 0);
   };
@@ -114,10 +126,15 @@ export function calcValue(sp, i, level = MAX_PLAYER_LEVEL, ticsRemaining = 0) {
     case 108: r = sign * (ubase - 2 * durTics()); break;
     case 109: r = sign * (ubase + Math.trunc(level / 4)); break;
     case 110: r = ubase + Math.trunc(level / 6); break;
-    case 111: r = sign * (ubase + 6 * (level - 16)); break;
-    case 112: r = sign * (ubase + 8 * (level - 24)); break;
-    case 113: r = sign * (ubase + 10 * (level - 34)); break;
-    case 114: r = sign * (ubase + 15 * (level - 44)); break;
+    // Deliberate divergence from EQEmu, which has no level guard on 111-114 and
+    // so returns less than base — negative, for a low enough caster — below the
+    // threshold. eqspellparser's CalcValue guards all four (`if (level > 16)`),
+    // the same way both it and EQEmu guard 115-118 just below. A buff cannot be
+    // worth less than its base for being cast early, so the guard is taken.
+    case 111: r = sign * (ubase + (level > 16 ? 6 * (level - 16) : 0)); break;
+    case 112: r = sign * (ubase + (level > 24 ? 8 * (level - 24) : 0)); break;
+    case 113: r = sign * (ubase + (level > 34 ? 10 * (level - 34) : 0)); break;
+    case 114: r = sign * (ubase + (level > 44 ? 15 * (level - 44) : 0)); break;
     case 115: r = ubase + (level > 15 ? 7 * (level - 15) : 0); break;
     case 116: r = ubase + (level > 24 ? 10 * (level - 24) : 0); break;
     case 117: r = ubase + (level > 34 ? 13 * (level - 34) : 0); break;
@@ -169,6 +186,11 @@ export function calcDuration(calc, cap, level = MAX_PLAYER_LEVEL) {
     case 14: v = level * 5 + 10; break;
     case 15: v = (level * 5 + 50) * 2; break;
     case 50: v = 72000; break;
+    // The aura formula. Not a tick count — the effect holds while the aura that
+    // applies it holds — so there is no honest number here; read `aura` instead.
+    // Kept in step with tools/spells.mjs, which is where the dataset's `duration`
+    // comes from; the two used to disagree (0 there, the cap here).
+    case 51: v = 0; break;
     case 3600: v = 3600; break;
     default: v = cap;
   }
@@ -185,7 +207,7 @@ const spaName = spa => SPA_NAMES[spa] || `SPA ${spa}`;
  * @param {object} b  spell being cast
  * @param {{levelA?:number, levelB?:number}} opts caster levels
  * @returns {{verdict:'independent'|'overwrite'|'blocked', code:-1|0|1,
- *            reason:string, rule:string, slots:Array, caveats:string[],
+ *            reason:string, rule:string, slots:Array,
  *            sharedGroups:Array}}
  */
 export function checkStack(a, b, opts = {}) {
@@ -193,10 +215,9 @@ export function checkStack(a, b, opts = {}) {
   const levelB = opts.levelB ?? MAX_PLAYER_LEVEL;
   const n = slotSpan(a, b);
   const slots = [];
-  const caveats = [];
   const done = (code, rule, reason, decidedBy = null) => ({
     verdict: code === 1 ? 'overwrite' : code === -1 ? 'blocked' : 'independent',
-    code, rule, reason, slots, caveats, decidedBy,
+    code, rule, reason, slots, decidedBy,
     // A verdict resting on a focus SPA that the client-derived ignore list omits.
     // Focus effects are widely reported to stack regardless of slot, so this answer
     // may be wrong — see the focus_stacking claim in claims.json.
@@ -213,9 +234,13 @@ export function checkStack(a, b, opts = {}) {
   const shared = sharedStackingGroups(a, b);
   if (shared.length && a.id !== b.id) {
     const g = shared[0];
-    if (g.type === 6 && g.rankB <= g.rankA) {
+    // Type 6 is the non-override kind: whatever is up stays up, rank regardless.
+    // eqspellparser's reading of the file (core/SpellParser.cs, "new procs won't
+    // overwrite old ones that are still active"), which is what the claim says;
+    // this used to let a higher rank through, which was neither.
+    if (g.type === 6) {
       return done(-1, 'stacking-group',
-        `Both are in stacking group "${g.name}" (non-override). ${a.name} is already up, so ${b.name} will not take hold.`);
+        `Both are in stacking group "${g.name}" (non-override). ${a.name} is already up, so ${b.name} will not take hold — rank does not matter in this kind of group.`);
     }
     if (g.rankB >= g.rankA) {
       return done(1, 'stacking-group',
@@ -236,7 +261,8 @@ export function checkStack(a, b, opts = {}) {
       }
       return done(1, 'same-spell', `Same spell cast at an equal or higher level (${levelB} vs ${levelA}) — it refreshes.`);
     }
-    if (a.id === SPELL_MANA_BURN) return done(-1, 'same-spell', 'Mana Burn does not stack with itself.');
+    // Mana Burn falls through to its own rule below, so the verdict cites the
+    // claim that actually covers it rather than the same-spell one.
   }
 
   // --- bard song vs non-song ----------------------------------------------
@@ -438,12 +464,21 @@ export function nonCumulativeOverlap(a, b, opts = {}) {
   const levelA = opts.levelA ?? MAX_PLAYER_LEVEL, levelB = opts.levelB ?? MAX_PLAYER_LEVEL;
   const out = [];
   const lenA = a.slots?.length || 0, lenB = b.slots?.length || 0;
+  // The same SPA at the same index is normally the slot arbitration's business —
+  // one spell wins the slot, so there is nothing left to not add up. Two cases
+  // in checkStack let both land anyway, and then the overlap is real: a bard song
+  // against a non-song never reaches the slot loop, and an ignored SPA is skipped
+  // inside it. The set view has no slot index and already reported these; the
+  // pair view used to say nothing, so the two disagreed.
+  const songSplit = isBardSong(a) !== isBardSong(b) && a.beneficial && b.beneficial;
+  const bothLandAt = spa => songSplit || ignored.has(spa);
   for (let i = 0; i < lenA; i++) {
     const sa = slotOf(a, i);
     if (!sa || !NON_CUMULATIVE_SPA.includes(sa.spa)) continue;
     for (let j = 0; j < lenB; j++) {
       const sb = slotOf(b, j);
-      if (!sb || sb.spa !== sa.spa || i === j) continue;
+      if (!sb || sb.spa !== sa.spa) continue;
+      if (i === j && !bothLandAt(sa.spa)) continue;
       const valueA = calcValue(a, i, levelA), valueB = calcValue(b, j, levelB);
       // The winner is named whatever the confidence, because it is not a second
       // claim: every non_cumulative claim already asserts which value applies, and
@@ -471,11 +506,7 @@ export function focusOverlap(a, b) {
   const inA = spasOf(a), inB = spasOf(b);
   const shared = [...inA].filter(s => inB.has(s));
   return {
-    // Limiters are excluded. FOCUS_SPA is the union of Daybreak's Fc_ and Ff_
-    // prefixes, so the best-only list picked up the Ff_ limiters too — and
-    // "both carry Ff_LevelMax, only the best applies" is meaningless. A limiter
-    // does not apply to a cast; it restricts the focus sitting beside it.
-    bestOnly: shared.filter(s => focusBestOnly.has(s) && !focusLimit.has(s)).map(s => ({ spa: s, name: spaName(s) })),
+    bestOnly: shared.filter(s => focusBestOnly.has(s)).map(s => ({ spa: s, name: spaName(s) })),
     procs: shared.filter(s => FOCUS_PROC_EXCEPTIONS.includes(s)).map(s => ({ spa: s, name: spaName(s) })),
   };
 }
@@ -501,8 +532,8 @@ export function checkBoth(x, y, opts = {}) {
 //
 // What it deliberately does NOT do is score a set. Ranking buff sets by damage
 // needs a model of how these values combine into a number — bonus buckets,
-// additive versus non-cumulative, which focus wins — and six of the seven
-// non-cumulative claims are unverified while the focus claim is corroborated
+// additive versus non-cumulative, which focus wins — and only one of the twelve
+// non-cumulative claims is confirmed, while the focus claim is corroborated
 // rather than confirmed. A damage figure built on that would look far more
 // authoritative than its evidence. So this answers "what am I wasting?" and
 // leaves "what is best?" alone.
@@ -581,10 +612,15 @@ export function analyzeSet(spells, opts = {}) {
     const confirmed = NON_CUMULATIVE_CONFIRMED.includes(spa);
     const members = idxs.map(i => {
       const carried = carriedAt(spells[i], spa, lvlOf(spells[i]));
+      // A spell carrying the SPA twice is represented by the slot the game would
+      // keep — furthest from zero, by the same measure ncWinner uses. Math.max
+      // picked the *weakest* of two slows, and then named it the set's winner.
+      const strongest = carried.reduce((best, c) =>
+        Math.abs(ncBonus(spa, c.value)) > Math.abs(ncBonus(spa, best.value)) ? c : best);
       return {
         index: i, id: spells[i].id, name: spells[i].name,
         slots: carried.map(c => c.slot),
-        value: Math.max(...carried.map(c => c.value)),
+        value: strongest.value,
       };
     });
     // Same rule as the pair view, over more than two: the bonus furthest from
@@ -628,7 +664,7 @@ export function analyzeSet(spells, opts = {}) {
     // The set holds as-is only if nothing in it fights anything else.
     allHold: conflicts.length === 0,
     nonCumulative,
-    focusBestOnly: focusShared(FOCUS_BEST_ONLY.filter(spa => !focusLimit.has(spa))),
+    focusBestOnly: focusShared(FOCUS_BEST_ONLY),
     // The exception worth stating positively: these all fire.
     focusProcs: focusShared(FOCUS_PROC_EXCEPTIONS),
   };

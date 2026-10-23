@@ -34,7 +34,11 @@ if (!eqDir) {
 }
 
 const doc = load();
-const { spells } = await loadAll(eqDir);
+// Descriptions are checked for phrases, not numbers, but they are rendered the
+// way the build renders them. engine.js needs the generated web/spa.js, hence
+// the late import.
+const { calcValue } = await import('../web/engine.js');
+const { spells } = await loadAll(eqDir, undefined, calcValue);
 console.log(`claims.json is structurally valid — ${doc.claims.length} claims\n`);
 
 let checked = 0, failed = 0;

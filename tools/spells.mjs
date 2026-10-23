@@ -198,7 +198,13 @@ async function loadDbstr(file) {
   return out;
 }
 
-export async function loadAll(eqDir, level = MAX_PLAYER_LEVEL) {
+/**
+ * @param {string} eqDir   the EverQuest install
+ * @param {number} level   caster level the dataset is built at
+ * @param {function} calc  `(sp, i, level) => number`, the engine's calcValue; see
+ *                         unscaledSlotValue for what happens without it
+ */
+export async function loadAll(eqDir, level = MAX_PLAYER_LEVEL, calc = unscaledSlotValue) {
   const spells = [], byId = new Map();
   for await (const line of lines(path.join(eqDir, 'spells_us.txt'))) {
     if (!line || line[0] === '#') continue;
@@ -255,7 +261,7 @@ export async function loadAll(eqDir, level = MAX_PLAYER_LEVEL) {
   }
 
   linkAndClassify(spells, byId);
-  for (const sp of spells) sp.desc = prepareDesc(sp, byId, level);
+  for (const sp of spells) sp.desc = prepareDesc(sp, byId, level, calc);
   return { spells, byId };
 }
 
@@ -287,30 +293,17 @@ function fmtTime(sec) {
   return parts.join(' ') || '0s';
 }
 
-/** Level-scaled slot value, used for description rendering. */
-export function calcSlotValue(sl, level = MAX_PLAYER_LEVEL) {
-  const { calc: formula, base1: base, max } = sl;
-  const ubase = Math.abs(base);
-  const sign = (max < base && max !== 0) ? -1 : 1;
-  let r;
-  if (formula === 60 || formula === 70) r = Math.trunc(ubase / 100);
-  else if (formula === 0 || formula === 100) r = ubase;
-  else if (formula === 101) r = sign * (ubase + Math.trunc(level / 2));
-  else if (formula === 102) r = sign * (ubase + level);
-  else if (formula === 103) r = sign * (ubase + level * 2);
-  else if (formula === 104) r = sign * (ubase + level * 3);
-  else if (formula === 105) r = sign * (ubase + level * 4);
-  else if (formula === 109) r = sign * (ubase + Math.trunc(level / 4));
-  else if (formula === 110) r = ubase + Math.trunc(level / 6);
-  else if (formula === 119) r = ubase + Math.trunc(level / 8);
-  else if (formula === 121) r = ubase + Math.trunc(level / 3);
-  else if (formula === 201 || formula === 203) r = max;
-  else if (formula < 100) r = ubase + level * formula;
-  else r = ubase;
-  if (max !== 0) r = sign === 1 ? Math.min(r, max) : Math.max(r, max);
-  if (base < 0 && r > 0) r = -r;
-  return r;
-}
+/**
+ * The level-scaled value of a slot, for the AC and haste tokens in a description.
+ *
+ * Not computed here. This file reads the client's files and nothing else, so it
+ * cannot import the engine's calcValue — and a second copy of that formula table
+ * lived here for a while, shorter than the real one, and disagreed with it on 68
+ * slots in the file. The build passes the engine's calculator in; with nothing
+ * passed, the slot's base is used unscaled, which is at least honest about not
+ * knowing. `(sp, i, level) => number`, the engine's own shape.
+ */
+export const unscaledSlotValue = (sp, i) => sp.slots[i].base1;
 
 function slotValue(sp, i, kind) {
   if (i < 0 || i >= sp.slots.length || !sp.slots[i]) return null;
@@ -318,15 +311,15 @@ function slotValue(sp, i, kind) {
   return [{ '#': sl.base1, '$': sl.base2, '@': sl.max }[kind], sl];
 }
 
-function decode(token, sp, byId, level, depth = 0) {
+function decode(token, sp, byId, level, calc, depth = 0) {
   if (!sp || depth > 4) return null;
   if (/^\*@\D/.test(token)) token = token.slice(2);
   if (/^\*[#$@]\d+\+S$/.test(token)) token = token.slice(1);
 
-  if (token.startsWith('*%R')) return decode(token.slice(3), byId.get(sp.recourse), byId, level, depth + 1);
+  if (token.startsWith('*%R')) return decode(token.slice(3), byId.get(sp.recourse), byId, level, calc, depth + 1);
 
   let m = /^\*(\d+)/.exec(token);
-  if (m) return decode(token.slice(m[0].length), byId.get(parseInt(m[1], 10)), byId, level, depth + 1);
+  if (m) return decode(token.slice(m[0].length), byId.get(parseInt(m[1], 10)), byId, level, calc, depth + 1);
 
   m = /^\*[#$@](\d+)/.exec(token);
   if (m) {
@@ -334,7 +327,7 @@ function decode(token, sp, byId, level, depth = 0) {
     if (!got) return null;
     let id = got[0];
     if (token.endsWith('+G')) id = -id;
-    return decode(token.slice(m[0].length), byId.get(id), byId, level, depth + 1);
+    return decode(token.slice(m[0].length), byId.get(id), byId, level, calc, depth + 1);
   }
 
   m = /^[#$@](\d+)/.exec(token);
@@ -346,8 +339,8 @@ function decode(token, sp, byId, level, depth = 0) {
     if (value === 2147483647 || value === -2147483648) value = 0;   // sentinel for bad data
     const spa = sl.spa, kind = token[0], abs = Math.abs(value);
     let text;
-    if (spa === 1) text = fmtNum(Math.abs(calcSlotValue(sl, level)));
-    else if (spa === 11) text = fmtNum(Math.abs(calcSlotValue(sl, level) - 100));
+    if (spa === 1) text = fmtNum(Math.abs(calc(sp, parseInt(m[1], 10) - 1, level)));
+    else if (spa === 11) text = fmtNum(Math.abs(calc(sp, parseInt(m[1], 10) - 1, level) - 100));
     else if (spa === 63) text = fmtNum(abs + 40);
     else if ((spa === 21 || spa === 64) && kind !== '@') text = fmtNum(abs / 1000);
     else if (DIV_1000.has(spa)) text = fmtNum(abs / 1000);
@@ -373,11 +366,11 @@ function decode(token, sp, byId, level, depth = 0) {
   return simple[token] ?? null;
 }
 
-export function prepareDesc(sp, byId, level = MAX_PLAYER_LEVEL) {
+export function prepareDesc(sp, byId, level = MAX_PLAYER_LEVEL, calc = unscaledSlotValue) {
   if (!sp.desc) return '';
   let text = sp.desc.replace(TAG_RE, m => m.toLowerCase() === '<br>' ? m : '');
   text = text.replace(LOOSE_REF, (_, g) => ' *' + g);
-  text = text.replace(TOKEN_RE, m => decode(m, sp, byId, level) ?? m);
+  text = text.replace(TOKEN_RE, m => decode(m, sp, byId, level, calc) ?? m);
   text = text.replace(/\{39\}(\d+)/g, 'target type $1').replace(/\{4[45]\}(\d+)/g, '[$1]');
   return text.replace(/<br>/gi, ' ').trim();
 }

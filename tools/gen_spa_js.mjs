@@ -42,10 +42,16 @@ export function generate() {
   // The limiter subset, so a focus can be told apart from the thing narrowing it.
   const focusLimitList = focusLimitSpas(spaMeta.focus_limits || []);
 
-  // Foci where only the best applies to a cast, minus the procs that all fire.
+  // Foci where only the best applies to a cast, minus the procs that all fire
+  // and minus the limiters. FOCUS_SPA is the union of Daybreak's Fc_ and Ff_
+  // prefixes, so without the second cut the list would carry the Ff_ limiters
+  // too — and "both carry Ff_LevelMax, only the best applies" is meaningless. A
+  // limiter does not apply to a cast; it restricts the focus sitting beside it.
+  // The engine used to strip them again on every use; once here is enough.
   const bestOnlyClaim = byType(claimsDoc, 'focus_best_only')[0];
   const focusExceptions = bestOnlyClaim ? bestOnlyClaim.exceptions : [];
-  const focusBestOnly = bestOnlyClaim ? focusSpaList.filter(id => !focusExceptions.includes(id)) : [];
+  const focusBestOnly = bestOnlyClaim
+    ? focusSpaList.filter(id => !focusExceptions.includes(id) && !focusLimitList.includes(id)) : [];
 
   // Focus SPAs missing from the client-derived ignore list.
   //

@@ -101,7 +101,11 @@ async function main() {
   console.log(`using ${eqDir}`);
 
   const t0 = Date.now();
-  const { spells } = await loadAll(eqDir, level);
+  // The engine's calculator scales the AC and haste tokens in descriptions, so a
+  // description and a verdict never disagree about a slot's value. Imported here
+  // rather than at the top because engine.js needs the generated web/spa.js.
+  const { calcValue } = await import('../web/engine.js');
+  const { spells } = await loadAll(eqDir, level, calcValue);
   console.log(`parsed ${spells.length} spells in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
   // Item -> spell relationships. The client files do not record these, so they
