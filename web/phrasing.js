@@ -186,7 +186,10 @@ export function phrase(slot, value, names = {}) {
     case 511: return `Limit Min Focus Timer: ${time(base1 / 1000)}`;
 
     // --- stacking -----------------------------------------------------------
-    // Spelled out because these are the effects this whole tool turns on.
+    // Spelled out because these are the effects this whole tool turns on. The
+    // slot being checked is in base2; `calc % 100` is where files before May
+    // 2018 kept it, and eqspellparser still falls back to it. Every one of the
+    // 2,142 command slots in the current file has it in base2.
     case 148: return `Block new spell if slot ${base2 > 0 ? base2 : slot.calc % 100} is `
                    + `'${effectName(base1)}' and < ${max}`;
     case 149: return `Overwrite existing spell if slot ${base2 > 0 ? base2 : slot.calc % 100} is `
