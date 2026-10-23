@@ -57,6 +57,11 @@ export const TYPES = [
 // instead of a SPA number.
 const RULE_TYPES = ['stacking_rule'];
 
+// Rules a non_cumulative claim may declare for which of two values applies. The
+// engine implements 'magnitude' (furthest from zero, on the side of zero it is
+// already on) and names a winner under no other.
+export const KEEP = ['magnitude'];
+
 // What a non-cumulative claim may say happens when the two values sit on opposite
 // sides of zero. engine.js compares the field to this literal.
 export const MIXED = ['negative'];
@@ -112,8 +117,11 @@ export function validate(doc) {
     // 'negative', so a typo would silently switch the slow-takes-the-slot rule
     // off. The shapes are pinned here instead.
     if (c.type === 'non_cumulative') {
-      if (c.keep !== undefined && c.keep !== 'magnitude')
-        fail(where, '"keep" must be "magnitude" — the rule every assertion states: the value furthest from zero applies');
+      // `keep` is required: the generator emits it and ncWinner names a winner only
+      // under a rule in KEEP that it implements. Adding a rule here without
+      // implementing it there is safe — the engine names nobody for it.
+      if (!KEEP.includes(c.keep))
+        fail(where, `"keep" must be one of ${KEEP.join(', ')} — which of two values applies; 'magnitude' is furthest from zero`);
       if (c.mixed !== undefined && !MIXED.includes(c.mixed))
         fail(where, `"mixed" must be one of ${MIXED.join(', ')} — the engine compares it literally`);
       if (c.offset !== undefined && !Number.isInteger(c.offset))

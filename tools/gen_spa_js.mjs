@@ -33,6 +33,11 @@ export function generate() {
   // can be said — neither displaces the other on its own terms, so the server decides
   // by order. Haste is the exception: a slow takes the slot outright.
   const ncMixed = Object.fromEntries(nonCumulative.filter(c => c.mixed).map(c => [c.spa, c.mixed]));
+  // Which of two values the claim says applies. Only 'magnitude' — furthest from
+  // zero — exists today, and it is the rule ncWinner implements. The engine names
+  // a winner only under a rule it implements, so a claim declaring some other
+  // rule gets no winner rather than the wrong one.
+  const ncKeep = Object.fromEntries(nonCumulative.map(c => [c.spa, c.keep]));
 
   // Focus effects, from Daybreak's own Fc_ and Ff_ prefixes, unioned with the set
   // EQEmu treats as focus. Naming by EQEmu's enum would miss the legacy-named foci;
@@ -77,6 +82,7 @@ export function generate() {
     + `export const NON_CUMULATIVE_STATUS = ${JSON.stringify(ncStatus)};\n`
     + `export const NON_CUMULATIVE_OFFSET = ${JSON.stringify(ncOffset)};\n`
     + `export const NON_CUMULATIVE_MIXED = ${JSON.stringify(ncMixed)};\n`
+    + `export const NON_CUMULATIVE_KEEP = ${JSON.stringify(ncKeep)};\n`
     + `export const IGNORED_BY_CLAIM = ${JSON.stringify(exemptedByClaim)};\n`
     + `export const FOCUS_SPA = ${JSON.stringify(focusSpaList)};\n`
     + `export const FOCUS_BEST_ONLY = ${JSON.stringify(focusBestOnly)};\n`
