@@ -25,6 +25,8 @@ export const SpellClasses = {"1":"WAR","2":"CLR","3":"PAL","4":"RNG","5":"SHD","
 
 export const SpellTeleport = {"52584":"Primary Anchor","52585":"Secondary Anchor","50874":"Guild Anchor"};
 
+export const SpellInstrument = {"23":"Woodwind","24":"Strings","25":"Brass","26":"Percussion","50":"Singing","51":"All"};
+
 export const SpellBodyType = {"1":"Humanoid","2":"Werewolf","3":"Undead","4":"Giant","5":"Golem","6":"Extraplanar","8":"UndeadPet","9":"Raid Giant","12":"Vampire","13":"Atenha Ra","14":"Greater Akheva","15":"Khati Sha","16":"Seru","18":"Draz Nurakk","19":"Zek","20":"Luggald","21":"Animal","22":"Insect","24":"Elemental","25":"Plant","26":"Dragon","28":"Summoned","31":"Familiar","34":"Muramite"};
 
 /** eqspellparser prefixes an unrecognised numeric value with "Type". */

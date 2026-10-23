@@ -371,3 +371,170 @@ test('a cap relative to the caster reads signed, and one over 1000 reads as the 
   assert.equal(phrase(slot(381, 6, 0, 3), 6), "Fling to Self (6' away) up to level + 3");
   assert.equal(phrase(slot(381, 5), 5), "Fling to Self (5' away)");
 });
+
+// --- the rest of the worklist, down to the single-slot effects -----------------
+// The same shape as PORTED, in the order phrasing_todo.mjs listed them, with the
+// figures taken from a spell in the file where one shape was not obvious.
+
+const REMAINDER = [
+  [[448, 3, 0, 0, 3], 'Buff Blocker C (3)'],
+  [[30, -10, 0, 55, -10], 'Decrease Aggro Radius to -10 up to level 55'],
+  [[227, 7, 26, 0, 7], 'Decrease Flying Kick Timer by 7s (Before Haste)'],
+  [[181, 20, 0, 0, 20], 'Increase Chance to Resist Fear Spell by 20%'],
+  [[454, 6097, 5000, 0, 6097], 'Cast: [Spell 6097] if 5000 Spell Damage Taken in Single Hit'],
+  [[150, 0, 0, 8000, 0], 'Divine Intervention with 8000 Heal'],
+  [[319, 10, 0, 90, 10], 'Increase Chance to Critical HoT by 10% up to level 90 (lose 100% per level)'],
+  [[337, 50, 0, 0, 50], 'Increase Experience Gain by 50%'],
+  [[474, 20, 0, 0, 20], 'Increase Pet Critical Hit Damage by 20% of Base Damage'],
+  [[211, 100, 50, 0, 100], 'Increase Chance to AE Attack by 100% with 50% Damage'],
+  [[211, 100, 100, 0, 100], 'Increase Chance to AE Attack by 100%'],
+  [[435, 3, 0, 0, 3], 'Fragile Defense (3)'],
+  [[379, 20, 0, 0, 20], "Shadowstep Forward 20'"],
+  [[210, 5, 0, 0, 5], 'Pet Shielding for 60s'],
+  [[18, 0, 0, 0, 0], 'Pacify'],
+  [[81, 90, 0, 0, 90], 'Resurrect with 90% XP'],
+  [[315, 2, 0, 0, 2], 'Invisibility to Undead (Enhanced 2)'],
+  [[315, 1, 0, 0, 1], 'Invisibility to Undead'],
+  [[522, 250, 0, 5000, 250], 'Increase Current Mana by 2.5% up to 5000'],
+  // 131 stores the conservation as a positive figure; the source negates it after
+  // the range swap, so a stored 25 to 50 reads as a decrease of 25% to 50%.
+  [[131, 25, 50, 0, 25], 'Decrease Chance of Using Reagent by 25% to 50%'],
+  [[131, 25, 25, 0, 25], 'Decrease Chance of Using Reagent by 25%'],
+  [[131, -10, 0, 0, -10], 'Increase Chance of Using Reagent by 0% to 10%'],
+  [[529, 100060590, 0, 0, 100060590], 'Limit Spell Line: 100060590'],
+  [[529, -100060420, 0, 0, -100060420], 'Limit Spell Line: Exclude 100060420'],
+  [[378, 50, 23, 0, 50], 'Increase Chance to Resist SPA 23 Effects by 50%'],
+  [[67, 0, 0, 0, 0], 'Eye of Zomm'],
+  [[505, -250, 0, 0, -250], 'Decrease Rear Arc Melee Damage Taken by 25%'],
+  [[505, 250, 1, 0, 250], 'Increase Frontal Arc Melee Damage Taken by 25%'],
+  [[312, 0, 0, 0, 0], 'Sanctuary'],
+  [[525, 100, 0, 300, 100], 'Increase Current Mana by 1% up to 300'],
+  [[526, 100, 0, 300, 100], 'Increase Current Endurance by 1% up to 300'],
+  [[206, 500, 0, 0, 500], 'AE Taunt with 500 Hate Mod'],
+  [[156, 0, 0, 0, 0], 'Illusion: Target'],
+  [[195, 25, 0, 0, 25], 'Increase Chance to Resist Any Stun by 25%'],
+  [[402, 1000, -15, 0, 1000], 'Decrease Current HP by up to 1500 (1.5 HP per 1 Target Endurance)'],
+  [[523, 250, 0, 5000, 250], 'Increase Current Endurance by 2.5% up to 5000'],
+  [[443, 6097, 120, 0, 6097], 'Cast: [Spell 6097] once if Caster Undead'],
+  [[205, 1, 0, 0, 1], 'Rampage (1)'],
+  [[94, 0, 0, 0, 0], 'Cancel if Combat Initiated'],
+  [[164, 0, 0, 0, 50], 'Appraise Chest (50)'],
+  [[165, 0, 0, 0, 50], 'Disarm Chest (50)'],
+  [[361, 25, 6097, 0, 25], 'Cast: [Spell 6097] on Death (25% Chance)'],
+  [[456, 50, 0, 0, 50], 'Increase Current Hate by 50% per tick'],
+  [[73, 0, 0, 0, 0], 'Bind Sight'],
+  [[82, 0, 0, 0, 0], 'Summon Player'],
+  [[218, 5, 0, 0, 5], 'Increase Pet Chance to Critical Hit by 5%'],
+  [[334, 300, 0, 0, 300], 'Increase Current HP by 300 (If Target Not Moving)'],
+  [[509, 750, -1000, 0, 750], 'Decrease Current HP by 100% of Caster Current HP (75% Life Burn)'],
+  [[509, 1000, 1000, 0, 1000], 'Increase Current HP by 100% of Caster Current HP (100% Life Burn)'],
+  [[166, 0, 0, 0, 50], 'Unlock Chest (50)'],
+  [[268, -10, 59, 0, -10], 'Increase Chance to Fail Alchemy Combine by 10%'],
+  [[26, 98, 1, 0, 98], 'Gate (98% Chance)'],
+  [[26, 98, 2, 0, 98], 'Gate (98% Chance) to Secondary Bind'],
+  [[26, 100, 1, 0, 100], 'Gate'],
+  [[518, 500, 0, 0, 500], 'Increase ATK Accuracy by 5%'],
+  [[56, 0, 0, 0, 0], 'True North'],
+  [[84, 0, 0, 0, 0], 'Gravity Flux'],
+  [[321, 500, 0, 0, 500], "Decrease Target's Target Hate by 500"],
+  [[29, 0, 0, 0, 0], 'Invisibility to Animals (Unstable)'],
+  [[151, 1, 0, 0, 1], 'Suspend Pet with Buffs'],
+  [[151, 0, 0, 0, 0], 'Suspend Pet'],
+  [[204, 3, 0, 0, 3], 'Group Fear Immunity for 30s'],
+  [[527, 500, 0, 0, 500], 'Increase Current HP by 500 (v527, Ignore Mitigation)'],
+  [[25, 0, 0, 0, 0], 'Bind'],
+  [[353, 1, 0, 0, 1], 'Increase Aura Slots by 1'],
+  [[19, 100, 0, 0, 100], 'Increase Faction by 100'],
+  [[516, 500, 0, 0, 500], 'Increase Base Mitigation AC by 5%'],
+  [[515, 500, 0, 0, 500], 'Increase Base Avoidance AC by 5%'],
+  [[233, 50, 0, 0, 50], 'Decrease Food Consumption by 50%'],
+  [[222, 10, 0, 0, 10], 'Increase Chance to Block from Back by 10%'],
+  [[506, -100, 0, 0, -100], 'Decrease Rear Arc Melee Damage Taken by 100'],
+  [[504, 100, 1, 0, 100], 'Increase Frontal Arc Melee Damage by 100'],
+  [[299, 0, 0, 60, 0], 'Wake the Dead (60)'],
+  [[298, 0, 0, 0, 50], 'Decrease Pet Size by 50%'],
+  [[342, 0, 0, 0, 0], 'Inhibit Low Health Fleeing'],
+  [[332, 0, 0, 0, 0], 'Summon to Corpse'],
+  [[244, 50, 0, 0, 50], 'Decrease Chance of Root Breaking by 50%'],
+  [[41, 0, 0, 0, 0], 'Destroy'],
+  [[252, 100, 0, 0, 100], 'Increase Chance to Backstab From Front by 100%'],
+  [[376, 0, 0, 0, 0], 'Fling'],
+  [[28, 0, 0, 0, 0], 'Invisibility to Undead (Unstable)'],
+  [[77, 0, 0, 0, 0], 'Locate Corpse'],
+  [[103, 0, 0, 0, 0], 'Summon Pet'],
+  [[521, 2000, 500, 0, 2000], 'Absorb Damage using Endurance: 20% (0.05 End per 1 HP)'],
+  [[521, 1000, 10000, 1500, 1000], 'Absorb Damage using Endurance: 10%, Max Per Hit: 1500'],
+  [[531, 10843, 0, 0, 10843], 'Use Graphic, Primary: IT10843'],
+  [[531, 103207, 103203, 5, 103207], 'Use Graphic, Primary: IT103207, Secondary: IT103203, Tint: 5'],
+  [[290, 10, 0, 0, 10], 'Increase Movement Speed Cap by 10'],
+  [[503, 250, 1, 0, 250], 'Increase Frontal Arc Melee Damage by 25%'],
+  [[359, 10, 0, 0, 10], 'Increase Chance to Sense Trap by 10%'],
+  [[90, 0, 0, 0, 0], 'Ignore Pet'],
+  [[52, 0, 0, 0, 0], 'Sense Undead'],
+  [[53, 0, 0, 0, 0], 'Sense Summoned'],
+  [[76, 0, 0, 0, 0], 'Sentinel'],
+  [[61, 0, 0, 0, 0], 'Identify Item'],
+  [[93, 0, 0, 0, 0], 'Stop Rain'],
+  [[436, 0, 0, 0, 0], 'Toggle: Freeze Buffs'],
+  [[203, 0, 0, 0, 0], 'Mass Group Buff on Next Spell'],
+  [[331, 25, 0, 0, 25], 'Increase Chance to Salvage Components by 25%'],
+  [[407, 6097, 0, 0, 6097], 'Cast: [Spell 6097] if Hit By Spell'],
+  [[187, 0, 0, 0, 10], 'Balance Group Mana with 10% Penalty'],
+  [[213, 10, 0, 0, 10], 'Increase Pet Max HP by 10%'],
+  [[445, 1, 0, 0, 1], 'Grant 1 Mercenary Slots'],
+  [[458, 10, 0, 0, 10], 'Increase Faction Hit by 10%'],
+  [[309, 0, 0, 0, 0], "Teleport to Caster's Bind"],
+  [[224, 10, 37, 0, 10], 'Increase Chance of Additional Riposte with Riposte by 10%'],
+  [[468, -10, 0, 0, -10], 'Decrease Damage Shield Taken by 10%'],
+  [[488, 50, 0, 0, 50], 'Decrease Push Taken by 50%'],
+  [[54, 0, 0, 0, 0], 'Sense Animal'],
+  [[68, 0, 0, 0, 0], 'Reclaim Pet Mana'],
+  [[75, 0, 0, 0, 0], 'Project Voice'],
+  [[102, 0, 0, 0, 0], 'Fear Immunity'],
+  [[95, 0, 0, 0, 0], 'Sacrifice'],
+  [[117, 0, 0, 0, 0], 'Make Weapon Magical'],
+  [[115, 0, 0, 0, 0], 'Reset Hunger Counter'],
+  [[207, 0, 0, 0, 0], 'Flesh to Bone Chips'],
+  [[226, 0, 0, 0, 0], 'Add Two-Handed Bash Ability'],
+  [[246, 10, 0, 0, 10], 'Increase Lung Capacity by 10'],
+  [[292, 5, 0, 0, 5], 'Increase Chance of Strikethrough by 5%'],
+  [[271, 10, 0, 0, 10], 'Increase Innate Movement Speed by 10%'],
+  [[219, 140, 1700, 0, 140], 'Increase Chance to Slay Undead by 1.4% with 1700 Damage Mod'],
+  [[260, 0, 51, 0, 2], 'Increase All Bonus by 20%'],
+  [[260, 0, 24, 0, 1], 'Increase Strings Bonus by 10%'],
+  [[322, 0, 0, 0, 0], 'Gate to Home City'],
+  [[472, 1, 0, 0, 1], 'Buy AA Rank (1)'],
+  [[338, 0, 0, 0, 0], 'Summon and Resurrect All Corpses'],
+  [[265, 70, 0, 0, 70], 'No Fizzle up to level 70'],
+  [[307, 0, 0, 0, 0], 'Appraisal'],
+  [[388, 0, 0, 0, 0], 'Summon All Corpses (From Any Zone)'],
+  [[270, 50, 0, 0, 50], 'Increase Beneficial Song Range by 50'],
+];
+
+test('the rest of the worklist reads as its source line does', () => {
+  for (const [[spa, base1, base2, max, value, calc = 100], want] of REMAINDER)
+    assert.equal(phrase({ spa, base1, base2, max, calc }, value, {}), want, `SPA ${spa}`);
+});
+
+test('the resisted effect in 378 is named the way the exact view names it', () => {
+  // eqspellparser reads its own SpellEffect enum here. This resolves the number
+  // through meta.spa_names, as 137 and 382 do, so the two readings agree.
+  assert.equal(phrase(slot(378, 50, 23), 50, { 23: 'Fear' }), 'Increase Chance to Resist Fear Effects by 50%');
+});
+
+test('the two lines corrected from the source are the lines it meant', () => {
+  // 463 is FormatPercent("Melee Shielding: {0}%", base1) — a format token inside
+  // the name, which String.Format never expands, so eqspellparser prints
+  // "Increase Melee Shielding: {0}% by 2%". 196 is spelled "Srikethrough" there.
+  // Both are documented as deliberate divergences above their case.
+  assert.equal(phrase(slot(463, 2), 2), 'Melee Shielding: 2%');
+  assert.equal(phrase(slot(196, 1), 1), 'Strikethrough (1)');
+});
+
+test('what eqspellparser does not phrase stays unphrased here', () => {
+  // 183 is null in the source ("according to prathun this effect does nothing");
+  // 34, 352, 354, 355 and 366 have no case there at all; 179 needs the spell's
+  // Skill field, which the record does not carry.
+  for (const spa of [183, 34, 352, 354, 355, 366, 179])
+    assert.equal(phrase(slot(spa, 1, 1, 1), 1, {}, { extra: 'x' }), null, `SPA ${spa}`);
+});

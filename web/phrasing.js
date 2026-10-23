@@ -24,17 +24,20 @@
 // this one has to be asked for.
 
 import { SpellResist, SpellTarget, SpellTargetRestrict, SpellSkill, SpellClasses, SpellBodyType, SpellTeleport,
-         fromEnum, limit } from './enums.js';
+         SpellInstrument, fromEnum, limit } from './enums.js';
 
 const num = (n) => Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 const up = (name, v) => `${v < 0 ? 'Decrease' : 'Increase'} ${name} by ${num(Math.abs(v))}`;
 const pct = (name, v) => `${v < 0 ? 'Decrease' : 'Increase'} ${name} by ${num(Math.abs(v))}%`;
 // Several effects carry a floor in base1 and a ceiling in base2. A negative pair
 // is stored the other way round, and a positive pair with min > max is bad data
-// the source ignores rather than prints backwards. Ported from FormatPercentRange.
-const pctRange = (name, min, max) => {
+// the source ignores rather than prints backwards. A conservation (131) is stored
+// as a positive figure and read as a decrease — `negate`, applied after the swap.
+// Ported from FormatPercentRange.
+const pctRange = (name, min, max, negate = false) => {
   if (min < 0) { if (min < max) [min, max] = [max, min]; }
   else if (min > max) max = min;
+  if (negate) { min = -min; max = -max; }
   const dir = max < 0 ? 'Decrease' : 'Increase';
   return min === max ? `${dir} ${name} by ${num(Math.abs(min))}%`
     : `${dir} ${name} by ${num(Math.abs(min))}% to ${num(Math.abs(max))}%`;
@@ -463,6 +466,150 @@ export function phrase(slot, value, names = {}, spell = null) {
     case 381: return `Fling to Self (${base1}' away)` + varmax;
     case 502: return `Stun and Fear for ${time(base1 / 1000)}`
               + (base2 !== base1 && base2 !== 0 ? ` (${time(base2 / 1000)} in PvP)` : '') + varmax;
+    case 448: return `Buff Blocker C (${base1})`;
+    case 30:  return `Decrease Aggro Radius to ${value}` + absmax;
+    case 227: return `Decrease ${skill()} Timer by ${time(base1)} (Before Haste)`;
+    case 181: return pct('Chance to Resist Fear Spell', value);
+    case 454: return `Cast: [Spell ${base1}] if ${base2} Spell Damage Taken in Single Hit`;
+    case 150: return `Divine Intervention with ${max} Heal`;
+    case 319: return pct('Chance to Critical HoT', base1) + absmax
+              + (max > 0 ? ` (lose ${base2 === 0 ? 100 : base2}% per level)` : '');
+    case 337: return pct('Experience Gain', value);
+    case 474: return pct('Pet Critical Hit Damage', base1) + ' of Base Damage';
+    case 211: return pct('Chance to AE Attack', base1) + (base2 !== 100 ? ` with ${base2}% Damage` : '');
+    case 435: return `Fragile Defense (${base1})`;
+    case 379: return `Shadowstep Forward ${base1}'`;
+    case 210: return `Pet Shielding for ${base1 * 12}s`;
+    case 18:  return 'Pacify';
+    case 81:  return `Resurrect with ${value}% XP`;
+    case 315: return 'Invisibility to Undead' + (base1 > 1 ? ` (Enhanced ${base1})` : '');
+    case 522: return pct('Current Mana', base1 / 100) + ` up to ${max}`;
+    case 131: return pctRange('Chance of Using Reagent', base1, base2, true);
+    case 529:return `Limit Spell Line: ${base1 > 0 ? '' : 'Exclude '}${Math.abs(base1)}`;
+    // The source names the resisted effect from its own SPA enum. Here, as for
+    // 137 and 382, it is Daybreak's name for the number.
+    case 378: return pct(`Chance to Resist ${effectName(base2)} Effects`, base1);
+    case 67:  return 'Eye of Zomm';
+    case 505: return pct(`${base2 === 0 ? 'Rear' : 'Frontal'} Arc Melee Damage Taken`, base1 / 10);
+    case 312: return 'Sanctuary';
+    // 525 and 526 end in " per tick" in the source when the spell has a duration,
+    // and 334 in the level range. Both need the duration, so both are dropped here
+    // as they are for 0 and 15.
+    case 525: return pct('Current Mana', base1 / 100) + ` up to ${max}`;
+    case 526: return pct('Current Endurance', base1 / 100) + ` up to ${max}`;
+    case 206: return `AE Taunt with ${base1} Hate Mod`;
+    case 156: return 'Illusion: Target';
+    case 195: return pct('Chance to Resist Any Stun', base1);
+    case 402: return `Decrease Current HP by up to ${Math.abs(Math.floor(base1 * base2 / 10))}`
+              + ` (${num(Math.abs(base2 / 10))} HP per 1 Target Endurance)`;
+    case 523: return pct('Current Endurance', base1 / 100) + ` up to ${max}`;
+    // Null in the source as well: according to prathun this effect does nothing.
+    case 183: return null;
+    case 443: return `Cast: [Spell ${base1}] once if Caster ${fromEnum(SpellTargetRestrict, base2)}`;
+    case 205: return `Rampage (${base1})`;
+    case 94:  return 'Cancel if Combat Initiated';
+    case 164: return `Appraise Chest (${value})`;
+    case 165: return `Disarm Chest (${value})`;
+    case 361: return `Cast: [Spell ${base2}] on Death (${base1}% Chance)`;
+    // This " per tick" is a literal in the source, not the duration suffix, so it stays.
+    case 456: return pct('Current Hate', base1) + ' per tick';
+    case 73:  return 'Bind Sight';
+    case 82:  return 'Summon Player';
+    case 218: return pct('Pet Chance to Critical Hit', value);
+    case 334: return up('Current HP', value) + ' (If Target Not Moving)';
+    case 509: return `${base2 < 0 ? 'Decrease' : 'Increase'} Current HP by ${num(Math.abs(base2) / 10)}% of Caster Current HP`
+              + ` (${num(base1 / 10)}% Life Burn)`;
+    case 166: return `Unlock Chest (${value})`;
+    case 268: return pct(`Chance to Fail ${skill()} Combine`, -base1);
+    case 26:  return (base1 < 100 ? `Gate (${base1}% Chance)` : 'Gate') + (base2 > 1 ? ' to Secondary Bind' : '');
+    case 518: return pct('ATK Accuracy', base1 / 100);
+    case 56:  return 'True North';
+    case 84:  return 'Gravity Flux';
+    case 321: return up("Target's Target Hate", -value);
+    case 29:  return 'Invisibility to Animals (Unstable)';
+    case 151: return 'Suspend Pet' + (base1 === 1 ? ' with Buffs' : '');
+    case 204: return `Group Fear Immunity for ${base1 * 10}s`;
+    case 527: return up('Current HP', value) + ' (v527, Ignore Mitigation)';
+    case 25:  return 'Bind';
+    case 353: return up('Aura Slots', base1);
+    case 19:  return up('Faction', value);
+    case 516: return pct('Base Mitigation AC', base1 / 100);
+    case 515: return pct('Base Avoidance AC', base1 / 100);
+    case 233: return pct('Food Consumption', -base1);
+    case 222: return pct('Chance to Block from Back', base1);
+    case 506: return up(`${base2 === 0 ? 'Rear' : 'Frontal'} Arc Melee Damage Taken`, base1);
+    case 504: return up(`${base2 === 0 ? 'Rear' : 'Frontal'} Arc Melee Damage`, base1);
+    case 299: return `Wake the Dead (${max})`;
+    case 298: return pct('Pet Size', value - 100);
+    case 342: return 'Inhibit Low Health Fleeing';
+    case 332: return 'Summon to Corpse';
+    case 244: return pct('Chance of Root Breaking', -100 + base1);
+    case 41:  return 'Destroy';
+    case 252: return pct('Chance to Backstab From Front', base1);
+    case 376: return 'Fling';
+    case 28:  return 'Invisibility to Undead (Unstable)';
+    case 77:  return 'Locate Corpse';
+    case 103: return 'Summon Pet';
+    // The endurance twin of 329, with the same integer division on the percentage.
+    // The source divides the ratio as a float here, so it prints as the float it is.
+    case 521: return `Absorb Damage using Endurance: ${Math.trunc(base1 / 100)}%`
+              + (base2 !== 10000 ? ` (${num(base2 / 10000)} End per 1 HP)` : '')
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
+    case 531: return 'Use Graphic' + (base1 > 0 ? `, Primary: IT${base1}` : '')
+              + (base2 > 0 ? `, Secondary: IT${base2}` : '') + (max > 0 ? `, Tint: ${max}` : '');
+    // eqspellparser writes FormatPercent("Melee Shielding: {0}%", base1) — a format
+    // token inside the name, which String.Format never expands, so its line prints
+    // as "Increase Melee Shielding: {0}% by 2%". A deliberate divergence: the line
+    // the author evidently meant, with the figure where the token is.
+    case 463: return `Melee Shielding: ${base1}%`;
+    case 290: return up('Movement Speed Cap', value);
+    case 503: return pct(`${base2 === 0 ? 'Rear' : 'Frontal'} Arc Melee Damage`, base1 / 10);
+    case 359: return pct('Chance to Sense Trap', base1);
+    case 90:  return 'Ignore Pet';
+    case 52:  return 'Sense Undead';
+    case 53:  return 'Sense Summoned';
+    case 76:  return 'Sentinel';
+    case 61:  return 'Identify Item';
+    case 93:  return 'Stop Rain';
+    case 436: return 'Toggle: Freeze Buffs';
+    case 203: return 'Mass Group Buff on Next Spell';
+    case 331: return pct('Chance to Salvage Components', value);
+    case 407: return `Cast: [Spell ${base1}] if Hit By Spell`;
+    case 187: return `Balance Group Mana with ${value}% Penalty`;
+    case 213: return pct('Pet Max HP', base1);
+    case 445: return `Grant ${base1} Mercenary Slots`;
+    case 458: return pct('Faction Hit', base1);
+    case 309: return "Teleport to Caster's Bind";
+    case 224: return pct(`Chance of Additional Riposte with ${skill()}`, base1);
+    case 468: return pct('Damage Shield Taken', base1);
+    case 488: return pct('Push Taken', -base1);
+    case 54:  return 'Sense Animal';
+    case 68:  return 'Reclaim Pet Mana';
+    case 75:  return 'Project Voice';
+    case 102: return 'Fear Immunity';
+    case 95:  return 'Sacrifice';
+    case 117: return 'Make Weapon Magical';
+    case 115: return 'Reset Hunger Counter';
+    case 207: return 'Flesh to Bone Chips';
+    case 226: return 'Add Two-Handed Bash Ability';
+    case 246: return up('Lung Capacity', base1);
+    // The source has "Srikethrough", a typo — 292 just below spells it out. A
+    // deliberate divergence of one letter.
+    case 196: return `Strikethrough (${value})`;
+    case 292: return pct('Chance of Strikethrough', base1);
+    case 271: return pct('Innate Movement Speed', base1);
+    case 219: return pct('Chance to Slay Undead', base1 / 100) + ` with ${base2} Damage Mod`;
+    case 260: return pct(`${fromEnum(SpellInstrument, base2)} Bonus`, value * 10);
+    case 322: return 'Gate to Home City';
+    case 472: return `Buy AA Rank (${base1})`;
+    case 338: return 'Summon and Resurrect All Corpses';
+    case 265: return `No Fizzle up to level ${base1}`;
+    case 307: return 'Appraisal';
+    case 388: return 'Summon All Corpses (From Any Zone)';
+    case 270: return up('Beneficial Song Range', base1);
+    // What is left has no case in eqspellparser at all — 34 Confuse, the trap
+    // effects 352, 354 and 355, 366 Group Shielding — so there is nothing to
+    // port, and the default below says so.
 
     // --- lines that print the spell's Extra field ----------------------------
     // A zone, a pet or a doppelganger token, which the slot does not carry. These
