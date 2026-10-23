@@ -359,3 +359,15 @@ test('the anchor teleports name the anchor, by the spell id the source keys them
   assert.equal(phrase(slot(438, 52585), 52585), 'Teleport to their Secondary Anchor');
   assert.equal(phrase(slot(438, 1), 1), 'Teleport to their Type 1');
 });
+
+test('a cap relative to the caster reads signed, and one over 1000 reads as the level', () => {
+  // eqspellparser's varmax. The file has all three shapes: Braxi's Panic caps at
+  // max 1099, meaning level 99; Presence of Fear at max 3, meaning the caster's
+  // level plus three; Braxi's Terror at -1. No max, no clause.
+  assert.equal(phrase(slot(502, 6000, 0, 1099), 6000), 'Stun and Fear for 6s up to level 99');
+  assert.equal(phrase(slot(502, 1000, 0, 3), 1000), 'Stun and Fear for 1s up to level + 3');
+  assert.equal(phrase(slot(502, 6000, 0, -1), 6000), 'Stun and Fear for 6s up to level - 1');
+  assert.equal(phrase(slot(502, 4000, 2000, 0), 4000), 'Stun and Fear for 4s (2s in PvP)');
+  assert.equal(phrase(slot(381, 6, 0, 3), 6), "Fling to Self (6' away) up to level + 3");
+  assert.equal(phrase(slot(381, 5), 5), "Fling to Self (5' away)");
+});

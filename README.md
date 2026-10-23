@@ -455,7 +455,7 @@ your browser.
 Nothing is hidden by the default: the raw `SPA n · base x · value y` line is printed under
 the name in both readings.
 
-**307 effects have a phrasing, covering 99% of the slots in the current spell file**, and
+**309 effects have a phrasing, covering 99% of the slots in the current spell file**, and
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
 slot keeps its exact name and is marked **as-is** — never a guess.
 
@@ -467,7 +467,7 @@ node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to por
 node tools/phrasing_todo.mjs --json
 ```
 
-129 effects still read as-is, and most of them have an eqspellparser line to port, so an
+127 effects still read as-is, and most of them have an eqspellparser line to port, so an
 entry is usually a one-line job. The tail is shallow: 105 of the 131 appear in fewer than
 20 slots in the entire file, and the ones that are left mostly need a spell-level field
 (`Extra`, the duration) that a slot phrasing does not receive. Adding one is a `case` in
@@ -818,7 +818,7 @@ tests/                             node:test — fixtures and claims run anywher
   applies — but 371 versus a haste is a cross-SPA question, and nothing here merges across
   SPAs. EQEmu treats 371 as a separate `inhibitmelee` bucket that subtracts from a positive
   SPA 11 haste rather than replacing it.
-- Plain wording covers 98.5% of the slots in the current file. The 129 effects without it
+- Plain wording covers 98.5% of the slots in the current file. The 127 effects without it
   read as the name in the spell file and are marked **as-is**; `tools/phrasing_todo.mjs`
   lists them worst-first.
 - **Unattributed** is still a residual — 17,016 rows nothing explains. The item

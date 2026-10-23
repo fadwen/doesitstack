@@ -72,6 +72,12 @@ export function phrase(slot, value, names = {}, spell = null) {
   // Several control effects cap at a target level held in max — eqspellparser's
   // `absmax`.
   const absmax = max > 0 ? ` up to level ${max}` : '';
+  // 381 and 502 cap relative to the caster instead: a max over 1000 is a level
+  // outright, anything else is an offset from the caster's own, printed signed
+  // the way C#'s "+ #;- #" does — "up to level + 3". eqspellparser's `varmax`,
+  // SpellData.cs 190-196, for files since September 2017.
+  const varmax = max === 0 ? '' : max > 1000 ? ` up to level ${max - 1000}`
+               : ` up to level ${max > 0 ? '+' : '-'} ${Math.abs(max)}`;
 
   switch (spa) {
     // --- the common stat and resource effects ---------------------------
@@ -454,6 +460,9 @@ export function phrase(slot, value, names = {}, spell = null) {
     // The anchors are spell ids the source names in an enum of its own.
     case 437: return `Teleport to your ${fromEnum(SpellTeleport, base1)}`;
     case 438: return `Teleport to their ${fromEnum(SpellTeleport, base1)}`;
+    case 381: return `Fling to Self (${base1}' away)` + varmax;
+    case 502: return `Stun and Fear for ${time(base1 / 1000)}`
+              + (base2 !== base1 && base2 !== 0 ? ` (${time(base2 / 1000)} in PvP)` : '') + varmax;
 
     // --- lines that print the spell's Extra field ----------------------------
     // A zone, a pet or a doppelganger token, which the slot does not carry. These
