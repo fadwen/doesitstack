@@ -119,8 +119,8 @@ places where it diverges from live:
   first twelve changed thousands of verdicts.
 - Its stacking ignore list omits focus effects that do stack, and its tail past RoF2 is
   self-described as guesswork.
-- Its non-cumulative SPA handling was committed with no source cited, and six of those
-  seven claims still have nothing behind them.
+- Its non-cumulative SPA handling was committed with no source cited, and seven of the
+  twelve claims still have nothing else behind them.
 - Its `IsFocusEffect` mapping is right where a name-based reading of Daybreak's own SPA
   list would have been wrong — a reminder it cuts both ways.
 
@@ -219,12 +219,13 @@ A handful of SPAs land on you together but are not added together; the game keep
 larger value. The tool warns when a stacking pair shares one, and shows the evidence
 behind the warning — because the evidence differs sharply between them.
 
-Eleven are claimed. Ten were identified from `zone/bonuses.cpp` in EQEmu, where they keep
+Twelve are claimed. Ten were identified from `zone/bonuses.cpp` in EQEmu, where they keep
 the larger magnitude instead of the `+=` an ordinary bonus uses: **11** Melee Speed, **98** Bard
 Haste, **119** Overhaste, **185** Skill Damage Mod 1, **186** Min Damage Done Mod, **459**
 Skill Damage Mod 2, **482** Skill Base Damage Mod, **496** Critical Melee Damage Mod Max,
-**503** Melee Damage Position Mod, **505** Damage Taken Position Mod. The eleventh, **3** Movement Rate, comes from the other direction — see
-below.
+**503** Melee Damage Position Mod, **505** Damage Taken Position Mod. **371** Slow keeps the
+deepest slow the same way, into a field of its own. The twelfth, **3** Movement Rate, comes
+from the other direction — see below.
 
 The three haste effects were missed on the first pass. Haste is accumulated in a different
 switch from the damage modifiers, so a reader following the effects that produced the rest
@@ -255,18 +256,19 @@ Compare a run buff against a mount here and you will be told they share no effec
 true of the data and false of the game. Recorded in `claims.json` under
 `notes.movement_and_mounts`.
 
-**Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,963
+**Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,984
 spells, exactly 53 descriptions contain the word "non-cumulative", and every one of them
 carries SPA 496; none says it without. EQEmu independently agrees, which corroborates
 but does not establish.
 
-The other nine rest on uncited emulator code. 185/186/459 came from a 2016 mackal commit
-whose message body is empty; 503/505 from KayenEQ's PR #1454 and 482 from #1474, each
-asserting the behaviour with no source given, and the three haste effects on the same
-footing. The site marks those nine unverified and
-says so in the warning.
+Three more — **11**, **119** and **371** — are corroborated: a player's report from a raid
+set, which is more than EQEmu but less than a source. The other seven rest on uncited
+emulator code. 185/186/459 came from a 2016 mackal commit whose message body is empty;
+503/505 from KayenEQ's PR #1454 and 482 from #1474, each asserting the behaviour with no
+source given, and bard haste (98) on the same footing. The site marks those seven
+unverified and says so in the warning.
 
-Two caveats apply to all seven:
+Two caveats apply to all of them:
 
 - The value that applies wins **within one bonus bucket**. Spell, AA and worn-item bonuses are
   summed at use time, so a worn item effect and a buff can still add. Two buffs — the
@@ -336,11 +338,11 @@ What the evidence changes is how firmly it is drawn:
 | --- | --- |
 | **Confirmed** (496 only) | marked solid, and the tooltip adds nothing |
 | **Corroborated** | marked faintly; the tooltip says it rests on corroboration, not a settled source |
-| **Unverified** (the nine) | marked faintly; the tooltip says the claim rests on EQEmu's bonus accumulation, which nothing in that project backs up |
+| **Unverified** (the seven) | marked faintly; the tooltip says the claim rests on EQEmu's bonus accumulation, which nothing in that project backs up |
 | **Disputed** (3 only) | marked faintly; the tooltip says the sources disagree, and that the mark follows the practitioner reading rather than EQEmu, which adds them |
 
 Status is derived from evidence, not written by hand, so **adding a primary source removes
-the hedging on the next build with no code change**. If you can settle one of the nine,
+the hedging on the next build with no code change**. If you can settle one of the seven,
 see [CONTRIBUTING.md](CONTRIBUTING.md) — the parse protocol is there.
 
 ## A whole buff set
@@ -393,15 +395,16 @@ A reordered set is not "changed": the ids carry insertion order, which is a disp
 detail, so comparison is order-insensitive rather than crying wolf.
 
 Saved sets never leave the browser they were made in — no account, no server. The **URL
-already carries the whole set**, so that stays the way to move one between machines or send
-it to someone. Storage that is blocked or full is reported rather than silently losing a
+already carries the whole set** — and the caster level, when it is not the cap — so that
+stays the way to move one between machines or send it to someone; both pages have a
+**Copy link** button for it. Storage that is blocked or full is reported rather than silently losing a
 set, and a browser that refuses it entirely still leaves the link in the address bar.
 
 ### Why it will not rank sets
 
 Because it cannot do so honestly. A damage figure needs a model of how these values
 combine — the spell, AA and worn bonus buckets, which effects add and which keep only the
-larger, which focus wins a cast. Nine of the ten non-cumulative claims here are
+larger, which focus wins a cast. Seven of the twelve non-cumulative claims here are
 `unverified` and the focus rule is `corroborated` rather than `confirmed`; a score built on
 that would look far more authoritative than its evidence. Burn output also depends on gear,
 AAs, recast timers and the encounter, none of which is in the spell file — that is a
@@ -452,7 +455,7 @@ your browser.
 Nothing is hidden by the default: the raw `SPA n · base x · value y` line is printed under
 the name in both readings.
 
-**215 effects have a phrasing, covering 93% of the slots in the current spell file**, and
+**296 effects have a phrasing, covering 98% of the slots in the current spell file**, and
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
 slot keeps its exact name and is marked **as-is** — never a guess.
 
@@ -464,11 +467,12 @@ node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to por
 node tools/phrasing_todo.mjs --json
 ```
 
-221 effects still read as-is, and **215 of them have an eqspellparser line to port**, so
-most entries are a one-line job. The tail is shallow: the four biggest reach 95% coverage,
-nineteen reach 97%, sixty-one reach 99%, and 105 of the 221 appear in fewer than 20 slots in
-the entire file. Adding one is a `case` in [`web/phrasing.js`](web/phrasing.js) — return
-`null` rather than guessing if the effect is not understood.
+140 effects still read as-is, and most of them have an eqspellparser line to port, so an
+entry is usually a one-line job. The tail is shallow: 105 of the 140 appear in fewer than
+20 slots in the entire file, and the ones that are left mostly need a spell-level field
+(`Extra`, the duration) that a slot phrasing does not receive. Adding one is a `case` in
+[`web/phrasing.js`](web/phrasing.js) — return `null` rather than guessing if the effect
+is not understood.
 
 Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
 than eqspellparser's own enum, so the two readings never disagree about what an effect is
@@ -587,11 +591,11 @@ running an item collector.
 That buys 10,675 spells tagged with the item that casts them, and lets the site tell
 apart three things the old **Item / other** bucket ran together:
 
-- **Item** — an item demonstrably casts it. 9,686 rows.
+- **Item** — an item demonstrably casts it. 9,685 rows.
 - **NPC** — flagged NPC-only *and* no item grants it. The item data corrected 249 of
   these, about 28% of the old bucket, that a player can in fact click off an item.
 - **Unattributed** — no class learns it, nothing in the file triggers it, no item casts
-  it. 17,656 rows. Unexplained rather than absent: the item data lags new content, so
+  it. 16,996 rows. Unexplained rather than absent: the item data lags new content, so
   recent effects land here for a while.
 
 The dump is regenerated daily but updates when a player submits a find, not when
@@ -605,8 +609,6 @@ into a URL, identical on all 134,079 rows, so the item links here are built rath
 looked up. Matching spell names against item names does not substitute: 3.1% hit rate,
 skewed to `Spell: <name>` scrolls, which *teach* a spell rather than cast it.
 
-**The client's spell files do not record which item grants an effect.** Items live
-server-side; nothing in `spells_us.txt` links a clicky to its item. So this bucket is a
 ## Data files
 
 Every spell value comes from the four files that ship with the live client:
@@ -627,8 +629,11 @@ vendor/items.txt                   which item casts which spell — items.sodeq.
 Optional, gitignored, and fetched by `npm run fetch` rather than by the build. Its 315
 columns are read **by name**, so the collector adding or reordering columns cannot shift
 the data underneath us; a *renamed* column is a hard build failure rather than silently
-wrong tags. Only spells present in the current spell file get tagged, which is what makes
-stale item data produce fewer tags instead of tags pointing nowhere.
+wrong tags. A row whose width does not match the header — an item name with a `|` in it
+does that — is skipped and counted rather than read into the wrong columns; the build
+says how many, and more than one in a hundred fails it. Only spells present in the
+current spell file get tagged, which is what makes stale item data produce fewer tags
+instead of tags pointing nowhere.
 
 A card names three items; "and N other items" opens the rest, grouped by how each item
 grants the spell. That list ships with the site rather than linking to a SoDeq search,
@@ -693,6 +698,7 @@ Node 20+ is the only prerequisite — no dependencies to install.
 npm run fetch                 # item database — downloads only if it changed (~8 MB)
 npm run build                 # auto-detects the usual Windows install paths
 node tools/build.mjs --eq-dir "C:/Users/Public/Daybreak Game Company/Installed Games/EverQuest"
+EQ_DIR="D:/Games/EverQuest" npm run build        # or point every tool at it at once
 
 npm run serve                 # builds, then serves dist/ on http://localhost:8000
 ```
@@ -700,9 +706,10 @@ npm run serve                 # builds, then serves dist/ on http://localhost:80
 The build writes `dist/`:
 
 ```
-dist/index.html, app.js, engine.js, spa.js, freshness.js, style.css
+dist/                        every html, css, js, png, svg, ico, webp, txt and xml file under
+                             web/, with the {{SITE_URL}} and {{BUILD_DATE}} placeholders filled
 dist/data/meta.json          SPA names, ignore list, claims, build stamp
-dist/data/index.json         one small row per spell — feeds the search box (~775 KB gzipped)
+dist/data/index.json         one small row per spell — feeds the search box (~800 KB gzipped)
 dist/data/spells/NN.json     full records, sharded by id; only the two you pick get fetched
 dist/data/desc/NN.json       descriptions with their #1/%z template tokens resolved
 dist/data/items/NN.json      every item granting a spell, for the "N other items" list; fetched on click
@@ -722,16 +729,16 @@ instead of 8 MB. It is safe to skip — the build says so and carries on without
 npm test
 ```
 
-Two layers. `tests/engine.fixtures.test.mjs`, `tests/claims.test.mjs` and
-`tests/freshness.test.mjs` run on a bare clone with no EverQuest install — hand-built
-fixtures covering slot arbitration up to the full 100 slots, SPA 148 blocking, stacking
-groups, focus behaviour, the snare and bard rules, plus the claims schema. That is what
-CI runs, on Linux and Windows.
+Two layers. Anything that imports `tests/load.mjs` or reads `dist/` needs a built dataset
+and skips itself without one — or when `dist/` is stale, which it detects rather than
+failing cryptically. Everything else runs on a bare clone with no EverQuest install:
+hand-built fixtures covering slot arbitration up to the full 100 slots, the stacking
+commands, stacking groups, focus behaviour, the snare, DoT and bard rules, the claims
+schema, the parsers and the tools. That is what CI runs, on Linux and Windows.
 
-`tests/engine.test.mjs` needs a built dataset and skips itself without one — or when
-`dist/` is stale, which it detects rather than failing cryptically. It pins the engine
-against real spells and cross-checks one against a third-party dump of it, so it doubles
-as a check that the field offsets still line up with the current file format.
+The dataset-backed suites pin the engine against real spells, cross-check one against a
+third-party dump of it — so they double as a check that the field offsets still line up
+with the current file format — and hold the numbers this README quotes to the build.
 
 ### Discoverability
 
@@ -745,9 +752,9 @@ canonical link pointing at somebody else's site is worse than none. `--site-url`
 it for a custom domain.
 
 **What this cannot do:** the spell data is fetched as JSON after the page loads, so a
-crawler indexes the shell, not 70,963 spells. Searches for a specific spell name will not
+crawler indexes the shell, not 70,984 spells. Searches for a specific spell name will not
 find this site. Closing that would mean pre-rendering a static page per spell, which is a
-different project — and pairs are not an option at all, since 70,963 spells is 2.5 billion
+different project — and pairs are not an option at all, since 70,984 spells is 2.5 billion
 of them.
 
 ### Publishing
@@ -782,6 +789,7 @@ tools/fetch_items.mjs              the only thing here that touches the network
 tools/serve.mjs                    dependency-free static server for dist/
 web/engine.js                      the stacking rules, pair and set
 web/data.js                        loading and searching the dataset, shared by both pages
+web/ui.js                          the picker, filters, footer and notices both pages draw
 web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
 web/saved.js                       named sets in browser storage, pure and testable
@@ -799,8 +807,9 @@ tests/                             node:test — fixtures and claims run anywher
 - Caster level is a single input applied to both spells; the game tracks it per buff.
   It defaults to 130, the live cap — raise `MAX_PLAYER_LEVEL` in `tools/spells.mjs` on
   the expansion that raises it, and everything else follows from there.
-- Eight of the twelve non-cumulative SPAs rest on uncited EQEmu implementation rather
-  than any primary source. See above, and `claims.json` for each one.
+- Seven of the twelve non-cumulative SPAs rest on uncited EQEmu implementation rather
+  than any primary source; three more are corroborated by play, and only 496 is
+  confirmed. See above, and `claims.json` for each one.
 - Most stacking rules are `unverified` for the same reason. The biggest remaining one is
   `slot-strength` — that an incoming spell must be at least as strong on **every** shared
   slot or be refused outright. Daybreak has stated the slot-index half (see below) but
@@ -809,10 +818,10 @@ tests/                             node:test — fixtures and claims run anywher
   applies — but 371 versus a haste is a cross-SPA question, and nothing here merges across
   SPAs. EQEmu treats 371 as a separate `inhibitmelee` bucket that subtracts from a positive
   SPA 11 haste rather than replacing it.
-- Plain wording covers 93.4% of the slots in the current file. The 221 effects without it
+- Plain wording covers 98.0% of the slots in the current file. The 140 effects without it
   read as the name in the spell file and are marked **as-is**; `tools/phrasing_todo.mjs`
   lists them worst-first.
-- **Unattributed** is still a residual — 17,656 rows nothing explains. The item
+- **Unattributed** is still a residual — 16,996 rows nothing explains. The item
   database shrank the old "Item / other" bucket by a third; the rest is genuinely
   unaccounted for, and calling it "probably a clicky" would be a guess.
 - Item tags depend on a community dump that lags new content by weeks and is the only

@@ -23,24 +23,55 @@ export function readPort(arg, warn = console.error) {
   warn(`ignoring "${arg}" — that is not a port number; using ${DEFAULT_PORT}.`);
   return DEFAULT_PORT;
 }
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json' };
+// Everything build.mjs copies out of web/. An icon served as octet-stream is
+// ignored by the browser; a sitemap served as one is ignored by the crawler.
+const TYPES = {
+  '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
+  '.png': 'image/png', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.webp': 'image/webp',
+  '.txt': 'text/plain', '.xml': 'application/xml',
+};
 
-const srv = http.createServer((req, res) => {
-  const rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-  let file = path.join(ROOT, rel === '/' ? 'index.html' : rel);
-  if (!path.resolve(file).startsWith(ROOT)) { res.writeHead(403).end(); return; }
+/**
+ * The file a decoded request path names under root, or null if it would land
+ * outside. The URL parser has already folded ".." segments away by the time a
+ * path gets here, so this is the second line: it exists because path.resolve
+ * also understands a backslash on Windows, which arrives through the URL parser
+ * untouched when it is percent-encoded.
+ */
+export function fileFor(root, rel) {
+  const file = path.resolve(root, '.' + (rel === '/' ? '/index.html' : rel));
+  // The separator matters: a bare startsWith(root) also admits a sibling that
+  // happens to share the prefix, such as dist-old/ next to dist/.
+  return file.startsWith(root + path.sep) ? file : null;
+}
+
+/** One request. `root` is a parameter so the tests can point it at a scratch dir. */
+export function handle(req, res, root = ROOT) {
+  let rel;
+  try {
+    rel = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  } catch {
+    // A stray "%" is a bad request, not a reason to take the server down.
+    res.writeHead(400, { 'content-type': 'text/plain' }).end('bad request');
+    return;
+  }
+  const file = fileFor(root, rel);
+  if (!file) { res.writeHead(403).end(); return; }
   fs.readFile(file, (err, body) => {
     if (err) { res.writeHead(404, { 'content-type': 'text/plain' }).end('not found'); return; }
     res.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
     res.end(body);
   });
-});
+}
+
+const srv = http.createServer(handle);
 
 // Only read argv and listen when run directly, so importing this to test the
 // argument handling neither parses a test runner's argv nor holds a port.
 // pathToFileURL, not a `file://` template — a Windows path is backslashed and
-// would never match, which has bitten this repo before.
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// would never match, which has bitten this repo before. And argv[1] is checked
+// first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const PORT = readPort(process.argv[2]);
   srv.on('error', err => {
     // The other thing people hit: a server still running from a previous go.

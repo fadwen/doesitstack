@@ -7,7 +7,11 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readPort, DEFAULT_PORT } from '../tools/serve.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import { readPort, handle, fileFor, DEFAULT_PORT } from '../tools/serve.mjs';
 
 const quiet = () => {};
 
@@ -44,9 +48,61 @@ test('a valid port is accepted without comment', () => {
   assert.deepEqual(said, []);
 });
 
-test('importing the server neither reads argv nor holds a port', () => {
-  // Both are guarded behind a direct-run check so this test file can exist at
-  // all. If that guard goes, `npm test` warns about the test runner's own argv
-  // and then hangs on port 8000 rather than failing cleanly.
-  assert.equal(typeof readPort, 'function');
+// --- serving -----------------------------------------------------------------
+//
+// A scratch dist/ with a sibling directory beside it, served on an ephemeral
+// port. The sibling is the point: it shares dist's path prefix.
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'dis-serve-'));
+const root = path.join(tmp, 'dist');
+fs.mkdirSync(root);
+fs.writeFileSync(path.join(root, 'index.html'), '<title>x</title>');
+fs.writeFileSync(path.join(root, 'icon.svg'), '<svg/>');
+fs.mkdirSync(path.join(tmp, 'dist-old'));
+fs.writeFileSync(path.join(tmp, 'dist-old', 'secret.txt'), 'no');
+
+async function withServer(fn) {
+  const srv = http.createServer((req, res) => handle(req, res, root));
+  await new Promise(r => srv.listen(0, '127.0.0.1', r));
+  const get = (p) => new Promise((resolve, reject) =>
+    http.get(`http://127.0.0.1:${srv.address().port}${p}`, res => {
+      let body = '';
+      res.setEncoding('utf8');
+      res.on('data', c => body += c);
+      res.on('end', () => resolve({ status: res.statusCode, type: res.headers['content-type'], body }));
+    }).on('error', reject));
+  try { await fn(get); } finally { srv.close(); }
+}
+
+test('the root serves index.html and an svg says it is one', () => withServer(async get => {
+  assert.equal((await get('/')).body, '<title>x</title>');
+  assert.equal((await get('/icon.svg')).type, 'image/svg+xml');
+  assert.equal((await get('/nope.css')).status, 404);
+}));
+
+test('a malformed percent-escape is a 400, not a dead server', () => withServer(async get => {
+  // decodeURIComponent throws on this; uncaught, it took the whole process down.
+  assert.equal((await get('/%E0%A4%A')).status, 400);
+  assert.equal((await get('/')).status, 200, 'and the server is still up');
+}));
+
+test('a path that escapes dist/ is refused, even into a sibling that shares the prefix', () => {
+  // Checked on the decoded path rather than over HTTP: the URL parser folds an
+  // encoded ../ away before the handler sees it, so a request can only reach
+  // this check by a route the parser leaves alone — an encoded backslash, on
+  // Windows. The check still has to be right when it is reached.
+  assert.equal(fileFor(root, '/icon.svg'), path.join(root, 'icon.svg'));
+  assert.equal(fileFor(root, '/'), path.join(root, 'index.html'));
+  assert.equal(fileFor(root, '/../../etc/passwd'), null);
+  // startsWith(root) alone let this one through: dist-old starts with dist.
+  assert.equal(fileFor(root, '/../dist-old/secret.txt'), null);
+  if (process.platform === 'win32') assert.equal(fileFor(root, '/\\..\\dist-old\\secret.txt'), null);
 });
+
+test('and over the wire, nothing outside dist/ is ever served', () => withServer(async get => {
+  for (const p of ['/%2e%2e/dist-old/secret.txt', '/%5C..%5Cdist-old%5Csecret.txt', '/..%2Fdist-old%2Fsecret.txt']) {
+    const r = await get(p);
+    assert.ok(r.status === 403 || r.status === 404, `${p} -> ${r.status}`);
+    assert.notEqual(r.body, 'no', `${p} leaked the sibling's file`);
+  }
+}));

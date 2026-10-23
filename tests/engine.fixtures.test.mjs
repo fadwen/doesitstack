@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fx } from './fixtures.mjs';
-import { checkStack, checkBoth, isBardSong, isGroupSpell, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration, isEmptySlot, isBlankSlot } from '../web/engine.js';
+import { checkStack, checkBoth, isBardSong, isGroupSpell, isStackableDot, nonCumulativeOverlap, focusOverlap, analyzeSet, limitersOf, calcValue, calcDuration, isEmptySlot, isBlankSlot } from '../web/engine.js';
 import { isAuraEffect, classify, SPELL_REF_FIELDS } from '../tools/spells.mjs';
 import { FOCUS_CONTESTED, FOCUS_PROC_EXCEPTIONS, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, MAX_PLAYER_LEVEL } from '../web/spa.js';
 
@@ -23,7 +23,9 @@ test('but a shared non-cumulative effect is still flagged', () => {
 // --- which value the game keeps ---------------------------------------------
 //
 // The site colours the slot that applies and the slot that does not. That is a
-// claim about the game, so it is only made where the claim is confirmed.
+// claim about the game — but not a second one: every non_cumulative claim already
+// asserts which value applies, so the winner is named whatever the confidence and
+// `status` carries how firmly the view should say it.
 
 const ncPair = (spaA, valA, spaB, valB) => {
   const a = fx('longSongA'), b = fx('longSongB');
@@ -462,7 +464,7 @@ test('proc-type foci are reported apart, because they all do fire', () => {
 });
 
 test('the set view never scores a set', () => {
-  // Ranking sets by damage needs a bonus-bucket model resting on six unverified
+  // Ranking sets by damage needs a bonus-bucket model resting on seven unverified
   // claims. If this ever grows a score, that decision needs its own evidence.
   const r = analyzeSet([setSpell(1, 'A', [[124, 10]]), setSpell(2, 'B', [[124, 90]])]);
   for (const key of ['score', 'rank', 'dps', 'best', 'total'])
@@ -645,4 +647,185 @@ test('two slows keep the deepest, because 371 stores the slow as a positive', ()
   const g = analyzeSet(set).nonCumulative.find(x => x.spa === 371);
   assert.equal(g.status, 'corroborated');
   assert.deepEqual(g.members.map(m => m.applies), [false, true]);
+});
+
+
+// --- the rules the same-spell branch carves out --------------------------------
+
+test('Mana Burn is refused under its own rule, not the same-spell one', () => {
+  // The dedicated branch is the one with a claim behind it; a same-spell verdict
+  // would cite the wrong claim.
+  const r = checkStack(fx('manaBurn'), fx('manaBurn'));
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'mana-burn');
+});
+
+test('Eye of Zomm will not re-land while it is up', () => {
+  const r = checkStack(fx('eyeOfZomm'), fx('eyeOfZomm'));
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'same-spell');
+});
+
+test('Improved Taunt is exempt from the same-spell level check', () => {
+  const r = checkStack(fx('improvedTaunt'), fx('improvedTaunt'), { levelA: 100, levelB: 60 });
+  assert.equal(r.code, 1, 'a lower-level recast still overwrites');
+  assert.equal(r.rule, 'same-spell');
+});
+
+test('a snare is not a stackable DoT, so a lower-level recast is refused', () => {
+  // IsStackableDOT needs a Current HP (or Gravity) effect in the spell. A snare is
+  // detrimental and has a duration, which was enough for the old test — and let a
+  // weaker recast "overwrite" instead of being held to the level check.
+  assert.equal(isStackableDot(fx('snare')), false);
+  assert.equal(checkStack(fx('snare'), fx('snare'), { levelA: 100, levelB: 60 }).code, -1);
+  assert.equal(isStackableDot(fx('dotA')), true);
+});
+
+
+// --- slot rules with no fixture until now -------------------------------------
+
+test('Complete Heal never stacks or overwrites', () => {
+  // Two different Complete Heal spells: the same one would stop at the
+  // same-spell branch first.
+  const r = checkStack(fx('completeHeal'), fx('completeHealB'));
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'complete-heal');
+});
+
+test('two different DoTs in the same slot both run', () => {
+  assert.equal(checkStack(fx('dotA'), fx('dotB')).code, 0);
+  assert.equal(checkStack(fx('dotB'), fx('dotA')).code, 0);
+});
+
+test('a DoT does not overwrite regeneration, and a running DoT blocks it', () => {
+  assert.equal(checkStack(fx('regen'), fx('dotA')).code, 0, 'the DoT lands beside the regen');
+  const r = checkStack(fx('dotA'), fx('regen'));
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'dot-blocks-regen');
+});
+
+test('SPA 149 overwrites a weaker effect in the slot it names', () => {
+  const r = checkStack(fx('weakBuff'), fx('overwriter'));   // slot 1 AC 100, below 500
+  assert.equal(r.code, 1);
+  assert.equal(r.rule, 'spa-149');
+  assert.equal(checkStack(fx('blocker'), fx('overwriter')).rule, 'spa-149', 'the overwrite command is checked before the block');
+});
+
+test('a detrimental spell ignores SPA 148', () => {
+  // Live change, 2018. The blocker names slot 1 AC below 500; the debuff has -100
+  // there and would be blocked if it were a buff.
+  const r = checkStack(fx('blocker'), fx('acDebuff'));
+  assert.notEqual(r.rule, 'spa-148');
+  assert.equal(r.slots.find(s => s.kind === 'block-command').outcome, 'no-effect');
+});
+
+test('a negative AC effect is skipped in arbitration', () => {
+  const r = checkStack(fx('acBuff'), fx('acDebuff'));
+  assert.equal(r.code, 0);
+  assert.equal(r.slots[0].outcome, 'no-conflict');
+});
+
+test('the bard-only AE DoT effect is exempt between two bards', () => {
+  const r = checkStack(fx('bardDotA'), fx('bardDotB'));
+  assert.equal(r.code, 0);
+  assert.match(r.slots[0].detail, /bard-only AE DoT/);
+});
+
+test('haste is compared after the 100 comes off in arbitration too', () => {
+  // 125 vs 168 stored: a 25% haste against a 68% one. The weaker is refused, and
+  // the slot row shows the bonuses, not the stored percentages.
+  const r = checkStack(fx('hasteBig'), fx('hasteSmall'));
+  assert.equal(r.code, -1);
+  assert.deepEqual([r.slots[0].valueA, r.slots[0].valueB], [68, 25]);
+});
+
+test('a type 6 stacking group is never overwritten, whatever the rank', () => {
+  // eqspellparser's reading of SpellStackingGroups.txt: "new procs won't overwrite
+  // old ones that are still active". A higher rank used to get through.
+  const r = checkStack(fx('nonOverrideLow'), fx('nonOverrideHigh'));
+  assert.equal(r.code, -1);
+  assert.equal(r.rule, 'stacking-group');
+  assert.equal(checkStack(fx('nonOverrideHigh'), fx('nonOverrideLow')).code, -1);
+});
+
+
+// --- the pair and set views agree -------------------------------------------
+
+test('a bard song and a buff sharing haste in the same slot are a real overlap', () => {
+  // Both land by the bard-song rule, so the same-index skip that is right for
+  // ordinary slot arbitration is wrong here. The set view had no index to skip
+  // on and already reported one group; the pair view reported nothing.
+  const song = fx('hasteSong'), buff = fx('hasteSmall');
+  assert.equal(checkStack(song, buff).rule, 'bard-song');
+  const o = nonCumulativeOverlap(song, buff);
+  assert.equal(o.length, 1);
+  assert.deepEqual([o[0].slotA, o[0].slotB], [0, 0]);
+  assert.equal(analyzeSet([song, buff]).nonCumulative.length, 1);
+});
+
+test('the same SPA at the same index on two ordinary buffs is still the slot\'s business', () => {
+  assert.equal(nonCumulativeOverlap(fx('hasteBig'), fx('hasteSmall')).length, 0);
+});
+
+test('a set member carrying a slow twice is represented by its deepest slot', () => {
+  // -7 and -11 on one spell against -9 on another: the pair view says -11 wins.
+  // Math.max over a spell's own slots picked -7, and then named -9 the set winner.
+  const twice = setSpell(1, 'Twice', [1, [505, -7], [505, -11]]);
+  const once = setSpell(2, 'Once', [3, [505, -9]]);
+  const g = analyzeSet([twice, once]).nonCumulative.find(x => x.spa === 505);
+  assert.deepEqual(g.members.map(m => m.value), [-11, -9]);
+  assert.deepEqual(g.members.map(m => m.applies), [true, false]);
+});
+
+
+// --- calcValue --------------------------------------------------------------
+
+test('a degenerating formula is worth its base at cast time', () => {
+  // Formula 107 loses one per tick. With no tick count given nothing has elapsed —
+  // eqspellparser's tick 0. The engine used to pass 0 remaining ticks and so
+  // evaluated the slot after the whole duration had run: base 50 over 130 ticks
+  // came out at -80.
+  const s = fx('weakBuff');
+  s.duration = 130; s.dur_calc = 50; s.dur_cap = 130;
+  s.slots[0] = { spa: 1, base1: 50, base2: 0, calc: 107, max: 0 };
+  assert.equal(calcValue(s, 0), 50);
+  assert.equal(calcValue(s, 0, MAX_PLAYER_LEVEL, 130), 49, 'EQEmu\'s first tick, one step in');
+  assert.equal(calcValue(s, 0, MAX_PLAYER_LEVEL, 100), 19, 'a hundred ticks left counts as thirty-one elapsed, by the same max(tics - 1, 0)');
+  s.slots[0].calc = 1005;                                           // five per tick
+  assert.equal(calcValue(s, 0), 50);
+  assert.equal(calcValue(s, 0, MAX_PLAYER_LEVEL, 121), 0, 'ten ticks in at five a tick');
+});
+
+test('formulas 111-114 never fall below base for a low caster', () => {
+  // EQEmu has no guard here and would say -16; eqspellparser guards, as both do
+  // for 115-118. A deliberate divergence, written down in calcValue.
+  const s = fx('weakBuff');
+  s.slots[0] = { spa: 1, base1: 20, base2: 0, calc: 111, max: 0 };
+  assert.equal(calcValue(s, 0, 10), 20);
+  assert.equal(calcValue(s, 0, 16), 20);
+  assert.equal(calcValue(s, 0, 17), 26);
+  s.slots[0].calc = 114;
+  assert.equal(calcValue(s, 0, 44), 20);
+  assert.equal(calcValue(s, 0, 54), 170);
+});
+
+test('a decreasing formula keeps its sign and its floor', () => {
+  // max below base with max set: EQEmu's updownsign goes negative and the max
+  // becomes a floor, not a cap. Formula 102 at base 100, max 50, level 60.
+  const s = fx('weakBuff');
+  s.slots[0] = { spa: 1, base1: 100, base2: 0, calc: 102, max: 50 };
+  assert.equal(calcValue(s, 0, 60), 50, '-(100 + 60) is under the floor, so the floor');
+  // 124-132 apply the sign to the increment only, as EQEmu does: 100 + (-1 * 10).
+  s.slots[0] = { spa: 1, base1: 100, base2: 0, calc: 124, max: 50 };
+  assert.equal(calcValue(s, 0, 60), 90);
+  // A negative base stays negative after the formula.
+  s.slots[0] = { spa: 1, base1: -10, base2: 0, calc: 102, max: 0 };
+  assert.equal(calcValue(s, 0, 100), -110);
+});
+
+test('the aura duration formula is no tick count in the engine either', () => {
+  // tools/spells.mjs returns 0 for formula 51 and flags the spell as an aura; the
+  // engine fell through to the cap and said 72000. One answer, in both places.
+  assert.equal(calcDuration(51, 72000), 0);
+  assert.equal(calcDuration(50, 0), 72000);
 });

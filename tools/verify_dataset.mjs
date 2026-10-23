@@ -15,7 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { findEqDir, arg } from './eqdir.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -28,7 +28,8 @@ const OFF = { id: 0, name: 1, range: 4, aeRange: 5, cast: 8, recast: 10, durCalc
 
 const num = s => (!s || s[0] === '.') ? 0 : (parseInt(s, 10) || 0);
 
-function rawSpell(line) {
+/** One spells_us.txt line as this file reads it. Exported so a test can hold it against the real parser. */
+export function rawSpell(line) {
   const f = line.split('^');
   const slots = [];
   for (const chunk of f[f.length - 1].split('$')) {
@@ -51,70 +52,79 @@ function rawSpell(line) {
   };
 }
 
-const eqDir = arg('eq-dir', findEqDir());
-if (!eqDir) { console.error('Could not find an EverQuest install. Pass --eq-dir explicitly.'); process.exit(1); }
-const distDir = path.resolve(ROOT, arg('dist', 'dist'));
-if (!fs.existsSync(path.join(distDir, 'data', 'meta.json'))) {
-  console.error(`No built dataset in ${distDir} — run \`npm run build\` first.`);
-  process.exit(1);
-}
-
-const meta = JSON.parse(fs.readFileSync(path.join(distDir, 'data', 'meta.json'), 'utf8'));
-const shards = new Map();
-const shipped = (id) => {
-  const b = Math.floor(id / meta.bucket);
-  if (!shards.has(b)) {
-    const file = path.join(distDir, 'data', 'spells', `${b}.json`);
-    shards.set(b, fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {});
-  }
-  return shards.get(b)[id];
-};
-
 const FIELDS = ['name', 'beneficial', 'target', 'resist', 'mana', 'endurance', 'cast_ms',
                 'recast_ms', 'dur_calc', 'dur_cap', 'range', 'ae_range', 'is_skill', 'group_id', 'rank'];
 
-let checked = 0, missing = 0, mismatched = 0, slotFields = 0;
-const problems = [];
+async function main() {
+  const eqDir = arg('eq-dir', findEqDir());
+  if (!eqDir) throw new Error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
+  const distDir = path.resolve(ROOT, arg('dist', 'dist'));
+  if (!fs.existsSync(path.join(distDir, 'data', 'meta.json')))
+    throw new Error(`No built dataset in ${distDir} — run \`npm run build\` first.`);
 
-const rl = readline.createInterface({
-  input: fs.createReadStream(path.join(eqDir, 'spells_us.txt'), { encoding: 'utf8' }),
-  crlfDelay: Infinity,
-});
-for await (const line of rl) {
-  if (!line || line[0] === '#') continue;
-  const f = line.split('^');
-  if (f.length < 100) continue;
-  const raw = rawSpell(line);
-  const got = shipped(raw.id);
-  checked++;
-  if (!got) { missing++; if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: not in the dataset`); continue; }
+  const meta = JSON.parse(fs.readFileSync(path.join(distDir, 'data', 'meta.json'), 'utf8'));
+  const shards = new Map();
+  const shipped = (id) => {
+    const b = Math.floor(id / meta.bucket);
+    if (!shards.has(b)) {
+      const file = path.join(distDir, 'data', 'spells', `${b}.json`);
+      shards.set(b, fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {});
+    }
+    return shards.get(b)[id];
+  };
 
-  for (const k of FIELDS) {
-    if (JSON.stringify(raw[k]) !== JSON.stringify(got[k])) {
+  let checked = 0, missing = 0, mismatched = 0, slotFields = 0;
+  const problems = [];
+
+  const rl = readline.createInterface({
+    input: fs.createReadStream(path.join(eqDir, 'spells_us.txt'), { encoding: 'utf8' }),
+    crlfDelay: Infinity,
+  });
+  for await (const line of rl) {
+    if (!line || line[0] === '#') continue;
+    const f = line.split('^');
+    if (f.length < 100) continue;
+    const raw = rawSpell(line);
+    const got = shipped(raw.id);
+    checked++;
+    if (!got) { missing++; if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: not in the dataset`); continue; }
+
+    for (const k of FIELDS) {
+      if (JSON.stringify(raw[k]) !== JSON.stringify(got[k])) {
+        mismatched++;
+        if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: ${k} is ${JSON.stringify(got[k])}, file says ${JSON.stringify(raw[k])}`);
+      }
+    }
+    if (JSON.stringify(raw.levels) !== JSON.stringify(got.levels)) {
       mismatched++;
-      if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: ${k} is ${JSON.stringify(got[k])}, file says ${JSON.stringify(raw[k])}`);
+      if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: class levels differ`);
+    }
+    if (JSON.stringify(raw.slots) !== JSON.stringify(got.slots)) {
+      mismatched++;
+      if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: slots differ (${raw.slots.length} in file, ${got.slots.length} shipped)`);
+    } else {
+      slotFields += raw.slots.filter(Boolean).length * 5;
     }
   }
-  if (JSON.stringify(raw.levels) !== JSON.stringify(got.levels)) {
-    mismatched++;
-    if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: class levels differ`);
+
+  console.log(`spell file : ${path.join(eqDir, 'spells_us.txt')}`);
+  console.log(`dataset    : ${distDir} (built ${meta.built})\n`);
+  console.log(`${checked.toLocaleString()} spells re-read from the file and compared field by field`);
+  console.log(`${(checked * (FIELDS.length + 1) + slotFields).toLocaleString()} values checked`);
+  console.log(`${missing} missing from the dataset, ${mismatched} mismatched`);
+  for (const p of problems) console.log(`  ${p}`);
+  if (missing || mismatched) {
+    console.error('\nThe dataset does not match the spell file it claims to come from.');
+    process.exit(1);
   }
-  if (JSON.stringify(raw.slots) !== JSON.stringify(got.slots)) {
-    mismatched++;
-    if (problems.length < 20) problems.push(`#${raw.id} ${raw.name}: slots differ (${raw.slots.length} in file, ${got.slots.length} shipped)`);
-  } else {
-    slotFields += raw.slots.filter(Boolean).length * 5;
-  }
+  console.log('\nEvery value in the dataset came from the local spell file.');
 }
 
-console.log(`spell file : ${path.join(eqDir, 'spells_us.txt')}`);
-console.log(`dataset    : ${distDir} (built ${meta.built})\n`);
-console.log(`${checked.toLocaleString()} spells re-read from the file and compared field by field`);
-console.log(`${(checked * (FIELDS.length + 1) + slotFields).toLocaleString()} values checked`);
-console.log(`${missing} missing from the dataset, ${mismatched} mismatched`);
-for (const p of problems) console.log(`  ${p}`);
-if (missing || mismatched) {
-  console.error('\nThe dataset does not match the spell file it claims to come from.');
-  process.exit(1);
+// Guarded so rawSpell can be imported by a test without running the comparison.
+// argv[1] first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error(err.message);
+    process.exit(1);
+  });
 }
-console.log('\nEvery value in the dataset came from the local spell file.');

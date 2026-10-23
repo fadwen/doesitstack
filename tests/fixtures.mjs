@@ -58,8 +58,8 @@ export const FIXTURES = {
   singleVersion: make({ id: 900004, name: 'Test Single Buff', target: 5, slots: [slot(1, 150)] }),
   // SPA 148: block anything whose slot 1 is SPA 1 (AC) below 500.
   blocker: make({ id: 900005, name: 'Test Blocker', slots: [slot(1, 400), slot(148, 1, 1, 100, 500)] }),
-  // Focus effects. 399 FcTwincast is absent from the client-derived ignore list, so
-  // the engine still arbitrates it and the verdict is flagged contested.
+  // Focus effects. 399 FcTwincast is absent from the client-derived ignore list;
+  // the focus stacking claim is corroborated, so the engine exempts it by claim.
   twincastA: make({ id: 900008, name: 'Test Twincast A', slots: [slot(399, 10)] }),
   twincastB: make({ id: 900009, name: 'Test Twincast B', slots: [slot(399, 30)] }),
   // 286 FcDamageAmt is on the ignore list, so it never conflicts at all.
@@ -98,6 +98,43 @@ export const FIXTURES = {
                          stacking: [{ group: 4242, group_name: 'Test Stacking Group', rank: 1, type: 1 }] }),
   stackGroupHigh: make({ id: 900007, name: 'Test Group Rank 2', slots: [slot(2, 90)],
                          stacking: [{ group: 4242, group_name: 'Test Stacking Group', rank: 2, type: 1 }] }),
+  // The same two ranks in a type 6 (non-override) group: whatever is up stays up.
+  nonOverrideLow:  make({ id: 900018, name: 'Test Non-Override Rank 1', slots: [slot(2, 50)],
+                          stacking: [{ group: 4343, group_name: 'Test Non-Override Group', rank: 1, type: 6 }] }),
+  nonOverrideHigh: make({ id: 900019, name: 'Test Non-Override Rank 2', slots: [slot(2, 90)],
+                          stacking: [{ group: 4343, group_name: 'Test Non-Override Group', rank: 2, type: 6 }] }),
+
+  // The rules the same-spell branch carves out. Mana Burn is any spell carrying SPA
+  // 350; Eye of Zomm is spell 331 by id; Improved Taunt carries SPA 444.
+  manaBurn:      make({ id: 2751, name: 'Mana Burn', beneficial: false, duration: 0, slots: [slot(350, 1000)] }),
+  eyeOfZomm:     make({ id: 331, name: 'Eye of Zomm', duration: 10, slots: [slot(87, 1)] }),
+  improvedTaunt: make({ id: 900020, name: 'Test Improved Taunt', beneficial: false, duration: 10, slots: [slot(444, 50, 150)] }),
+  // A detrimental duration spell with no damage in it — a snare — is not a DoT, so
+  // a recast is still held to the same-spell level check.
+  snare: make({ id: 900021, name: 'Test Snare', beneficial: false, duration: 60, slots: [slot(3, -55)] }),
+  // Two different DoTs: detrimental, duration, SPA 0 in the same slot.
+  dotA: make({ id: 900022, name: 'Test DoT A', beneficial: false, duration: 10, slots: [slot(0, -100)] }),
+  dotB: make({ id: 900023, name: 'Test DoT B', beneficial: false, duration: 10, slots: [slot(0, -200)] }),
+  // A regeneration buff: beneficial SPA 0 over time, in the slot the DoTs use.
+  regen: make({ id: 900024, name: 'Test Regen', duration: 100, slots: [slot(0, 30)] }),
+  // Complete Heal: SPA 101 in slot 1.
+  completeHeal:  make({ id: 900025, name: 'Test Complete Heal', duration: 1, slots: [slot(101, 7500)] }),
+  completeHealB: make({ id: 900034, name: 'Test Complete Heal B', duration: 1, slots: [slot(101, 7500)] }),
+  // SPA 149: overwrite anything whose slot 1 is SPA 1 (AC) below 500.
+  overwriter: make({ id: 900026, name: 'Test Overwriter', slots: [slot(1, 450), slot(149, 1, 1, 100, 500)] }),
+  // A detrimental spell with AC in slot 1, for the 2018 bypass of SPA 148.
+  acDebuff: make({ id: 900027, name: 'Test AC Debuff', beneficial: false, duration: 60, slots: [slot(1, -100)] }),
+  // Negative AC in a slot an AC buff also uses: the arbitration skips it.
+  acBuff: make({ id: 900028, name: 'Test AC Buff', slots: [slot(1, 300)] }),
+  // Two bard songs carrying the bard-only AE DoT effect in the same slot.
+  bardDotA: make({ id: 900029, name: 'Test Bard AE DoT A', beneficial: false, duration: 10, levels: lv({ 7: 50 }), slots: [slot(334, -20)] }),
+  bardDotB: make({ id: 900030, name: 'Test Bard AE DoT B', beneficial: false, duration: 10, levels: lv({ 7: 60 }), slots: [slot(334, -40)] }),
+  // Haste is stored as a percentage of normal speed: 168 is +68%, 125 is +25%.
+  hasteBig:   make({ id: 900031, name: 'Test Haste 68', slots: [slot(11, 168)] }),
+  hasteSmall: make({ id: 900032, name: 'Test Haste 25', slots: [slot(11, 125)] }),
+  // A bard song and a buff both carrying haste in the *same* slot: they coexist
+  // by the bard-song rule, so the shared non-cumulative effect is real.
+  hasteSong: make({ id: 900033, name: 'Test Haste Song', duration: 100, levels: lv({ 7: 20 }), slots: [slot(11, 130)] }),
 };
 
 export const fx = (name) => structuredClone(FIXTURES[name]);

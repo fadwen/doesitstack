@@ -7,11 +7,13 @@
 // and fails if the numbers no longer hold. Run it before opening a PR, and after
 // a patch day — the game changes, and a claim that was true in 2024 may not be.
 
+import { pathToFileURL } from 'node:url';
 import { load } from './claims.mjs';
 import { loadAll } from './spells.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
 
-const CHECKS = {
+/** Checkers by id. Exported so a test can confirm every `check` in claims.json names one. */
+export const CHECKS = {
   // "every spell whose description contains PHRASE carries SPA, and none carries
   // the phrase without it" — the shape of the SPA 496 evidence.
   'desc-phrase-implies-spa'(spells, { phrase, spa }) {
@@ -27,33 +29,47 @@ const CHECKS = {
   },
 };
 
-const eqDir = arg('eq-dir', findEqDir());
-if (!eqDir) {
-  console.error('Could not find an EverQuest install. Pass --eq-dir explicitly.');
-  process.exit(1);
-}
+async function main() {
+  const eqDir = arg('eq-dir', findEqDir());
+  if (!eqDir) throw new Error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
 
-const doc = load();
-const { spells } = await loadAll(eqDir);
-console.log(`claims.json is structurally valid — ${doc.claims.length} claims\n`);
+  const doc = load();
+  // Descriptions are checked for phrases, not numbers, but they are rendered the
+  // way the build renders them. engine.js needs the generated web/spa.js, hence
+  // the late import.
+  const { calcValue } = await import('../web/engine.js');
+  const { spells } = await loadAll(eqDir, undefined, calcValue);
+  console.log(`claims.json is structurally valid — ${doc.claims.length} claims\n`);
 
-let checked = 0, failed = 0;
-for (const claim of doc.claims) {
-  const checks = claim.evidence.filter(e => e.check);
-  const mark = { confirmed: 'confirmed ', unverified: 'unverified', disputed: 'DISPUTED  ' }[claim.status];
-  console.log(`  [${mark}] ${claim.id}  (${claim.evidence.length} evidence, ${checks.length} machine-checkable)`);
-  for (const e of checks) {
-    const fn = CHECKS[e.check.id];
-    if (!fn) { console.log(`      ! unknown check "${e.check.id}"`); failed++; continue; }
-    const { ok, detail } = fn(spells, e.check);
-    checked++;
-    if (!ok) failed++;
-    console.log(`      ${ok ? 'PASS' : 'FAIL'}  ${detail}`);
+  let checked = 0, failed = 0;
+  for (const claim of doc.claims) {
+    const checks = claim.evidence.filter(e => e.check);
+    // Padded from the status itself. A hand-written label map here lacked
+    // `corroborated` and printed seven claims as [undefined].
+    const mark = (claim.status === 'disputed' ? 'DISPUTED' : claim.status).padEnd(12);
+    console.log(`  [${mark}] ${claim.id}  (${claim.evidence.length} evidence, ${checks.length} machine-checkable)`);
+    for (const e of checks) {
+      const fn = CHECKS[e.check.id];
+      if (!fn) { console.log(`      ! unknown check "${e.check.id}"`); failed++; continue; }
+      const { ok, detail } = fn(spells, e.check);
+      checked++;
+      if (!ok) failed++;
+      console.log(`      ${ok ? 'PASS' : 'FAIL'}  ${detail}`);
+    }
+  }
+
+  console.log(`\n${checked} check(s) run, ${failed} failed.`);
+  if (failed) {
+    console.error('Evidence no longer holds against this spell file. Do not ship this claim as written.');
+    process.exit(1);
   }
 }
 
-console.log(`\n${checked} check(s) run, ${failed} failed.`);
-if (failed) {
-  console.error('Evidence no longer holds against this spell file. Do not ship this claim as written.');
-  process.exit(1);
+// Guarded so the checkers can be imported by a test without running anything.
+// argv[1] first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    console.error(err.message);
+    process.exit(1);
+  });
 }

@@ -5,22 +5,24 @@
 // counts — but not which set is best. See analyzeSet() in engine.js for why that
 // last one is left alone.
 
-import { analyzeSet, calcValue, slotOf } from './engine.js';
-import { dataAge, itemDataAge } from './freshness.js';
+import { analyzeSet } from './engine.js';
 import {
-  $, el, link, RAIDLOOT, THIRD_PARTY_LAG, F_BENEFICIAL, row,
-  KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
-  getReading, setReading, named,
+  $, el, link, RAIDLOOT, THIRD_PARTY_LAG, search, spellById, load as loadData,
+  getReading, named, notInFile, notLoaded,
 } from './data.js';
+import {
+  DEFAULT_KINDS, readLevel, levelParam, applyLevelParam, noticeLine, dataFailed, buildFilters,
+  searchFilters, wireReadingBox, wirePicker, wireCopyLink, renderFooter,
+} from './ui.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 import { PRESETS, findPreset } from './presets.js';
 import { phrase } from './phrasing.js';
 
-let META, INDEX;
+let META;
 const chosen = [];                                     // spells, in the order added
-const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura', 'other'];
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 const MAX_SET = 100;                                   // far past a real buff bar
+let rerunSearch = () => {};                            // from wirePicker(), once booted
 
 // Saved sets live in this browser only. The URL already carries a set, so that
 // stays the way to move one between machines or send it to someone.
@@ -30,25 +32,36 @@ let saved = [];
 // and undone. That round trip — load the standard set, pile things on to see
 // what they cost, put it back — is the whole reason saving is here.
 let loadedFrom = null;
+// Ids in that set which this spell file does not have. A set saved under an
+// older file can name spells that were since removed or renumbered; without
+// this it read as "Changed — 1 removed" the moment it loaded, and Revert
+// reloaded the same thing.
+let unresolved = [];
 let storageWarned = false;
 
+// A static element below the saved sets, not part of what render() redraws —
+// it was created inside that region, so the one-time storage warning was wiped
+// by the render that followed it and nobody ever saw it. Cleared by the next
+// change to the set, so it describes the current state and no other.
+const { alertLine, clearLine } = noticeLine('#saved-note');
+
 async function boot() {
-  ({ META, INDEX } = await loadData());
+  try { ({ META } = await loadData()); }
+  catch (err) { dataFailed(err); return; }
   saved = readSets(store);
   renderFooter();
+  $('#lvl').max = META.max_level;
   $('#lvl').value = META.max_level;
-  buildFilters();
-  wirePicker();
-  $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; sync(); };
-  $('#lvl').addEventListener('change', render);
-  // Checked means "show me what the file says" — the opposite of the old box,
-  // because the readable form is now what you get without asking.
-  const exactBox = $('#f-exact');
-  exactBox.checked = getReading() === 'exact';
-  exactBox.addEventListener('change', () => { setReading(exactBox.checked ? 'exact' : 'phrased'); render(); });
-  for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunSearch);
+  buildFilters(active, () => rerunSearch());
+  rerunSearch = wirePicker($('#q'), $('#results'),
+    // already in the set
+    q => search(q, { ...searchFilters(active), exclude: new Set(ids()) }),
+    id => { $('#q').value = ''; add(id); });
+  $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; unresolved = []; sync(); };
+  $('#lvl').addEventListener('change', () => { writeHash(); render(); });
+  wireReadingBox(render);
+  for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', () => rerunSearch());
   $('#why-no-score').textContent = NO_SCORE;
-  if (META.repo_url) $('#repo-link').href = META.repo_url;
   window.addEventListener('hashchange', fromHash);
   await fromHash();
   // fromHash returns early when the hash already matches what is loaded, which on
@@ -66,92 +79,31 @@ const NO_SCORE =
   + 'more authoritative than the evidence behind it. This tool shows you what is being wasted '
   + 'and leaves the arithmetic to you.';
 
-// ---------- filters and search ----------------------------------------------
-
-function buildFilters() {
-  const kinds = $('#kinds');
-  for (const k of META.kinds) {
-    const b = el('button', 'chip' + (active.kinds.has(k) ? ' on' : ''), KIND_LABEL[k] || k);
-    b.title = kindHelp(k);
-    b.onclick = () => {
-      active.kinds.has(k) ? active.kinds.delete(k) : active.kinds.add(k);
-      b.classList.toggle('on');
-      rerunSearch();
-    };
-    kinds.appendChild(b);
-  }
-  const classes = $('#classes');
-  // Keyed by class index, not by position: the chips are no longer in class-index
-  // order, so "which chip is lit" cannot be derived from where it sits.
-  const chips = new Map();
-  const mk = (label, idx) => {
-    const b = el('button', 'chip' + (active.cls === idx ? ' on' : ''), label);
-    b.onclick = () => {
-      active.cls = active.cls === idx ? -1 : idx;
-      for (const [i, node] of chips) node.classList.toggle('on', i === active.cls);
-      rerunSearch();
-    };
-    chips.set(idx, b);
-    classes.appendChild(b);
-  };
-  mk('Any', -1);
-  for (const { label, idx } of orderClasses(META.classes)) mk(label, idx);
-}
-
-function wirePicker() {
-  const input = $('#q'), box = $('#results');
-  input.addEventListener('input', rerunSearch);
-  input.addEventListener('focus', rerunSearch);
-  input.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 150));
-  input.addEventListener('keydown', e => {
-    const btns = [...box.querySelectorAll('button')];
-    const i = btns.findIndex(b => b.classList.contains('on'));
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const n = Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-      btns.forEach(b => b.classList.remove('on'));
-      if (btns[n]) { btns[n].classList.add('on'); btns[n].scrollIntoView({ block: 'nearest' }); }
-    } else if (e.key === 'Enter' && btns[Math.max(i, 0)]) {
-      e.preventDefault(); btns[Math.max(i, 0)].click();
-    } else if (e.key === 'Escape') box.hidden = true;
-  });
-}
-
-function rerunSearch() {
-  const q = $('#q').value.trim().toLowerCase(), box = $('#results');
-  box.innerHTML = '';
-  if (q.length < 2) { box.hidden = true; return; }
-  const hits = search(q, {
-    buffsOnly: $('#f-buffs').checked, benefOnly: $('#f-benef').checked,
-    kinds: active.kinds, cls: active.cls,
-    exclude: new Set(chosen.map(s => s.id)),        // already in the set
-  });
-  if (!hits.length) { box.hidden = true; return; }
-  for (const r of hits) {
-    const b = el('button');
-    const kind = META.kinds[r[row.kind]];
-    const head = el('div', 'row1');
-    head.appendChild(el('span', null, r[row.name]));
-    head.appendChild(el('span', 'badge ' + kind, KIND_LABEL[kind] || kind));
-    b.appendChild(head);
-    const bits = [`#${r[row.id]}`];
-    if (r[row.levels]) bits.push(r[row.levels].split('|').slice(0, 4).join(', '));
-    if (r[row.flags] & F_AURA) bits.push('aura');
-    else if (r[row.duration] > 0) bits.push(`${r[row.duration]} tick${r[row.duration] === 1 ? '' : 's'}`);
-    b.appendChild(el('div', 'meta', bits.join(' · ')));
-    b.onmousedown = e => e.preventDefault();
-    b.onclick = () => { box.hidden = true; $('#q').value = ''; add(r[row.id]); };
-    box.appendChild(b);
-  }
-  box.hidden = false;
-}
 
 // ---------- the set ---------------------------------------------------------
 
 async function add(id) {
   if (chosen.some(s => s.id === id) || chosen.length >= MAX_SET) return;
-  const sp = await spellById(id);
-  if (sp) { chosen.push(sp); sync(); }
+  const { found, failed } = await resolve([id]);
+  if (found.length) { chosen.push(found[0]); sync(); }
+  if (failed.length) alertLine(notLoaded(failed));
+}
+
+/**
+ * Fetch spells by id, in order, sorting the ones that did not come back into
+ * two piles the page describes differently: not in this spell file at all, or
+ * not loadable just now. Sequential rather than parallel: shard fetches are
+ * cached per bucket, so a 40-buff set is a handful of requests either way.
+ */
+async function resolve(ids) {
+  const found = [], missing = [], failed = [];
+  for (const id of ids) {
+    try {
+      const sp = await spellById(id);
+      if (sp) found.push(sp); else missing.push(id);
+    } catch { failed.push(id); }
+  }
+  return { found, missing, failed };
 }
 
 // ---------- saved sets ------------------------------------------------------
@@ -162,7 +114,10 @@ const ids = () => chosen.map(s => s.id);
 const anySet = (name) => findSet(saved, name) || findPreset(name);
 const baseline = () => (loadedFrom ? anySet(loadedFrom) : null);
 const isPreset = (name) => !findSet(saved, name) && !!findPreset(name);
-const drifted = () => { const b = baseline(); return b ? !sameSet(b.ids, ids()) : false; };
+// What the loaded set amounts to in this spell file. Drift is measured against
+// this, not the saved list, or an id the file lost would count as your change.
+const baselineIds = () => baseline().ids.filter(id => !unresolved.includes(id));
+const drifted = () => (baseline() ? !sameSet(baselineIds(), ids()) : false);
 
 function persist(next) {
   saved = next;
@@ -180,54 +135,56 @@ const saveAs = (name) => {
   const clean = cleanName(name);
   if (!clean || !chosen.length) return;
   loadedFrom = clean;
+  unresolved = [];          // the saved copy is exactly what is on screen
   persist(upsert(saved, clean, ids()));
 };
 
 async function loadSet(name) {
   const s = anySet(name);
   if (!s) return;
+  const { found, missing, failed } = await resolve(s.ids);
   chosen.length = 0;
-  for (const id of s.ids) {
-    const sp = await spellById(id);
-    if (sp) chosen.push(sp);
-  }
+  chosen.push(...found);
   loadedFrom = s.name;
+  unresolved = missing;
   sync();
+  if (failed.length) alertLine(notLoaded(failed));
 }
-
-const alertLine = (text) => {
-  const box = $('#saved-note');
-  if (box) { box.textContent = text; box.hidden = false; }
-};
 
 const remove = id => {
   const i = chosen.findIndex(s => s.id === id);
   if (i > -1) { chosen.splice(i, 1); sync(); }
 };
 
-function sync() {
-  const want = chosen.length ? '#set=' + chosen.map(s => s.id).join(',') : '';
+function writeHash() {
+  // A level with nothing in the set would be a link to an empty page.
+  const parts = chosen.length ? ['set=' + ids().join(','), levelParam()].filter(Boolean) : [];
+  const want = parts.length ? '#' + parts.join('&') : '';
   if (location.hash !== want) history.replaceState(null, '', want || location.pathname);
+}
+
+function sync() {
+  clearLine();
+  writeHash();
   render();
 }
 
 async function fromHash() {
-  const ids = new URLSearchParams(location.hash.slice(1)).get('set');
-  const want = (ids || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
-  if (want.join(',') === chosen.map(s => s.id).join(',')) return;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const levelChanged = applyLevelParam(p);
+  const want = (p.get('set') || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
+  if (want.join(',') === ids().join(',')) { if (levelChanged) render(); return; }
+  const { found, missing, failed } = await resolve(want);
   chosen.length = 0;
-  // Sequential rather than parallel: shard fetches are cached per bucket, so a
-  // 40-buff set is a handful of requests either way, and order is preserved.
-  for (const id of want) {
-    const sp = await spellById(id);
-    if (sp) chosen.push(sp);
-  }
-  render();
+  chosen.push(...found);
+  // An id that is not in this spell file is dropped from the link and said to
+  // be missing. One that would not load stays in it, so a reload tries again.
+  if (missing.length) sync(); else { clearLine(); render(); }
+  const said = [missing.length && notInFile(missing), failed.length && notLoaded(failed)].filter(Boolean);
+  if (said.length) alertLine(said.join(' '));
 }
 
 // ---------- rendering -------------------------------------------------------
-
-const level = () => parseInt($('#lvl').value, 10) || META.max_level;
 
 function render() {
   renderSaved();
@@ -236,18 +193,20 @@ function render() {
   $('#empty').hidden = chosen.length > 0;
   if (!chosen.length) { $('#report').hidden = true; return; }
 
-  const res = analyzeSet(chosen, { level: level() });
+  const res = analyzeSet(chosen, { level: readLevel() });
   const conflicted = new Set(res.conflicts.flatMap(c => [c.a, c.b]));
 
   const head = el('div', 'set-head');
-  head.appendChild(el('h3', 'sec', `${chosen.length} in the set`));
+  head.appendChild(el('h2', 'sec', `${chosen.length} in the set`));
   list.appendChild(head);
   const ul = el('div', 'set-chips');
   for (const sp of chosen) {
     const c = el('span', 'setchip' + (conflicted.has(sp.id) ? ' bad' : ''));
     c.appendChild(el('span', 'setchip-name', sp.name));
     const x = el('button', 'setchip-x', '×');
+    x.type = 'button';
     x.title = `Remove ${sp.name}`;
+    x.setAttribute('aria-label', x.title);
     x.onclick = () => remove(sp.id);
     c.appendChild(x);
     ul.appendChild(c);
@@ -262,8 +221,8 @@ function renderSaved() {
   if (!saved.length && !chosen.length && !PRESETS.length) return;
 
   if (PRESETS.length) {
-    const row = el('div', 'frow');
-    row.appendChild(el('span', 'flabel', 'Sets'));
+    const presetRow = el('div', 'frow');
+    presetRow.appendChild(el('span', 'flabel', 'Sets'));
     const chips = el('div', 'chips');
     for (const p of PRESETS) {
       // Hidden once you have saved your own under the same name — at that point
@@ -277,7 +236,7 @@ function renderSaved() {
       wrap.appendChild(el('span', 'setchip-tag', 'built in'));
       chips.appendChild(wrap);
     }
-    if (chips.children.length) { row.appendChild(chips); box.appendChild(row); }
+    if (chips.children.length) { presetRow.appendChild(chips); box.appendChild(presetRow); }
   }
 
   const rowEl = el('div', 'frow');
@@ -291,7 +250,9 @@ function renderSaved() {
     open.onclick = () => loadSet(s.name);
     wrap.appendChild(open);
     const del = el('button', 'setchip-x', '×');
+    del.type = 'button';
     del.title = `Forget ${s.name}`;
+    del.setAttribute('aria-label', del.title);
     del.onclick = () => {
       if (loadedFrom === s.name) loadedFrom = null;
       persist(removeSet(saved, s.name));
@@ -314,11 +275,20 @@ function renderSaved() {
   rowEl.appendChild(chips);
   box.appendChild(rowEl);
 
+  // Said before any talk of drift, because it is the file's change, not yours.
+  if (unresolved.length && baseline()) {
+    const b = baseline(), n = unresolved.length;
+    box.appendChild(el('p', 'legend',
+      `${n} of the ${b.ids.length} in ${b.name} no longer resolve${n === 1 ? 's' : ''} in this spell file `
+      + `(dated ${META.spell_file_date}): ${unresolved.join(', ')}. `
+      + `${n === 1 ? 'It' : 'They'} may have been removed or renumbered; saving your version drops ${n === 1 ? 'it' : 'them'}.`));
+  }
+
   // The experiment round trip: you loaded something, you have changed it, and
   // you want either to go back or to keep the change.
   if (drifted()) {
     const b = baseline();
-    const n = chosen.length - b.ids.length;
+    const n = chosen.length - baselineIds().length;
     const note = el('div', 'frow drift');
     note.appendChild(el('span', null,
       `Changed from ${b.name} — ${n > 0 ? `${n} added` : n < 0 ? `${-n} removed` : 'same size, different spells'}.`));
@@ -336,27 +306,10 @@ function renderSaved() {
   }
 
   if (chosen.length) {
-    const share = el('button', 'chip wide', 'Copy link to this set');
-    share.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(location.href);
-        share.textContent = 'Link copied';
-        setTimeout(() => { share.textContent = 'Copy link to this set'; }, 1500);
-      } catch {
-        // Clipboard access is refused in plenty of contexts; the URL bar already
-        // holds the set, so say that rather than failing silently.
-        alertLine('Could not reach the clipboard — the address bar already holds this set, copy it from there.');
-      }
-    };
     const shareRow = el('div', 'frow');
-    shareRow.appendChild(share);
+    shareRow.appendChild(wireCopyLink(el('button', 'chip wide'), 'Copy link to this set', alertLine));
     box.appendChild(shareRow);
   }
-
-  const note = el('p', 'legend');
-  note.id = 'saved-note';
-  note.hidden = true;
-  box.appendChild(note);
 }
 
 function spellLink(name, id) {
@@ -377,7 +330,7 @@ function renderReport(res) {
   const box = $('#report'); box.hidden = false; box.innerHTML = '';
 
   // --- can they all be up at once? -----------------------------------------
-  box.appendChild(el('h3', 'sec', 'Holding them all'));
+  box.appendChild(el('h2', 'sec', 'Holding them all'));
   if (res.allHold) {
     const ok = el('div', 'out independent', `All ${res.count} can be up at the same time.`);
     box.appendChild(ok);
@@ -410,7 +363,7 @@ function renderReport(res) {
   }
 
   // --- what overlaps --------------------------------------------------------
-  box.appendChild(el('h3', 'sec', 'Effects more than one of them carries'));
+  box.appendChild(el('h2', 'sec', 'Effects more than one of them carries'));
   const groups = [...res.nonCumulative, ...res.focusBestOnly];
   if (!groups.length && !res.focusProcs.length) {
     box.appendChild(el('p', 'legend', 'Nothing in this set doubles up — every effect here comes from one source.'));
@@ -420,18 +373,13 @@ function renderReport(res) {
   for (const g of res.focusBestOnly) box.appendChild(focusGroup(g));
   for (const g of res.focusProcs) box.appendChild(procGroup(g));
 
-  if (groups.length || res.focusProcs.length) {
-    const note = el('p', 'legend');
-    note.id = 'why-no-score-note';
-    note.textContent = NO_SCORE;
-    box.appendChild(note);
-  }
+  if (groups.length || res.focusProcs.length) box.appendChild(el('p', 'legend', NO_SCORE));
 }
 
 function groupShell(cls, title, subtitle) {
   const n = el('div', 'note ' + cls);
   const h = el('div', 'row1');
-  h.appendChild(el('h4', null, title));
+  h.appendChild(el('h3', null, title));
   n.appendChild(h);
   if (subtitle) n.appendChild(el('p', null, subtitle));
   return n;
@@ -537,48 +485,6 @@ function procGroup(g) {
   nameList(p, g.members);
   n.appendChild(p);
   return n;
-}
-
-// ---------- footer ----------------------------------------------------------
-
-function renderFooter() {
-  const b = $('#build');
-  b.appendChild(document.createTextNode(
-    `${META.spell_count.toLocaleString()} spells, read from a client spells_us.txt dated ${META.spell_file_date}. `
-    + `This copy was built ${META.built.slice(0, 10)}.`));
-  if (META.items) {
-    b.appendChild(document.createTextNode(' Which items grant an effect comes from the '));
-    b.appendChild(link(META.items.source, 'SoDeq item database'));
-    b.appendChild(document.createTextNode(`, last updated ${META.items.updated}.`));
-  }
-  const notes = [dataAge(META.spell_file_date), META.items ? itemDataAge(META.items.updated) : {}]
-    .filter(n => n.message);
-  if (notes.length) {
-    const stale = $('#stale');
-    stale.hidden = false;
-    stale.className = notes.some(n => n.level === 'stale') ? 'stale bad' : 'stale';
-    stale.textContent = notes.map(n => n.message).join(' ');
-  }
-  const p = $('#credits');
-  p.appendChild(document.createTextNode('Built on work by others: '));
-  const parts = [
-    link('https://forums.daybreakgames.com/eq/index.php?threads/enumerated-spa-list.206288/', 'Daybreak’s published SPA list'),
-    link('https://github.com/EQEmu/Server', 'the EQEmu stacking implementation'),
-    link('https://github.com/rumstil/eqspellparser', 'eqspellparser’s field layout'),
-  ];
-  if (META.items) parts.push(link(META.items.source, 'the SoDeq item database'));
-  parts.push(link('https://www.raidloot.com/', 'Raidloot'));
-  parts.push(link('https://lucy.allakhazam.com/', 'Lucy'));
-  parts.forEach((node, i) => {
-    if (i) p.appendChild(document.createTextNode(i === parts.length - 1 ? ' and ' : ', '));
-    p.appendChild(node);
-  });
-  p.appendChild(document.createTextNode('.'));
-  if (META.repo_url) {
-    p.appendChild(document.createTextNode(' '));
-    p.appendChild(link(`${META.repo_url}#credits`, 'Full credits'));
-    p.appendChild(document.createTextNode('.'));
-  }
 }
 
 boot();

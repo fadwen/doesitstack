@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { loadItems, relMask, maskRels, REL, KEEP_PER_SPELL } from '../tools/items.mjs';
+import { loadItems, relMask, maskRels, REL, KEEP_PER_SPELL, MALFORMED_SHARE } from '../tools/items.mjs';
 
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dis-items-'));
 const write = (name, rows) => {
@@ -127,6 +127,47 @@ test('the dump reports its own age', async () => {
     item({ id: 2, name: 'New', click: 2, updated: '2026-08-09 08:22:29' }),
   ]);
   assert.equal((await loadItems(file)).updated, '2026-08-09');
+});
+
+// ---------------------------------------------------------------------------
+// Rows that do not fit the header. Resolving columns by name is only a
+// guarantee while every row has the header's column count.
+
+const padded = (n, extra) => {
+  const rows = [HEADER];
+  for (let i = 1; i <= n; i++) rows.push(item({ id: i, name: `Item ${i}`, click: 5 }));
+  return [...rows, ...extra];
+};
+
+test('a row whose name contains the delimiter is skipped and counted, not misread', async () => {
+  // The real dump has three of these: "Iksar Right Hand '=\|-'" splits into one
+  // column too many, and every field after the name reads from its neighbour.
+  const rows = padded(100, [item({ id: 101, name: "Iksar Right Hand '=\\|-'", click: 6 })]);
+  const r = await loadItems(write('shifted.txt', rows));
+  assert.equal(r.malformed, 1);
+  assert.match(r.malformedRows[0], /line 102: 14 columns where the header has 13/);
+  assert.equal(r.itemCount, 100);
+  assert.ok(!r.bySpell.has(6), 'nothing from a shifted row may be used');
+});
+
+test('an id that is not all digits is skipped — parseInt would have read 12 from "12abc"', async () => {
+  const r = await loadItems(write('badid.txt', padded(100, [item({ id: '12abc', name: 'Odd', click: 7 })])));
+  assert.equal(r.malformed, 1);
+  assert.match(r.malformedRows[0], /id "12abc"/);
+  assert.ok(!r.bySpell.has(7));
+});
+
+test('too many malformed rows is a format change, and fails loudly', async () => {
+  const broken = [2, 3, 4, 5].map(i => [...item({ id: i, name: `Broken ${i}`, click: 5 }), 'extra']);
+  await assert.rejects(() => loadItems(write('broken.txt', padded(1, broken))), err => {
+    assert.match(err.message, /4 of 5 rows are malformed/);
+    assert.match(err.message, /line 3: 14 columns/);
+    assert.match(err.message, /tools\/items\.mjs/);
+    return true;
+  });
+  // one in a hundred and one is under the line, and is what the real dump looks like
+  assert.equal((await loadItems(write('tolerated.txt', padded(100, broken.slice(0, 1))))).malformed, 1);
+  assert.ok(MALFORMED_SHARE >= 0.01 && MALFORMED_SHARE < 0.1, 'tolerant of a dump quirk, not of a new format');
 });
 
 test('the relationship bitmask round-trips', () => {

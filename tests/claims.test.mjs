@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { load, validate, deriveStatus, isActionable, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
+import { CHECKS } from '../tools/verify_claims.mjs';
 import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
 
 const doc = load();
@@ -51,10 +52,55 @@ test('a parse must carry its method, sample size and result', () => {
     assert.ok(problems.some(p => p.includes(field)), `expected a complaint about ${field}`);
 });
 
-test('SPA 496 is confirmed and the rest are not, as of this dataset', () => {
-  const byId = Object.fromEntries(doc.claims.map(c => [c.spa, c.status]));
+test('the fields the generator and engine read literally are typed and bounded', () => {
+  const one = (claim) => validate({ version: 1, claims: [claim] });
+  const nc = (extra) => one({ id: 'non-cumulative/1', type: 'non_cumulative', spa: 1, assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'weak', kind: 'community', summary: 's', source: 'somewhere' }], ...extra });
+  // engine.js compares `mixed` to the literal 'negative'. A typo would not fail;
+  // it would silently switch the slow-takes-the-slot rule off.
+  assert.ok(nc({ mixed: 'negatve' }).some(p => /"mixed"/.test(p)));
+  assert.ok(nc({ offset: '100' }).some(p => /"offset"/.test(p)));
+  assert.ok(nc({ keep: 'larger' }).some(p => /"keep"/.test(p)));
+  assert.deepEqual(nc({ mixed: 'negative', offset: 100, keep: 'magnitude' }), []);
+
+  const rule = (extra) => one({ id: 'stacking-rule/x', type: 'stacking_rule', slug: 'x', assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'supporting', kind: 'implementation', summary: 's', source: 'code' }], ...extra });
+  // none of the three means anything off a non-cumulative claim
+  assert.ok(rule({ mixed: 'negative' }).some(p => /"mixed"/.test(p)));
+  // rule names are keyed into meta.json as rule:<name> and looked up by the verdict
+  assert.ok(rule({ engine_rules: [] }).some(p => /"engine_rules"/.test(p)));
+  assert.ok(rule({ engine_rules: ['Same Spell'] }).some(p => /"engine_rules"/.test(p)));
+  assert.ok(nc({ engine_rules: ['x'] }).some(p => /"engine_rules"/.test(p)));
+  assert.deepEqual(rule({ engine_rules: ['same-spell'] }), []);
+
+  // the generator subtracts `exceptions` from the focus list, so it has to be a list
+  const focus = (extra) => one({ id: 'focus-best-only/all', type: 'focus_best_only', slug: 'all', spas: [], assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'supporting', kind: 'implementation', summary: 's', source: 'code' }], ...extra });
+  assert.ok(focus({}).some(p => /"exceptions"/.test(p)));
+  assert.ok(focus({ exceptions: ['383'] }).some(p => /"exceptions"/.test(p)));
+  assert.ok(nc({ exceptions: [1] }).some(p => /"exceptions"/.test(p)));
+  assert.deepEqual(focus({ exceptions: [383] }), []);
+});
+
+test('every machine check names a checker that exists', () => {
+  // `npm run verify` re-runs these, but only on a machine with the game; an
+  // unknown id would otherwise sit unnoticed until someone ran it there.
+  const bad = validate({ version: 1, claims: [{ id: 'non-cumulative/1', type: 'non_cumulative', spa: 1, assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'primary', kind: 'game-text', summary: 's', source: 'dbstr', check: { phrase: 'x' } }] }] });
+  assert.ok(bad.some(p => /"check"/.test(p)));
+  for (const c of doc.claims)
+    for (const e of c.evidence)
+      if (e.check) assert.ok(CHECKS[e.check.id], `${c.id}: no checker called "${e.check.id}" in tools/verify_claims.mjs`);
+});
+
+test('SPA 496 is confirmed, three are corroborated, and the rest are not, as of this dataset', () => {
+  // A snapshot of what the site currently asserts, so a status moving is a
+  // deliberate edit here rather than a surprise on the page.
+  const byId = Object.fromEntries(doc.claims.filter(c => c.type === 'non_cumulative').map(c => [c.spa, c.status]));
   assert.equal(byId[496], 'confirmed');
-  for (const spa of [185, 186, 459, 482, 503, 505]) assert.equal(byId[spa], 'unverified');
+  for (const spa of [11, 119, 371]) assert.equal(byId[spa], 'corroborated', `SPA ${spa}`);
+  assert.equal(byId[3], 'disputed');
+  for (const spa of [98, 185, 186, 459, 482, 503, 505]) assert.equal(byId[spa], 'unverified', `SPA ${spa}`);
 });
 
 
@@ -146,12 +192,21 @@ test('only confirmed and corroborated claims are acted on', () => {
 
 // --- the engine's own rules -------------------------------------------------
 
-test('every rule the engine can cite is registered as a claim', async () => {
+test('every rule the engine can cite is registered as a claim, and every registered rule exists', async () => {
   const engine = await readFile(new URL('../web/engine.js', import.meta.url), 'utf8');
   const cited = new Set([...engine.matchAll(/done\(-?[01], '([a-z0-9-]+)'/g)].map(m => m[1]));
   const covered = new Set(doc.claims.filter(c => c.type === 'stacking_rule').flatMap(c => c.engine_rules || []));
   const missing = [...cited].filter(r => !covered.has(r));
   assert.deepEqual(missing, [], `these rules decide verdicts with no claim behind them: ${missing.join(', ')}`);
+  // The other direction. A claim naming a rule engine.js does not spell that way
+  // is keyed into meta.json as rule:<name> and never looked up by any verdict.
+  const stale = [...covered].filter(r => !cited.has(r));
+  assert.deepEqual(stale, [], `these claims cite rules the engine never reports: ${stale.join(', ')}`);
+  // ignore-list is the one rule claim with no engine_rules, and rightly: an
+  // ignored SPA is a `continue` in the slot walk, not a verdict, so there is no
+  // done() to cite it from. Anything else without one is a claim nobody wired up.
+  const uncitable = doc.claims.filter(c => c.type === 'stacking_rule' && !c.engine_rules).map(c => c.id);
+  assert.deepEqual(uncitable, ['stacking-rule/ignore-list']);
 });
 
 test('rule claims name a slug, not a SPA', () => {
@@ -299,9 +354,13 @@ test('a non-cumulative claim says which value applies, and says it correctly', (
   // wherever the effect is negative — and SPA 505 is negative in every slot it
   // occupies. The engine reads this wording, so getting it wrong here would name
   // the weaker effect the winner on the page.
+  //
+  // `keep` states the same rule as data. Nothing reads it yet — the magnitude
+  // comparison is written out in engine.js's ncWinner, not generated — so all
+  // this can pin is that the declaration agrees with the prose.
   for (const c of doc.claims.filter(x => x.type === 'non_cumulative')) {
     assert.match(c.assertion, /furthest from zero/, `${c.id} must state the rule, not "the larger"`);
-    assert.equal(c.keep, 'magnitude', `${c.id} needs a keep rule the generator can act on`);
+    assert.equal(c.keep, 'magnitude', `${c.id} must declare the rule its assertion states`);
   }
 });
 

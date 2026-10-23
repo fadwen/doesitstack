@@ -22,9 +22,9 @@ The site tells people that two buffs stack. Sometimes it also tells them the num
 not add up, because the effect is non-cumulative. That second statement is a claim about
 game mechanics, and it is only as good as what is behind it.
 
-Right now, exactly one of the seven non-cumulative claims has a primary source. The
-other nine rest on a reading of the EQEmu server's code, where the behaviour was
-committed with no source cited. That is worth something — EQEmu developers test against
+Right now, exactly one of the twelve non-cumulative claims has a primary source. Three
+more are corroborated by reports from play. The other seven rest on a reading of the
+EQEmu server's code, where the behaviour was committed with no source cited. That is worth something — EQEmu developers test against
 live servers — but it is not the same as knowing.
 
 So the site says which is which, and both the wording *and the verdicts* come from the
@@ -118,7 +118,7 @@ Daybreak wrote them and ships them, which makes them about as close to authorita
 a player can get without a developer in the room.
 
 The strongest form is a pattern rather than a single line. The SPA 496 claim rests on
-this: of all 70,963 spells, exactly 53 descriptions contain the word "non-cumulative",
+this: of all 70,984 spells, exactly 53 descriptions contain the word "non-cumulative",
 and every one of them carries SPA 496 — none says it without. One description could be
 a copy-paste artefact. Fifty-three with no counterexample is a rule.
 
@@ -181,9 +181,9 @@ npm test                 # works on a fresh clone — no EverQuest install neede
 ```
 
 Edit `claims.json`. Add your evidence entry to the relevant claim's `evidence` array.
-**Do not touch `status`** — it is derived: any primary evidence makes a claim
-`confirmed`, any entry marked `"refutes": true` makes it `disputed`, otherwise it is
-`unverified`.
+**Do not touch `status`** — it is derived: any entry marked `"refutes": true` makes a
+claim `disputed`; otherwise any primary evidence makes it `confirmed`, any `strong` entry
+short of that makes it `corroborated`, and with neither it is `unverified`.
 
 If a claim turns out to be wrong outright, keep the claim and add refuting evidence
 rather than deleting the entry. A claim that was believed and then disproved is more
@@ -221,8 +221,8 @@ in the PR or issue and it goes in the source line.
 
 ## Adding a new kind of claim
 
-`claims.json` holds three types: `non_cumulative`, `focus_best_only` and
-`focus_stacking`. To add another, add the type to `TYPES` in `tools/claims.mjs`, teach
+`claims.json` holds five types: `non_cumulative`, `focus_best_only`, `focus_stacking`,
+`stacking_rule` and `bonus_bucket`. To add another, add the type to `TYPES` in `tools/claims.mjs`, teach
 `tools/build.mjs` to emit it, and have the UI read it. Keep the same shape: an assertion
 in plain language, evidence entries, a derived status.
 
@@ -291,7 +291,7 @@ Saves someone repeating the work:
   3.1% and skews to `Spell: <name>` scrolls, which *teach* a spell rather than cast it.
   The EQEmu/PEQ items table has the right columns but lags live badly on modern gear.
 
-- **Closing the remaining "Unattributed" bucket.** 17,656 rows that no class learns,
+- **Closing the remaining "Unattributed" bucket.** 16,996 rows that no class learns,
   nothing in the spell file triggers, and no item in the dump casts. Some are new
   content the item collectors have not reached yet; the rest is unknown. A plausible
   guess dressed as a source label is worse than the honest gap — bring evidence.

@@ -32,8 +32,10 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 
 .chosen{margin-top:10px;min-height:22px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-.card h3{margin:0 0 2px;font-size:17px}
+.card h2{margin:0 0 2px;font-size:17px}
 .card .row1{display:flex;gap:8px;align-items:baseline;justify-content:space-between;margin-bottom:2px}
+.card-tools{display:inline-flex;gap:4px;align-items:center;flex:0 0 auto}
+.share-row{margin:0 0 14px}
 .card .sub{color:var(--muted);font-size:13px}
 .card .sub a{text-decoration:none}
 
@@ -81,7 +83,7 @@ h1{margin:0;font-size:30px;letter-spacing:-.02em}
 
 .dirs{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0}
 .dir{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
-.dir h4{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.dir h3{margin:0 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .dir .out{font-weight:600;margin-bottom:4px}
 .out.independent{color:var(--good)}
 .out.overwrite{color:var(--warn)}
@@ -139,8 +141,9 @@ table.slots .spa{padding-left:33px}
 table.slots tr.hit td{background:#2a1f1f}
 table.slots tr.ok td{background:#1a231e}
 .spa{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.blank{color:#59607080;font-style:italic}
-h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+/* Section headings on both pages. h2 on the set page, where they are the top
+   level under the title; h3 on the pair page, where they sit under the verdict. */
+h2.sec,h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .trace li{margin:4px 0;color:#c9cfdb}
 .provenance{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
 .provenance p{margin:6px 0;line-height:1.5}
@@ -148,9 +151,13 @@ h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:
 .provenance .ask{margin-top:10px;color:var(--muted)}
 .empty{color:var(--muted);padding:30px 0}
 .foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px;padding-bottom:40px}
-.stale{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}
+.stale,.notice{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}
 .stale.bad{color:var(--bad);border-left-color:var(--bad);background:#241a1a}
-code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:1px 5px;border-radius:4px}
+/* Things the page could not do with what it was given — a spell that would not
+   load, an id that is not in this spell file, a set that would not save. Its own
+   element rather than part of a re-rendered region, which is what kept wiping
+   the storage warning before anyone saw it. */
+.notice{font-size:14px;margin:0 0 14px}
 @media (max-width:760px){
   .pickers{grid-template-columns:1fr}
   .swap-col{padding:0}
@@ -171,7 +178,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
   line-height:1;padding:2px 6px;border-radius:999px}
 .setchip-x:hover{background:var(--panel-2);color:var(--ink)}
 .setlist .sec{margin-bottom:2px}
-.report .note h4{margin:0;font-size:14px}
+.report .note h3{margin:0;font-size:14px}
 .group-members{margin:8px 0 0;padding-left:18px}
 .group-members li{margin-bottom:6px}
 /* A set member is a link inside the mark, and a link carries its own colour — so
@@ -189,7 +196,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 .setchip-name.as-button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
 .setchip-name.as-button:hover{text-decoration:underline}
 .saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
-.drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.drift{align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px}
 
 /* Two views of the same dataset. The only route between them used to be a link
    trailing off the end of the tagline, which read as a footnote and wrapped out

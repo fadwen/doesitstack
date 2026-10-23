@@ -57,6 +57,10 @@ export const TYPES = [
 // instead of a SPA number.
 const RULE_TYPES = ['stacking_rule'];
 
+// What a non-cumulative claim may say happens when the two values sit on opposite
+// sides of zero. engine.js compares the field to this literal.
+export const MIXED = ['negative'];
+
 export function deriveStatus(claim) {
   if (claim.evidence.some(e => e.refutes)) return 'disputed';
   if (claim.evidence.some(e => e.strength === 'primary')) return 'confirmed';
@@ -102,6 +106,36 @@ export function validate(doc) {
         if (c.id !== want) fail(where, `id should be "${want}"`);
       }
     }
+
+    // Fields the generator and the engine read verbatim. A wrong value in one of
+    // these fails nothing on its own: engine.js compares `mixed` to the literal
+    // 'negative', so a typo would silently switch the slow-takes-the-slot rule
+    // off. The shapes are pinned here instead.
+    if (c.type === 'non_cumulative') {
+      if (c.keep !== undefined && c.keep !== 'magnitude')
+        fail(where, '"keep" must be "magnitude" — the rule every assertion states: the value furthest from zero applies');
+      if (c.mixed !== undefined && !MIXED.includes(c.mixed))
+        fail(where, `"mixed" must be one of ${MIXED.join(', ')} — the engine compares it literally`);
+      if (c.offset !== undefined && !Number.isInteger(c.offset))
+        fail(where, '"offset" must be an integer — the baseline the stored value is measured from');
+    } else {
+      for (const k of ['keep', 'mixed', 'offset'])
+        if (c[k] !== undefined) fail(where, `"${k}" only means something on a non_cumulative claim`);
+    }
+    if (c.type === 'focus_best_only') {
+      if (!Array.isArray(c.exceptions) || !c.exceptions.every(Number.isInteger))
+        fail(where, '"exceptions" must be an array of SPA numbers — the proc foci that all fire; empty if none');
+    } else if (c.exceptions !== undefined) {
+      fail(where, '"exceptions" only means something on a focus_best_only claim');
+    }
+    if (c.type === 'stacking_rule') {
+      if (c.engine_rules !== undefined && (!Array.isArray(c.engine_rules) || !c.engine_rules.length
+          || !c.engine_rules.every(r => typeof r === 'string' && /^[a-z0-9-]+$/.test(r))))
+        fail(where, '"engine_rules" must be a non-empty array of rule names as engine.js spells them (lower-case, hyphenated)');
+    } else if (c.engine_rules !== undefined) {
+      fail(where, '"engine_rules" only means something on a stacking_rule claim');
+    }
+
     if (!c.assertion || c.assertion.length < 10) fail(where, 'assertion missing or too short to be meaningful');
     if (!Array.isArray(c.evidence) || c.evidence.length === 0) { fail(where, 'needs at least one evidence entry'); continue; }
 
@@ -111,6 +145,8 @@ export function validate(doc) {
       if (!KINDS.includes(e.kind)) fail(ew, `kind must be one of ${KINDS.join(', ')}`);
       if (!e.summary) fail(ew, 'missing summary');
       if (!e.source) fail(ew, 'missing source — say where this came from, specifically enough to check');
+      if (e.check !== undefined && (!e.check || typeof e.check !== 'object' || typeof e.check.id !== 'string' || !e.check.id))
+        fail(ew, '"check" needs an "id" naming a checker in tools/verify_claims.mjs');
       const ceiling = MAX_STRENGTH[e.kind];
       if (ceiling && STRENGTHS.indexOf(e.strength) < STRENGTHS.indexOf(ceiling))
         fail(ew, `kind "${e.kind}" cannot be ${e.strength} — at best it is ${ceiling}. See CONTRIBUTING.md`);

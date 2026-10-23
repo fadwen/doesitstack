@@ -10,7 +10,8 @@
 // item dump; if vendor/items.txt is absent the build simply carries no item tags.
 //
 // Outputs:
-//   dist/index.html, app.js, engine.js, spa.js, style.css
+//   dist/*                    every html/css/js/png/svg/ico/webp/txt/xml under web/,
+//                             placeholders filled
 //   dist/data/meta.json       SPA names, ignore list, build stamp
 //   dist/data/index.json      one small row per spell, for the search box
 //   dist/data/spells/NN.json  full spell records, fetched only for the pair you pick
@@ -21,21 +22,22 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { loadAll, applyItemSources, isAuraEffect, CLASSES, KINDS, MAX_PLAYER_LEVEL, TARGET_NAMES, RESIST_NAMES, classMask, isBardSong, isGroupSpell } from './spells.mjs';
 import { loadItems, defaultItemFile, REL } from './items.mjs';
-import { load as loadClaims, byType } from './claims.mjs';
 import { generate as generateSpaJs } from './gen_spa_js.mjs';
-import { resolveNames, SPA_LIST_SOURCE } from './spa_names.mjs';
+import { SPA_LIST_SOURCE } from './spa_names.mjs';
 import { findEqDir, arg } from './eqdir.mjs';
 import { PRESETS } from '../web/presets.js';
 import { PHRASED } from '../web/phrasing.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.dirname(HERE);
-const BUCKET = 2000;
+/** Spells per data shard: ids 0-1999 in 0.json, and so on. meta.json carries it for the page. */
+export const BUCKET = 2000;
 
-function compact(sp) {
+/** The record a spell shard carries — the parser's output, trimmed to what the page reads. */
+export function compact(sp) {
   const rec = {
     id: sp.id, name: sp.name, levels: sp.levels, beneficial: sp.beneficial, target: sp.target,
     resist: sp.resist, duration: sp.duration, dur_calc: sp.dur_calc, dur_cap: sp.dur_cap,
@@ -59,6 +61,30 @@ function compact(sp) {
   return rec;
 }
 
+/**
+ * Group the spells into the per-bucket payloads the page fetches on demand:
+ * the records, the descriptions where a spell has one, and the full item list
+ * where the record's handful is not already all of it.
+ */
+export function shard(spells) {
+  const shards = new Map(), descs = new Map(), itemLists = new Map();
+  for (const sp of spells) {
+    const b = Math.floor(sp.id / BUCKET);
+    if (!shards.has(b)) shards.set(b, {});
+    shards.get(b)[sp.id] = compact(sp);
+    if (sp.desc || sp.land_self) {
+      if (!descs.has(b)) descs.set(b, {});
+      descs.get(b)[sp.id] = { d: sp.desc, l: sp.land_self };
+    }
+    // Same [item id, item name, rel index] shape as the record's sample.
+    if (sp.items && sp.items.count > sp.items.items.length) {
+      if (!itemLists.has(b)) itemLists.set(b, {});
+      itemLists.get(b)[sp.id] = sp.items.all.map(([id, name, rel]) => [id, name, REL.indexOf(rel)]);
+    }
+  }
+  return { shards, descs, itemLists };
+}
+
 const writeJson = (file, obj) => fs.writeFileSync(file, JSON.stringify(obj));
 
 /**
@@ -79,6 +105,23 @@ function siteUrl(repo) {
     : `https://${owner.toLowerCase()}.github.io/${name}/`;
 }
 
+/**
+ * Whether --out may be emptied and written. The whole directory is wiped each
+ * build, so a file dropped from web/ actually leaves dist/ — the old build wiped
+ * only data/ and anything else stayed forever. An rm -rf on an argument earns a
+ * sanity check first: inside the repo, never the repo itself, and either a
+ * previous build's output (it has data/meta.json), an empty directory or nothing.
+ * Returns the problem as a string, or null when it is fine.
+ */
+export function outProblem(out) {
+  const rel = path.relative(ROOT, out);
+  if (!rel || rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel))
+    return `${out} is not inside the repo, or is the repo itself`;
+  if (fs.existsSync(out) && fs.readdirSync(out).length && !fs.existsSync(path.join(out, 'data', 'meta.json')))
+    return `${out} is not empty and does not look like a previous build (no data/meta.json)`;
+  return null;
+}
+
 /** Where this checkout came from, so the site can link people at the source. */
 function repoUrl() {
   try {
@@ -92,16 +135,28 @@ function repoUrl() {
 
 async function main() {
   const eqDir = arg('eq-dir', findEqDir());
-  if (!eqDir) {
-    console.error('Could not find an EverQuest install. Pass --eq-dir explicitly.');
-    process.exit(1);
-  }
+  if (!eqDir) throw new Error('Could not find an EverQuest install. Pass --eq-dir explicitly or set EQ_DIR.');
   const out = path.resolve(ROOT, arg('out', 'dist'));
-  const level = parseInt(arg('level', String(MAX_PLAYER_LEVEL)), 10);
+  const outBad = outProblem(out);
+  if (outBad) throw new Error(`refusing to build into --out: ${outBad}`);
+  // Number, not parseInt: `--level abc` used to build a NaN dataset without a word.
+  const levelArg = arg('level', String(MAX_PLAYER_LEVEL));
+  const level = Number(levelArg);
+  if (!Number.isInteger(level) || level < 1) throw new Error(`--level must be a positive whole number, got "${levelArg}"`);
   console.log(`using ${eqDir}`);
 
+  // web/spa.js first, and once. engine.js imports those tables as a module, and
+  // meta.json below carries the same lists for the page; taking both from one
+  // call is what keeps them from drifting apart. Generated from repo files only,
+  // so a clone without the game can still run the tests.
+  const spa = generateSpaJs();
+
   const t0 = Date.now();
-  const { spells } = await loadAll(eqDir, level);
+  // The engine's calculator scales the AC and haste tokens in descriptions, so a
+  // description and a verdict never disagree about a slot's value. Imported here
+  // rather than at the top because engine.js needs the generated web/spa.js.
+  const { calcValue } = await import('../web/engine.js');
+  const { spells } = await loadAll(eqDir, level, calcValue);
   console.log(`parsed ${spells.length} spells in ${((Date.now() - t0) / 1000).toFixed(1)}s`);
 
   // Item -> spell relationships. The client files do not record these, so they
@@ -113,33 +168,21 @@ async function main() {
   if (items) {
     const { tagged, reclassified } = applyItemSources(spells, items.bySpell);
     console.log(`items: ${tagged} spells tagged from ${items.itemCount} items ` +
-                `(${reclassified} reclassified, ${items.dropped} dropped as unknown, dump updated ${items.updated})`);
+                `(${reclassified} reclassified, ${items.dropped} dropped as unknown, dump updated ${items.updated}, fetched ${items.fetched})`);
+    if (items.malformed)
+      console.warn(`items: ${items.malformed} row(s) skipped as malformed — ${items.malformedRows.join('; ')}`);
   } else {
     console.log(`items: ${path.relative(ROOT, itemFile)} not found — building without item tags (npm run fetch)`);
   }
 
+  // Checked at the top, wiped only now: a parse failure leaves the last build usable.
+  fs.rmSync(out, { recursive: true, force: true });
   const dataDir = path.join(out, 'data');
-  fs.rmSync(dataDir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dataDir, 'spells'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'desc'), { recursive: true });
   fs.mkdirSync(path.join(dataDir, 'items'), { recursive: true });
 
-  const shards = new Map(), descs = new Map(), itemLists = new Map();
-  for (const sp of spells) {
-    const b = Math.floor(sp.id / BUCKET);
-    if (!shards.has(b)) shards.set(b, {});
-    shards.get(b)[sp.id] = compact(sp);
-    if (sp.desc || sp.land_self) {
-      if (!descs.has(b)) descs.set(b, {});
-      descs.get(b)[sp.id] = { d: sp.desc, l: sp.land_self };
-    }
-    // The full list only where the record's handful is not already all of it.
-    // Same [item id, item name, rel index] shape as the record's sample.
-    if (sp.items && sp.items.count > sp.items.items.length) {
-      if (!itemLists.has(b)) itemLists.set(b, {});
-      itemLists.get(b)[sp.id] = sp.items.all.map(([id, name, rel]) => [id, name, REL.indexOf(rel)]);
-    }
-  }
+  const { shards, descs, itemLists } = shard(spells);
   for (const [b, payload] of shards) writeJson(path.join(dataDir, 'spells', `${b}.json`), payload);
   for (const [b, payload] of descs) writeJson(path.join(dataDir, 'desc', `${b}.json`), payload);
   for (const [b, payload] of itemLists) writeJson(path.join(dataDir, 'items', `${b}.json`), payload);
@@ -186,30 +229,26 @@ async function main() {
   console.log(`plain wording: ${PHRASED.size} effects, covering `
             + `${(100 * slotsPhrased / slotsSeen).toFixed(1)}% of slots in this file`);
 
-  const spaMeta = JSON.parse(fs.readFileSync(path.join(HERE, 'spa_meta.json'), 'utf8'));
-
   // "non-cumulative" mods: both buffs land, but the game keeps the larger value
   // instead of adding them. The list and the confidence behind each entry come
   // from claims.json, so new evidence changes what the site says without a code
-  // change. See CONTRIBUTING.md.
-  const claimsDoc = loadClaims();
-  const nonCumulative = byType(claimsDoc, 'non_cumulative').sort((a, b) => a.spa - b.spa);
-  const NON_CUMULATIVE_SPA = nonCumulative.map(c => c.spa);
-  const NON_CUMULATIVE_CONFIRMED = nonCumulative.filter(c => c.status === 'confirmed').map(c => c.spa);
+  // change. See CONTRIBUTING.md. The lists themselves came out of the spa.js
+  // generation at the top.
+  const { claimsDoc } = spa;
   const tally = claimsDoc.claims.reduce((m, c) => ({ ...m, [c.status]: (m[c.status] || 0) + 1 }), {});
   console.log('claims: ' + Object.entries(tally).map(([k, v]) => `${v} ${k}`).join(', '));
-  const { names: spaNames } = resolveNames(spaMeta.spa_names);
   const meta = {
     built: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
     spell_file_date: fs.statSync(path.join(eqDir, 'spells_us.txt')).mtime.toISOString().slice(0, 10),
     spell_count: spells.length,
     // null when the build ran without item data, so the UI can say "unknown"
-    // rather than "no item casts this".
+    // rather than "no item casts this". The file's own mtime is deliberately
+    // not here: nothing on the page read it, and it made two builds from the
+    // same dump differ. It is in the build log instead.
     items: items && {
       source: 'https://items.sodeq.org/',
       rel: REL,
       updated: items.updated,       // newest row in the dump — the data's real age
-      fetched: items.fetched,       // when we last pulled it
       item_count: items.itemCount,
       spell_count: items.spellCount,
     },
@@ -219,11 +258,11 @@ async function main() {
     kinds: KINDS,
     targets: TARGET_NAMES,
     resists: RESIST_NAMES,
-    spa_names: spaNames,
+    spa_names: spa.spaNames,
     spa_names_source: SPA_LIST_SOURCE,
-    ignored_in_stacking: spaMeta.ignored_in_stacking,
-    non_cumulative: NON_CUMULATIVE_SPA,
-    non_cumulative_confirmed: NON_CUMULATIVE_CONFIRMED,
+    ignored_in_stacking: spa.ignoredInStacking,
+    non_cumulative: spa.spas,
+    non_cumulative_confirmed: spa.confirmed,
     // Keyed by SPA for the non-cumulative notes and by claim id for the rest.
     claims: Object.fromEntries(claimsDoc.claims.flatMap(c => {
       const payload = {
@@ -244,10 +283,6 @@ async function main() {
     repo_url: repoUrl(),
   };
   writeJson(path.join(dataDir, 'meta.json'), meta);
-
-  // engine.js imports these as a module rather than fetching them; generated from
-  // repo files only, so a clone without the game can still run the tests.
-  generateSpaJs();
 
   // Text assets carry {{SITE_URL}} / {{BUILD_DATE}} placeholders so the address
   // is not baked into the repo. With no remote to derive one from, any line that
@@ -279,4 +314,13 @@ async function main() {
   console.log(`wrote ${path.relative(ROOT, out) || out}: ${(total / 1e6).toFixed(1)} MB across ${shards.size + descs.size + itemLists.size + 2} data files`);
 }
 
-main();
+// Guarded so compact() and shard() can be imported by the tests without a build
+// starting. argv[1] first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(err => {
+    // One line, not a stack. A missing dbstr_us.txt is an ENOENT with the path in
+    // it, and that is the whole story; the trace underneath it was noise.
+    console.error(`build failed: ${err.message}`);
+    process.exit(1);
+  });
+}

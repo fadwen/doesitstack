@@ -57,6 +57,11 @@ export function phrase(slot, value, names = {}) {
   const { spa, base1, base2, max } = slot;
   const skill = () => fromEnum(SpellSkill, base2);
   const effectName = (n) => names[Math.abs(n)] || `SPA ${Math.abs(n)}`;
+  // The resource taps (178, 457) say which pool the damage comes back as in base2.
+  const resource = () => ['HP', 'Mana', 'Endurance'][base2 % 3];
+  // Several control effects cap at a target level held in max — eqspellparser's
+  // `absmax`.
+  const absmax = max > 0 ? ` up to level ${max}` : '';
 
   switch (spa) {
     // --- the common stat and resource effects ---------------------------
@@ -116,7 +121,8 @@ export function phrase(slot, value, names = {}) {
     case 171: return pct('Chance to Crippling Blow', value);
     case 176: return pct('Dual Wield Chance', value);
     case 177: return pct('Double Attack Chance', value);
-    case 182: return pct('Weapon Delay', -value);
+    // Stored in tenths of a percent, like the SPA 178 return and the 457 tap.
+    case 182: return pct('Weapon Delay', value / 10);
     case 184: return pct(`Chance to Hit with ${skill()}`, value);
     case 193: return `${skill()} Attack for ${base1}`;
     case 185: return pct(`${skill()} Damage`, base1);
@@ -180,7 +186,10 @@ export function phrase(slot, value, names = {}) {
     case 511: return `Limit Min Focus Timer: ${time(base1 / 1000)}`;
 
     // --- stacking -----------------------------------------------------------
-    // Spelled out because these are the effects this whole tool turns on.
+    // Spelled out because these are the effects this whole tool turns on. The
+    // slot being checked is in base2; `calc % 100` is where files before May
+    // 2018 kept it, and eqspellparser still falls back to it. Every one of the
+    // 2,142 command slots in the current file has it in base2.
     case 148: return `Block new spell if slot ${base2 > 0 ? base2 : slot.calc % 100} is `
                    + `'${effectName(base1)}' and < ${max}`;
     case 149: return `Overwrite existing spell if slot ${base2 > 0 ? base2 : slot.calc % 100} is `
@@ -192,7 +201,8 @@ export function phrase(slot, value, names = {}) {
     case 20:  return `Blind`;
     case 27:  return `Dispel Magic (${value})`;
     case 31:  return `Mesmerize`;
-    case 32:  return `Summon Item: [Item ${base1}]`;
+    // Count in base2 since January 2019; eqspellparser's calc line is for older files.
+    case 32:  return `Summon: [Item ${base1}] x ${base2}`;
     case 57:  return 'Levitate';
     case 64:  return `Spin Stun for ${time(base1 / 1000)}`;
     case 65:  return 'Infravision';
@@ -246,7 +256,11 @@ export function phrase(slot, value, names = {}) {
     case 152: return `Summon Pet x${base1} for ${time(max)}`;
     case 161: return `Absorb Spell Damage: ${base1}%`
                    + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
-    case 178: return `Lifetap from Weapon Damage: ${base1}%`;
+    // "Lifetap from Weapon Damage" is the line eqspellparser keeps for spell files
+    // older than August 2016. Since then the file stores tenths of a percent and
+    // says which resource comes back; this is the melee twin of SPA 457.
+    case 178: return `Return ${num(base1 / 10)}% of Melee Damage as ${resource()}`
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
     case 197: return pct(`${skill()} Damage Taken`, value);
     case 289: return `Cast: [Spell ${base1}] on Duration Fade`;
     case 296: return pct('Spell Damage Taken', base1) + ' (Before Crit)';
@@ -299,7 +313,13 @@ export function phrase(slot, value, names = {}) {
     case 317: return up('HP Regen Cap', base1);
     case 318: return up('Mana Regen Cap', base1);
     case 324: return `Cast from HP with ${value}% Penalty`;
-    case 329: return `Absorb Damage using Mana: ${base1}%`;
+    // Hundredths of a percent since September 2019, with the mana-per-HP ratio in
+    // ten-thousandths. A deliberate divergence in two small places: eqspellparser
+    // divides base2 by 10000 as integers, so every ratio under 1.0 prints as 0.00
+    // (the file's 4000 means 0.40), and it omits the space before the bracket.
+    case 329: return `Absorb Damage using Mana: ${Math.trunc(base1 / 100)}%`
+              + (base2 !== 10000 ? ` (${(base2 / 10000).toFixed(2)} Mana per 1 HP)` : '')
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
     case 341: return up('ATK Cap', base1);
     case 347: return pct('Chance of Double Archery Attack', base1);
     case 375: return pct('Critical DoT Damage', base1) + ' of Base Damage';
@@ -321,6 +341,113 @@ export function phrase(slot, value, names = {}) {
     case 512: return up('Proc Timer', base1);
     case 519: return up('Luck', base1);
     case 520: return pct('Luck', base1);
+
+    // --- down the worklist, every effect on 40 slots or more --------------
+    // In the order `node tools/phrasing_todo.mjs` lists them. Lines that end in a
+    // tick count or a level range in the source ("per tick", CalcValueRange) drop
+    // that part here, as 0, 15 and 92 already do: it needs the spell's duration.
+    case 433: return up(`${skill()} Damage Bonus`, base1) + ' (v433, Delay Mod)';
+    case 457: return `Return ${num(base1 / 10)}% of Spell Damage as ${resource()}`
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
+    case 22:  return 'Charm' + absmax + (base2 > 0 ? ` with ${base2}% Chance of Memory Blur` : '');
+    case 192: return up('Hate', value);
+    // The stored figure is on top of a flat 40, and the roll is capped at 100.
+    case 63:  return `Memory Blur (${Math.min(value + 40, 100)}% Chance)`;
+    case 99:  return 'Root';
+    case 109: return `Summon into Bag: [Item ${base1}] x ${base2}`;
+    case 446: return `Buff Blocker A (${base1})`;
+    case 447: return `Buff Blocker B (${base1})`;
+    case 449: return `Buff Blocker D (${base1})`;
+    case 380: return `Push Back ${base2}' and Up ${base1}'`;
+    case 86:  return `Decrease Social Radius to ${value}` + absmax;
+    case 455: return pct('Current Hate', base1);
+    case 333: return `Cast: [Spell ${base1}] on Rune Fade`;
+    case 358: return up('Current Mana', value) + ' (v358)';
+    case 23:  return 'Fear' + absmax;
+    case 44:  return `Stacking: Delayed Heal Marker (${value})`;
+    case 451: return `Absorb Melee Damage: ${base1}% over ${base2}` + (max > 0 ? `, Total: ${max}` : '');
+    case 452: return `Absorb Spell Damage: ${base1}% over ${base2}` + (max > 0 ? `, Total: ${max}` : '');
+    case 442: return `Cast: [Spell ${base1}] once if ${fromEnum(SpellTargetRestrict, base2)}`;
+    case 74:  return 'Feign Death' + (value < 100 ? ` (${value}% Chance)` : '');
+    case 154: return (base2 !== 0 ? 'Decrease Detrimental Duration by 50%' : 'Dispel Detrimental')
+              + ` (${Math.trunc(base1 / 10)}% Chance)` + absmax;
+    case 287: return `Increase Duration by ${base1 * 6}s (v287)`;
+    case 40:  return 'Invulnerability';
+    case 123: return 'Screech';
+    case 198: return up('Current Endurance', value);
+    case 450: return `Absorb DoT Damage: ${base1}%`
+              + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
+    case 168: return pct('Melee Mitigation', -value);
+    case 330: return pct(`Critical ${skill()} Damage`, base1) + ' of Base Damage';
+    // A negative base1 packs a colour; anything else is an effect the source does
+    // not decode, and it prints the fields.
+    case 431: return base1 < 0
+              ? `Tint Vision: Red=${base1 >> 16 & 0xff} Green=${base1 >> 8 & 0xff} Blue=${base1 & 0xff}`
+              : `Alter Vision: Base1=${base1} Base2=${base2} Max=${max}`;
+    case 430: return `Alter Vision: Base1=${base1} Base2=${base2} Max=${max}`;
+    case 112: return up('Effective Casting Level', value);
+    case 274: return pct('Chance to Critical Heal', base1) + absmax
+              + (max > 0 ? ` (lose ${base2 === 0 ? 100 : base2}% per level)` : '');
+    case 481: return `Cast: [Spell ${base2}] if Hit By Spell` + (base1 < 100 ? ` (${base1}% Chance)` : '');
+    case 343: return 'Interrupt Casting' + (base1 < 100 ? ` (${base1}% Chance)` : '');
+    case 335: return 'Block Next Spell' + (base1 < 100 ? ` (${base1}% Chance)` : '');
+    case 280: return pct('Pet Chance to Flurry', value);
+    case 370: return up('Corruption Resist', value);
+    case 157: return up('Spell Damage Shield', -value);
+    case 120: return pct('Healing Taken', base1) + ' (v120, Before Crit)';
+    case 444: return 'Lock Aggro on Caster and ' + pct('Other Aggro', base2 - 100) + ` up to level ${base1}`;
+    case 467: return up('Damage Shield Taken', base1);
+    case 78:  return `Absorb Spell Damage: 100%, Total: ${value}`;
+    case 401: return `Decrease Current HP by up to ${Math.abs(Math.floor(base1 * base2 / 10))}`
+              + ` (${num(Math.abs(base2 / 10))} HP per 1 Target Mana)`;
+    case 400: return `Increase Current HP by up to ${Math.abs(Math.floor(base1 * base2 / 10))}`
+              + ` (${num(Math.abs(base2 / 10))} HP per 1 Mana)`;
+    case 368: return up(`Faction with [Faction ${base1}]`, base2);
+    case 453: return `Cast: [Spell ${base1}] if ${base2} Melee Damage Taken in Single Hit`;
+    case 466: return pct('Pet Chance to Flurry on Double Attack', base1);
+    case 408: return 'Cap HP at ' + (base2 > 0 ? `lowest of ${base1}% or ${base2}` : `${base1}%`);
+    case 409: return 'Cap Mana at ' + (base2 > 0 ? `lowest of ${base1}% or ${base2}` : `${base1}%`);
+    case 410: return 'Cap Endurance at ' + (base2 > 0 ? `lowest of ${base1}% or ${base2}` : `${base1}%`);
+    case 212: return pct('Chance to Critical DD', base1) + ' and ' + pct('Spell Mana Cost', base2);
+    case 305: return up('Offhand Damage Shield Taken', base1) + (max === 0 ? '%' : '');
+    case 386: return `Cast: [Spell ${base1}] on Curer`;
+    case 387: return `Cast: [Spell ${base1}] if Cured`;
+    case 160: return `Intoxicate if Tolerance under ${base1}`;
+    case 469: return `Cast: Highest Rank of [Group ${base2}]` + (base1 < 100 ? ` (${base1}% Chance)` : '') + ' (v469)';
+    case 524: return pct('Current HP', base1) + ` up to ${max}`;
+    case 259: return pct('AC Soft Cap', base1);
+    case 24:  return up('Stamina Loss', value);
+    // The reduction is carried in calc, of all places; the source reads it there too.
+    case 122: return pct(`${fromEnum(SpellSkill, base1)} Skill`, -slot.calc);
+    case 42:  return 'Shadowstep';
+    case 510: return up('Incoming Resist Modifier', base1);
+    case 464: return pct('Pet Chance to Rampage', base1) + ` with ${base2}% Damage`;
+    case 367: return `Transform Body Type to ${fromEnum(SpellBodyType, base1)}`;
+    case 460: return 'Limit Type: Include Non-Focusable';
+    case 14:  return 'Enduring Breath';
+    case 441: return `Cancel if Moved ${base1}'`;
+    case 384: return 'Fling to Target';
+    case 266: return pct(`Chance of ${base2} Additional 2H Attacks`, base1);
+    case 250: return pct('Melee Proc Rate', base1);
+    case 357: return 'Inhibit Spell Casting';
+    case 478: return `Move to Bottom of Rampage List (${base1}% Chance)`;
+    case 393: return pctRange('Healing Taken', base1, base2) + ' (v393)';
+    case 365: return `Cast: [Spell ${base2}] on Killshot (${base1}% Chance)`;
+    case 105: return 'Inhibit Gate';
+    case 513: return pct('Max Mana', base1 / 100);
+    case 514: return pct('Max Endurance', base1 / 100);
+    case 328: return up('Max Negative HP', value);
+    case 243: return pct('Chance of Charm Breaking', -base1);
+    // These read the spell's Extra field — a zone, a pet or a doppelganger name —
+    // which is not in the slot. Kept null for the same reason as 145 and 179.
+    case 83:  return null;
+    case 33:  return null;
+    case 104: return null;
+    case 300: return null;
+    case 71:  return null;
+    case 306: return null;
+    case 88:  return null;
+    case 146: return null;   // Portal Locations: eqspellparser itself returns null
 
     default:  return null;   // not ported — say so rather than guess
   }

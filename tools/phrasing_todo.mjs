@@ -15,30 +15,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PHRASED } from '../web/phrasing.js';
 import { arg } from './eqdir.mjs';
+import { eqspCases, spellDataFile } from './eqsp_cases.mjs';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
 /** eqspellparser's formatting line for a SPA, if a checkout was provided. */
 function eqspLines(dir) {
   if (!dir) return null;                       // checked before joining, not after
-  const file = path.join(dir, 'core', 'SpellData.cs');
-  if (!fs.existsSync(file)) {
+  const file = spellDataFile(dir);
+  if (!file) {
     console.error(`No SpellData.cs under ${dir} — listing without the lines to port.`);
     return null;
   }
-  const src = fs.readFileSync(file, 'utf8').split('\n');
-  const out = new Map();
-  for (let i = 0; i < src.length; i++) {
-    const m = /^\s*case (\d+):\s*$/.exec(src[i]);
-    if (!m) continue;
-    // the first return after the case label, skipping its comments
-    for (let j = i + 1; j < Math.min(i + 8, src.length); j++) {
-      if (/^\s*case \d+:/.test(src[j])) break;
-      const r = /^\s*return (.+);\s*$/.exec(src[j]);
-      if (r) { out.set(+m[1], r[1]); break; }
-    }
-  }
-  return out;
+  return eqspCases(fs.readFileSync(file, 'utf8'));
 }
 
 const dist = path.join(ROOT, arg('out', 'dist'));

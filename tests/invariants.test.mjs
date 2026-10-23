@@ -7,8 +7,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = new URL('../', import.meta.url);
 const read = f => readFile(new URL(f, root), 'utf8');
@@ -65,23 +66,33 @@ test('only the fetch script touches the network', async () => {
   }
 });
 
-test('the item parser resolves dump columns by name', async () => {
-  // Positional parsing of a third-party dump reads the wrong field the moment a
-  // column is added or moved, and does it silently.
-  const src = await read('tools/items.mjs');
-  assert.match(src, /resolveColumns/);
-  assert.match(src, /missing expected column/);
+test('importing a tool runs nothing — the direct-run guards hold', () => {
+  // Each of these has a `node tools/x.mjs` mode behind a guard, so a test can
+  // import its functions. Under `node -e` there is no argv[1] at all, which is
+  // how a guard written as pathToFileURL(process.argv[1]) used to throw on import.
+  for (const f of ['tools/build.mjs', 'tools/fetch_items.mjs', 'tools/gen_spa_js.mjs',
+                   'tools/serve.mjs', 'tools/verify_claims.mjs', 'tools/verify_dataset.mjs']) {
+    const url = pathToFileURL(path.join(repoRoot, f)).href;
+    const r = spawnSync(process.execPath, ['-e', `import(${JSON.stringify(url)})`],
+                        { cwd: repoRoot, encoding: 'utf8', timeout: 30_000 });
+    assert.equal(r.status, 0, `${f}: ${r.stderr}`);
+    assert.equal(r.stdout + r.stderr, '', `${f} did something on import`);
+  }
 });
 
 test('a data source the build ships is credited on the page, not only in the README', async () => {
   // Most visitors never open the repo. The item database in particular supplies
   // data that is shipped in dist/ rather than merely linked, so describing it as
   // "a community database" and crediting it only in the README was not enough.
-  const app = await read('web/app.js');
-  const html = await read('web/index.html');
-  assert.match(html, /id="credits"/, 'the footer needs somewhere to put the credits');
-  assert.match(app, /renderCredits/);
-  assert.match(app, /META\.items\.source/,
+  // The footer is drawn by web/ui.js for both pages; each page needs the element
+  // and has to call it.
+  const ui = await read('web/ui.js');
+  for (const page of ['index', 'set']) {
+    assert.match(await read(`web/${page}.html`), /id="credits"/, `${page}.html needs somewhere to put the credits`);
+    assert.match(await read(`web/${page === 'index' ? 'app' : 'set'}.js`), /renderFooter\(\)/);
+  }
+  assert.match(ui, /renderCredits/);
+  assert.match(ui, /META\.items\.source/,
     'the item source URL ships in meta.json — render it rather than hardcoding or omitting it');
   const readme = await read('README.md');
   assert.match(readme, /items\.sodeq\.org/, 'and it stays in the README credits too');

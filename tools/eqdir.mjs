@@ -9,8 +9,15 @@ export const CANDIDATE_DIRS = [
   'C:\\EverQuest',
 ];
 
-export function findEqDir() {
-  return CANDIDATE_DIRS.find(d => fs.existsSync(path.join(d, 'spells_us.txt')));
+/**
+ * The first directory that actually holds a spell file. EQ_DIR is tried ahead of
+ * the usual install paths, so an install on another drive — or a copy of the
+ * files on a machine without the game — does not need --eq-dir on every command.
+ * The parameters exist for the tests; callers take the defaults.
+ */
+export function findEqDir(candidates = CANDIDATE_DIRS, env = process.env) {
+  const dirs = env.EQ_DIR ? [env.EQ_DIR, ...candidates] : candidates;
+  return dirs.find(d => fs.existsSync(path.join(d, 'spells_us.txt')));
 }
 
 export function arg(name, fallback) {
