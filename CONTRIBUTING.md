@@ -231,6 +231,11 @@ A claim can name one SPA (`spa`) or a set (`spas` plus a `slug` for the id). An 
 `tools/spa_meta.json`, so a regenerated SPA table picks up whatever a new expansion adds
 instead of freezing a list that quietly goes stale. Both focus claims work that way.
 
+A `non_cumulative` claim also declares `keep` — which of two values applies; `magnitude`
+means furthest from zero. The engine reads it and names a winner only under a rule it
+implements, so a claim declaring a new rule gets no winner until the engine learns it,
+rather than the old rule wearing the new claim's badge.
+
 ## Code changes
 
 Normal rules. A few things specific to this project:

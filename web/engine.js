@@ -16,7 +16,7 @@
 
 import {
   SPA_NAMES, IGNORED_IN_STACKING, NON_CUMULATIVE_SPA, NON_CUMULATIVE_CONFIRMED,
-  NON_CUMULATIVE_STATUS, NON_CUMULATIVE_OFFSET, NON_CUMULATIVE_MIXED, IGNORED_BY_CLAIM,
+  NON_CUMULATIVE_STATUS, NON_CUMULATIVE_OFFSET, NON_CUMULATIVE_MIXED, NON_CUMULATIVE_KEEP, IGNORED_BY_CLAIM,
   FOCUS_SPA, FOCUS_BEST_ONLY, FOCUS_LIMIT, FOCUS_PROC_EXCEPTIONS, FOCUS_CONTESTED, MAX_PLAYER_LEVEL,
 } from './spa.js';
 
@@ -451,7 +451,11 @@ export const ncBonus = (spa, value) => value - (NON_CUMULATIVE_OFFSET[spa] || 0)
  * negative and returning from its haste calculation before item, SPA 98 or SPA 119
  * haste are added. So a negative takes the slot outright, whatever the magnitudes.
  */
-export function ncWinner(spa, valueA, valueB) {
+export function ncWinner(spa, valueA, valueB, keep = NON_CUMULATIVE_KEEP[spa]) {
+  // The claim declares the rule in `keep`; this function implements 'magnitude'.
+  // A claim declaring anything else gets no winner — naming one under a rule
+  // the engine does not implement would be a guess wearing the claim's badge.
+  if (keep !== 'magnitude') return null;
   const a = ncBonus(spa, valueA), b = ncBonus(spa, valueB);
   if (a === b) return 'tie';
   if (a === 0 || b === 0) return null;
@@ -634,9 +638,11 @@ export function analyzeSet(spells, opts = {}) {
     const mixed = hasNeg && hasPos && !slowWins;
     const pool = slowWins ? bonuses.filter(v => v < 0) : bonuses;
     const best = Math.max(...pool.map(Math.abs));
+    // Same guard as ncWinner: only under the rule this code implements.
+    const unmodelled = NON_CUMULATIVE_KEEP[spa] !== 'magnitude';
     for (let i = 0; i < members.length; i++) {
       const v = bonuses[i];
-      members[i].applies = mixed || v === 0 ? null
+      members[i].applies = unmodelled || mixed || v === 0 ? null
         : slowWins ? v < 0 && Math.abs(v) === best
         : Math.abs(v) === best;
     }

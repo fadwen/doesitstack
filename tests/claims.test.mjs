@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { load, validate, deriveStatus, isActionable, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
 import { CHECKS } from '../tools/verify_claims.mjs';
-import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
+import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM, NON_CUMULATIVE_SPA, NON_CUMULATIVE_KEEP } from '../web/spa.js';
+import { ncWinner } from '../web/engine.js';
 
 const doc = load();
 
@@ -253,7 +254,7 @@ test('the two halves cover the engine rules the split inherited', () => {
 
 test('evidence cannot be rated above its kind ceiling', () => {
   const mk = (kind, strength) => validate({ version: 1, claims: [{ id: 'non-cumulative/1', type: 'non_cumulative',
-    spa: 1, assertion: 'a'.repeat(20), evidence: [{ strength, kind, summary: 's', source: 'x', who: 'N', standing: 'S' }] }] });
+    spa: 1, keep: 'magnitude', assertion: 'a'.repeat(20), evidence: [{ strength, kind, summary: 's', source: 'x', who: 'N', standing: 'S' }] }] });
   assert.ok(mk('implementation', 'primary').some(p => p.includes('at best it is supporting')));
   assert.ok(mk('implementation', 'strong').some(p => p.includes('at best it is supporting')));
   assert.ok(mk('community', 'supporting').some(p => p.includes('at best it is weak')));
@@ -355,13 +356,23 @@ test('a non-cumulative claim says which value applies, and says it correctly', (
   // occupies. The engine reads this wording, so getting it wrong here would name
   // the weaker effect the winner on the page.
   //
-  // `keep` states the same rule as data. Nothing reads it yet — the magnitude
-  // comparison is written out in engine.js's ncWinner, not generated — so all
-  // this can pin is that the declaration agrees with the prose.
+  // `keep` states the same rule as data, and the engine reads it: the generator
+  // emits NON_CUMULATIVE_KEEP and ncWinner names a winner only under a rule it
+  // implements. This pins that the declaration agrees with the prose.
   for (const c of doc.claims.filter(x => x.type === 'non_cumulative')) {
     assert.match(c.assertion, /furthest from zero/, `${c.id} must state the rule, not "the larger"`);
     assert.equal(c.keep, 'magnitude', `${c.id} must declare the rule its assertion states`);
   }
+});
+
+test('the generated table carries every claim\'s keep rule, and the engine honours it', () => {
+  // A claim could one day declare a rule ncWinner does not implement. The right
+  // answer then is no winner, not the magnitude rule wearing that claim's badge.
+  for (const spa of NON_CUMULATIVE_SPA)
+    assert.equal(NON_CUMULATIVE_KEEP[spa], 'magnitude', `SPA ${spa} has no keep rule in spa.js`);
+  assert.equal(ncWinner(496, 40, 100), 'b');
+  assert.equal(ncWinner(496, 40, 100, 'larger'), null, 'an unimplemented rule names nobody');
+  assert.equal(ncWinner(496, 100, 100, 'larger'), null, 'not even a tie — that is a claim too');
 });
 
 test('haste carries the offset that makes a slow read as a slow', () => {
