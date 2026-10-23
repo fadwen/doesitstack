@@ -10,7 +10,7 @@ import { dataAge, itemDataAge } from './freshness.js';
 import {
   $, el, link, RAIDLOOT, THIRD_PARTY_LAG, F_BENEFICIAL, row,
   KIND_LABEL, kindHelp, orderClasses, search, spellById, load as loadData, F_AURA,
-  getReading, setReading, named,
+  getReading, setReading, named, notInFile, notLoaded,
 } from './data.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 import { PRESETS, findPreset } from './presets.js';
@@ -30,16 +30,23 @@ let saved = [];
 // and undone. That round trip — load the standard set, pile things on to see
 // what they cost, put it back — is the whole reason saving is here.
 let loadedFrom = null;
+// Ids in that set which this spell file does not have. A set saved under an
+// older file can name spells that were since removed or renumbered; without
+// this it read as "Changed — 1 removed" the moment it loaded, and Revert
+// reloaded the same thing.
+let unresolved = [];
 let storageWarned = false;
 
 async function boot() {
-  ({ META, INDEX } = await loadData());
+  try { ({ META, INDEX } = await loadData()); }
+  catch (err) { dataFailed(err); return; }
   saved = readSets(store);
   renderFooter();
+  $('#lvl').max = META.max_level;
   $('#lvl').value = META.max_level;
   buildFilters();
   wirePicker();
-  $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; sync(); };
+  $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; unresolved = []; sync(); };
   $('#lvl').addEventListener('change', render);
   // Checked means "show me what the file says" — the opposite of the old box,
   // because the readable form is now what you get without asking.
@@ -65,6 +72,16 @@ const NO_SCORE =
   + 'the focus rule is corroborated rather than confirmed, so a damage figure would look far '
   + 'more authoritative than the evidence behind it. This tool shows you what is being wasted '
   + 'and leaves the arithmetic to you.';
+
+// Nothing drawn and nothing said was what a 404 on the data used to produce — a
+// blank page, most likely during the minute a deploy is half-copied.
+function dataFailed(err) {
+  const box = $('#stale');
+  box.hidden = false;
+  box.className = 'stale bad';
+  box.textContent = `The spell data could not be loaded (${err.message}). This copy may be `
+    + 'mid-deploy — try again in a minute.';
+}
 
 // ---------- filters and search ----------------------------------------------
 
@@ -118,7 +135,8 @@ function wirePicker() {
 }
 
 function rerunSearch() {
-  const q = $('#q').value.trim().toLowerCase(), box = $('#results');
+  const input = $('#q'), box = $('#results');
+  const q = input.value.trim().toLowerCase();
   box.innerHTML = '';
   if (q.length < 2) { box.hidden = true; return; }
   const hits = search(q, {
@@ -143,15 +161,36 @@ function rerunSearch() {
     b.onclick = () => { box.hidden = true; $('#q').value = ''; add(r[row.id]); };
     box.appendChild(b);
   }
-  box.hidden = false;
+  // A filter chip reruns the search too, and the list is only wanted while
+  // someone is typing in the box — not popped open over the set by a click
+  // somewhere else.
+  box.hidden = document.activeElement !== input;
 }
 
 // ---------- the set ---------------------------------------------------------
 
 async function add(id) {
   if (chosen.some(s => s.id === id) || chosen.length >= MAX_SET) return;
-  const sp = await spellById(id);
-  if (sp) { chosen.push(sp); sync(); }
+  const { found, failed } = await resolve([id]);
+  if (found.length) { chosen.push(found[0]); sync(); }
+  if (failed.length) alertLine(notLoaded(failed));
+}
+
+/**
+ * Fetch spells by id, in order, sorting the ones that did not come back into
+ * two piles the page describes differently: not in this spell file at all, or
+ * not loadable just now. Sequential rather than parallel: shard fetches are
+ * cached per bucket, so a 40-buff set is a handful of requests either way.
+ */
+async function resolve(ids) {
+  const found = [], missing = [], failed = [];
+  for (const id of ids) {
+    try {
+      const sp = await spellById(id);
+      if (sp) found.push(sp); else missing.push(id);
+    } catch { failed.push(id); }
+  }
+  return { found, missing, failed };
 }
 
 // ---------- saved sets ------------------------------------------------------
@@ -162,7 +201,10 @@ const ids = () => chosen.map(s => s.id);
 const anySet = (name) => findSet(saved, name) || findPreset(name);
 const baseline = () => (loadedFrom ? anySet(loadedFrom) : null);
 const isPreset = (name) => !findSet(saved, name) && !!findPreset(name);
-const drifted = () => { const b = baseline(); return b ? !sameSet(b.ids, ids()) : false; };
+// What the loaded set amounts to in this spell file. Drift is measured against
+// this, not the saved list, or an id the file lost would count as your change.
+const baselineIds = () => baseline().ids.filter(id => !unresolved.includes(id));
+const drifted = () => (baseline() ? !sameSet(baselineIds(), ids()) : false);
 
 function persist(next) {
   saved = next;
@@ -180,25 +222,28 @@ const saveAs = (name) => {
   const clean = cleanName(name);
   if (!clean || !chosen.length) return;
   loadedFrom = clean;
+  unresolved = [];          // the saved copy is exactly what is on screen
   persist(upsert(saved, clean, ids()));
 };
 
 async function loadSet(name) {
   const s = anySet(name);
   if (!s) return;
+  const { found, missing, failed } = await resolve(s.ids);
   chosen.length = 0;
-  for (const id of s.ids) {
-    const sp = await spellById(id);
-    if (sp) chosen.push(sp);
-  }
+  chosen.push(...found);
   loadedFrom = s.name;
+  unresolved = missing;
   sync();
+  if (failed.length) alertLine(notLoaded(failed));
 }
 
-const alertLine = (text) => {
-  const box = $('#saved-note');
-  if (box) { box.textContent = text; box.hidden = false; }
-};
+// A static element below the saved sets, not part of what render() redraws —
+// it was created inside that region, so the one-time storage warning was wiped
+// by the render that followed it and nobody ever saw it. Cleared by the next
+// change to the set, so it describes the current state and no other.
+const alertLine = text => { const n = $('#saved-note'); n.textContent = text; n.hidden = false; };
+const clearLine = () => { $('#saved-note').hidden = true; };
 
 const remove = id => {
   const i = chosen.findIndex(s => s.id === id);
@@ -206,23 +251,24 @@ const remove = id => {
 };
 
 function sync() {
+  clearLine();
   const want = chosen.length ? '#set=' + chosen.map(s => s.id).join(',') : '';
   if (location.hash !== want) history.replaceState(null, '', want || location.pathname);
   render();
 }
 
 async function fromHash() {
-  const ids = new URLSearchParams(location.hash.slice(1)).get('set');
-  const want = (ids || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
-  if (want.join(',') === chosen.map(s => s.id).join(',')) return;
+  const param = new URLSearchParams(location.hash.slice(1)).get('set');
+  const want = (param || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
+  if (want.join(',') === ids().join(',')) return;
+  const { found, missing, failed } = await resolve(want);
   chosen.length = 0;
-  // Sequential rather than parallel: shard fetches are cached per bucket, so a
-  // 40-buff set is a handful of requests either way, and order is preserved.
-  for (const id of want) {
-    const sp = await spellById(id);
-    if (sp) chosen.push(sp);
-  }
-  render();
+  chosen.push(...found);
+  // An id that is not in this spell file is dropped from the link and said to
+  // be missing. One that would not load stays in it, so a reload tries again.
+  if (missing.length) sync(); else { clearLine(); render(); }
+  const said = [missing.length && notInFile(missing), failed.length && notLoaded(failed)].filter(Boolean);
+  if (said.length) alertLine(said.join(' '));
 }
 
 // ---------- rendering -------------------------------------------------------
@@ -314,11 +360,20 @@ function renderSaved() {
   rowEl.appendChild(chips);
   box.appendChild(rowEl);
 
+  // Said before any talk of drift, because it is the file's change, not yours.
+  if (unresolved.length && baseline()) {
+    const b = baseline(), n = unresolved.length;
+    box.appendChild(el('p', 'legend',
+      `${n} of the ${b.ids.length} in ${b.name} no longer resolve${n === 1 ? 's' : ''} in this spell file `
+      + `(dated ${META.spell_file_date}): ${unresolved.join(', ')}. `
+      + `${n === 1 ? 'It' : 'They'} may have been removed or renumbered; saving your version drops ${n === 1 ? 'it' : 'them'}.`));
+  }
+
   // The experiment round trip: you loaded something, you have changed it, and
   // you want either to go back or to keep the change.
   if (drifted()) {
     const b = baseline();
-    const n = chosen.length - b.ids.length;
+    const n = chosen.length - baselineIds().length;
     const note = el('div', 'frow drift');
     note.appendChild(el('span', null,
       `Changed from ${b.name} — ${n > 0 ? `${n} added` : n < 0 ? `${-n} removed` : 'same size, different spells'}.`));
@@ -352,11 +407,6 @@ function renderSaved() {
     shareRow.appendChild(share);
     box.appendChild(shareRow);
   }
-
-  const note = el('p', 'legend');
-  note.id = 'saved-note';
-  note.hidden = true;
-  box.appendChild(note);
 }
 
 function spellLink(name, id) {
