@@ -256,7 +256,7 @@ Compare a run buff against a mount here and you will be told they share no effec
 true of the data and false of the game. Recorded in `claims.json` under
 `notes.movement_and_mounts`.
 
-**Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 70,984
+**Only 496 has a primary source**, and it is not EQEmu — it is Daybreak. Of all 71,013
 spells, exactly 53 descriptions contain the word "non-cumulative", and every one of them
 carries SPA 496; none says it without. EQEmu independently agrees, which corroborates
 but does not establish.
@@ -588,14 +588,14 @@ this site is read from your own client files — this one cannot be, so it comes
 [SoDeq item database](https://items.sodeq.org/), a community dump built by players
 running an item collector.
 
-That buys 10,675 spells tagged with the item that casts them, and lets the site tell
+That buys 10,681 spells tagged with the item that casts them, and lets the site tell
 apart three things the old **Item / other** bucket ran together:
 
-- **Item** — an item demonstrably casts it. 9,685 rows.
+- **Item** — an item demonstrably casts it. 9,693 rows.
 - **NPC** — flagged NPC-only *and* no item grants it. The item data corrected 249 of
   these, about 28% of the old bucket, that a player can in fact click off an item.
 - **Unattributed** — no class learns it, nothing in the file triggers it, no item casts
-  it. 16,996 rows. Unexplained rather than absent: the item data lags new content, so
+  it. 17,016 rows. Unexplained rather than absent: the item data lags new content, so
   recent effects land here for a while.
 
 The dump is regenerated daily but updates when a player submits a find, not when
@@ -752,9 +752,9 @@ canonical link pointing at somebody else's site is worse than none. `--site-url`
 it for a custom domain.
 
 **What this cannot do:** the spell data is fetched as JSON after the page loads, so a
-crawler indexes the shell, not 70,984 spells. Searches for a specific spell name will not
+crawler indexes the shell, not 71,013 spells. Searches for a specific spell name will not
 find this site. Closing that would mean pre-rendering a static page per spell, which is a
-different project — and pairs are not an option at all, since 70,984 spells is 2.5 billion
+different project — and pairs are not an option at all, since 71,013 spells is 2.5 billion
 of them.
 
 ### Publishing
@@ -821,7 +821,7 @@ tests/                             node:test — fixtures and claims run anywher
 - Plain wording covers 98.0% of the slots in the current file. The 140 effects without it
   read as the name in the spell file and are marked **as-is**; `tools/phrasing_todo.mjs`
   lists them worst-first.
-- **Unattributed** is still a residual — 16,996 rows nothing explains. The item
+- **Unattributed** is still a residual — 17,016 rows nothing explains. The item
   database shrank the old "Item / other" bucket by a third; the rest is genuinely
   unaccounted for, and calling it "probably a clicky" would be a guess.
 - Item tags depend on a community dump that lags new content by weeks and is the only

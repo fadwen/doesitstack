@@ -118,7 +118,7 @@ Daybreak wrote them and ships them, which makes them about as close to authorita
 a player can get without a developer in the room.
 
 The strongest form is a pattern rather than a single line. The SPA 496 claim rests on
-this: of all 70,984 spells, exactly 53 descriptions contain the word "non-cumulative",
+this: of all 71,013 spells, exactly 53 descriptions contain the word "non-cumulative",
 and every one of them carries SPA 496 — none says it without. One description could be
 a copy-paste artefact. Fifty-three with no counterexample is a rule.
 
@@ -291,7 +291,7 @@ Saves someone repeating the work:
   3.1% and skews to `Spell: <name>` scrolls, which *teach* a spell rather than cast it.
   The EQEmu/PEQ items table has the right columns but lags live badly on modern gear.
 
-- **Closing the remaining "Unattributed" bucket.** 16,996 rows that no class learns,
+- **Closing the remaining "Unattributed" bucket.** 17,016 rows that no class learns,
   nothing in the spell file triggers, and no item in the dump casts. Some are new
   content the item collectors have not reached yet; the rest is unknown. A plausible
   guess dressed as a source label is worse than the honest gap — bring evidence.
