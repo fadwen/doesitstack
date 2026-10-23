@@ -58,9 +58,12 @@ export async function fetchItems({ url = DEFAULT_URL, force = false, log = conso
 
   // Conditional request. If the server honours it we get a 304 and never
   // transfer the ~8 MB. If it ignores the headers we just download as normal —
-  // correctness does not depend on it, only bandwidth.
+  // correctness does not depend on it, only bandwidth. The validators are the
+  // host's own, so after --url points somewhere else they are not sent: a
+  // mirror recognising another server's ETag would hand back a 304 for a file
+  // it never compared.
   const have = fs.existsSync(OUT);
-  if (!force && have) {
+  if (!force && have && state.url === url) {
     if (state.etag) headers['if-none-match'] = state.etag;
     if (state.lastModified) headers['if-modified-since'] = state.lastModified;
   }
@@ -103,7 +106,8 @@ export async function fetchItems({ url = DEFAULT_URL, force = false, log = conso
   return { skipped: false, ...next };
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+// argv[1] first: under `node -e` there is none, and pathToFileURL(undefined) throws.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   fetchItems({ url: arg('url', DEFAULT_URL), force: process.argv.includes('--force') })
     .catch(err => {
       // A missing or unreachable dump is not fatal: the build degrades to no

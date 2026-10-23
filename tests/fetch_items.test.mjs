@@ -98,3 +98,63 @@ test('an HTTP error leaves the existing file untouched', async () => {
     assert.ok(!fs.existsSync(path.join(dir, 'items.txt.part')), 'no half-written temp file left behind');
   } finally { bad.close(); }
 });
+
+test('a mirror is asked plainly — another host\'s validators are not sent to it', async () => {
+  const a = await serve(), b = await serve();
+  const dir = tmp();
+  try {
+    await fetchItems({ url: a.url, dir, log: quiet });
+    const r = await fetchItems({ url: b.url, dir, log: quiet });
+    assert.equal(r.skipped, false, 'a host that never served us cannot confirm we are current');
+    assert.ok(!b.seen[0]['if-none-match'] && !b.seen[0]['if-modified-since'], 'the ETag belongs to the first host');
+    // once the mirror has served us, it gets its own validators back
+    await fetchItems({ url: b.url, dir, log: quiet });
+    assert.equal(b.seen[1]['if-none-match'], ETAG);
+  } finally { a.server.close(); b.server.close(); }
+});
+
+test('a redirect is followed to the file', async () => {
+  const gz = zlib.gzipSync(Buffer.from(BODY));
+  const server = http.createServer((req, res) => {
+    if (req.url === '/items.txt.gz') { res.writeHead(302, { location: '/real/items.txt.gz' }).end(); return; }
+    res.writeHead(200).end(gz);
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  const dir = tmp();
+  try {
+    const r = await fetchItems({ url: `http://127.0.0.1:${server.address().port}/items.txt.gz`, dir, log: quiet });
+    assert.equal(r.skipped, false);
+    assert.equal(fs.readFileSync(path.join(dir, 'items.txt'), 'utf8'), BODY);
+  } finally { server.close(); }
+});
+
+test('a download cut off mid-stream leaves the old file, and no .part behind', async () => {
+  const dir = tmp();
+  const good = await serve();
+  try { await fetchItems({ url: good.url, dir, log: quiet }); } finally { good.server.close(); }
+
+  // Half a gzip stream: the unpack fails on the missing trailer rather than
+  // producing a shorter file that would parse cleanly and tag the wrong things.
+  const gz = zlib.gzipSync(Buffer.from(BODY.repeat(200)));
+  const cut = http.createServer((_, res) => { res.writeHead(200); res.end(gz.subarray(0, gz.length >> 1)); });
+  await new Promise(r => cut.listen(0, '127.0.0.1', r));
+  try {
+    await assert.rejects(() => fetchItems({ url: `http://127.0.0.1:${cut.address().port}/items.txt.gz`, dir, force: true, log: quiet }));
+    assert.equal(fs.readFileSync(path.join(dir, 'items.txt'), 'utf8'), BODY, 'the previous dump survives');
+    assert.ok(!fs.existsSync(path.join(dir, 'items.txt.part')));
+  } finally { cut.close(); }
+});
+
+test('a corrupt state file is ignored, not fatal', async () => {
+  const { server, seen, url } = await serve();
+  const dir = tmp();
+  fs.writeFileSync(path.join(dir, 'items.txt'), 'stale');
+  fs.writeFileSync(path.join(dir, '.fetch-state.json'), '{not json');
+  try {
+    const r = await fetchItems({ url, dir, log: quiet });
+    assert.equal(r.skipped, false);
+    assert.ok(!seen[0]['if-none-match'], 'no readable state means no conditional request');
+    assert.equal(fs.readFileSync(path.join(dir, 'items.txt'), 'utf8'), BODY);
+    assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.fetch-state.json'), 'utf8')).etag, ETAG, 'and the state is written fresh');
+  } finally { server.close(); }
+});
