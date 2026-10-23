@@ -485,7 +485,7 @@ export function phrase(slot, value, names = {}, spell = null) {
     case 315: return 'Invisibility to Undead' + (base1 > 1 ? ` (Enhanced ${base1})` : '');
     case 522: return pct('Current Mana', base1 / 100) + ` up to ${max}`;
     case 131: return pctRange('Chance of Using Reagent', base1, base2, true);
-    case 529:return `Limit Spell Line: ${base1 > 0 ? '' : 'Exclude '}${Math.abs(base1)}`;
+    case 529: return `Limit Spell Line: ${base1 > 0 ? '' : 'Exclude '}${Math.abs(base1)}`;
     // The source names the resisted effect from its own SPA enum. Here, as for
     // 137 and 382, it is Daybreak's name for the number.
     case 378: return pct(`Chance to Resist ${effectName(base2)} Effects`, base1);
