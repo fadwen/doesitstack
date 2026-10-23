@@ -467,12 +467,15 @@ node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to por
 node tools/phrasing_todo.mjs --json
 ```
 
-8 effects still read as-is, and most of them have an eqspellparser line to port, so an
-entry is usually a one-line job. The tail is shallow: 105 of the 131 appear in fewer than
-20 slots in the entire file, and the ones that are left mostly need a spell-level field
-(`Extra`, the duration) that a slot phrasing does not receive. Adding one is a `case` in
-[`web/phrasing.js`](web/phrasing.js) — return `null` rather than guessing if the effect
-is not understood.
+8 effects still read as-is, and none of them is a port waiting to happen. Portal
+Locations (146, on 2,926 slots) spreads a teleport's co-ordinates over several slots and
+eqspellparser returns `null` for it too; 183 is `null` there as well, with the note that
+the effect does nothing; 34, 352, 354, 355 and 366 have no line there at all; and
+Puretone (179) prints the spell's Skill field, which the compact record does not carry.
+The lines that print a spell-level field — the zone or pet token in `Extra` — are no
+longer among them: `phrase()` takes the spell record as well as the slot. Adding a
+phrasing is a `case` in [`web/phrasing.js`](web/phrasing.js) — return `null` rather than
+guessing if the effect is not understood.
 
 Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
 than eqspellparser's own enum, so the two readings never disagree about what an effect is
