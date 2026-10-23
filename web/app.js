@@ -778,7 +778,7 @@ function refBody(sp, depth) {
     if (!s || isEmptySlot(sp, i)) continue;
     const v = calcValue(sp, i, lvl);
     const li = el('li');
-    const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
+    const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names, sp) : null;
     const line = el('span');
     if (said) writePhrasing(line, said, li, depth + 1);
     else line.textContent = META.spa_names[s.spa] || `SPA ${s.spa}`;
@@ -801,7 +801,7 @@ function slotCell(sp, i, lvl, mark) {
   const head = el('div', 'slot-head');
   head.appendChild(el('span', 'slotno', String(i + 1)));
   const v = calcValue(sp, i, lvl);
-  const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names) : null;
+  const said = getReading() === 'phrased' ? phrase(s, v, META.spa_names, sp) : null;
 
   // The name is always the effect's own — the file's in the exact reading, the
   // phrasing in the other. Substituting a word of mine for "CHA" was wrong in

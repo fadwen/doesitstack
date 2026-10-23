@@ -455,7 +455,7 @@ your browser.
 Nothing is hidden by the default: the raw `SPA n · base x · value y` line is printed under
 the name in both readings.
 
-**296 effects have a phrasing, covering 98% of the slots in the current spell file**, and
+**428 effects have a phrasing, covering 99% of the slots in the current spell file**, and
 the build prints that figure so it cannot rot unnoticed. Where there is no phrasing the
 slot keeps its exact name and is marked **as-is** — never a guess.
 
@@ -467,12 +467,15 @@ node tools/phrasing_todo.mjs --eqsp ../eqspellparser      # with the line to por
 node tools/phrasing_todo.mjs --json
 ```
 
-140 effects still read as-is, and most of them have an eqspellparser line to port, so an
-entry is usually a one-line job. The tail is shallow: 105 of the 140 appear in fewer than
-20 slots in the entire file, and the ones that are left mostly need a spell-level field
-(`Extra`, the duration) that a slot phrasing does not receive. Adding one is a `case` in
-[`web/phrasing.js`](web/phrasing.js) — return `null` rather than guessing if the effect
-is not understood.
+8 effects still read as-is, and none of them is a port waiting to happen. Portal
+Locations (146, on 2,926 slots) spreads a teleport's co-ordinates over several slots and
+eqspellparser returns `null` for it too; 183 is `null` there as well, with the note that
+the effect does nothing; 34, 352, 354, 355 and 366 have no line there at all; and
+Puretone (179) prints the spell's Skill field, which the compact record does not carry.
+The lines that print a spell-level field — the zone or pet token in `Extra` — are no
+longer among them: `phrase()` takes the spell record as well as the slot. Adding a
+phrasing is a `case` in [`web/phrasing.js`](web/phrasing.js) — return `null` rather than
+guessing if the effect is not understood.
 
 Two deliberate details: effect references resolve through **Daybreak's** SPA names rather
 than eqspellparser's own enum, so the two readings never disagree about what an effect is
@@ -818,7 +821,7 @@ tests/                             node:test — fixtures and claims run anywher
   applies — but 371 versus a haste is a cross-SPA question, and nothing here merges across
   SPAs. EQEmu treats 371 as a separate `inhibitmelee` bucket that subtracts from a positive
   SPA 11 haste rather than replacing it.
-- Plain wording covers 98.0% of the slots in the current file. The 140 effects without it
+- Plain wording covers 99.0% of the slots in the current file. The 8 effects without it
   read as the name in the spell file and are marked **as-is**; `tools/phrasing_todo.mjs`
   lists them worst-first.
 - **Unattributed** is still a residual — 17,016 rows nothing explains. The item
