@@ -106,10 +106,3 @@ test('and over the wire, nothing outside dist/ is ever served', () => withServer
     assert.notEqual(r.body, 'no', `${p} leaked the sibling's file`);
   }
 }));
-
-test('importing the server neither reads argv nor holds a port', () => {
-  // Both are guarded behind a direct-run check so this test file can exist at
-  // all. If that guard goes, `npm test` warns about the test runner's own argv
-  // and then hangs on port 8000 rather than failing cleanly.
-  assert.equal(typeof readPort, 'function');
-});

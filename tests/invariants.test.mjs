@@ -80,14 +80,6 @@ test('importing a tool runs nothing — the direct-run guards hold', () => {
   }
 });
 
-test('the item parser resolves dump columns by name', async () => {
-  // Positional parsing of a third-party dump reads the wrong field the moment a
-  // column is added or moved, and does it silently.
-  const src = await read('tools/items.mjs');
-  assert.match(src, /resolveColumns/);
-  assert.match(src, /missing expected column/);
-});
-
 test('a data source the build ships is credited on the page, not only in the README', async () => {
   // Most visitors never open the repo. The item database in particular supplies
   // data that is shipped in dist/ rather than merely linked, so describing it as

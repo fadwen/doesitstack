@@ -93,10 +93,14 @@ test('every machine check names a checker that exists', () => {
       if (e.check) assert.ok(CHECKS[e.check.id], `${c.id}: no checker called "${e.check.id}" in tools/verify_claims.mjs`);
 });
 
-test('SPA 496 is confirmed and the rest are not, as of this dataset', () => {
-  const byId = Object.fromEntries(doc.claims.map(c => [c.spa, c.status]));
+test('SPA 496 is confirmed, three are corroborated, and the rest are not, as of this dataset', () => {
+  // A snapshot of what the site currently asserts, so a status moving is a
+  // deliberate edit here rather than a surprise on the page.
+  const byId = Object.fromEntries(doc.claims.filter(c => c.type === 'non_cumulative').map(c => [c.spa, c.status]));
   assert.equal(byId[496], 'confirmed');
-  for (const spa of [185, 186, 459, 482, 503, 505]) assert.equal(byId[spa], 'unverified');
+  for (const spa of [11, 119, 371]) assert.equal(byId[spa], 'corroborated', `SPA ${spa}`);
+  assert.equal(byId[3], 'disputed');
+  for (const spa of [98, 185, 186, 459, 482, 503, 505]) assert.equal(byId[spa], 'unverified', `SPA ${spa}`);
 });
 
 
