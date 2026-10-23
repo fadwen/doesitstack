@@ -73,9 +73,9 @@ test('an unknown enum value is labelled, not dropped', () => {
 });
 
 test('coverage is wide enough to be worth offering', () => {
-  // Measured against the real spell file this is 93% of slot instances. The set
+  // Measured against the real spell file this is 98% of slot instances. The set
   // here is the floor: dropping below it should be a deliberate act.
-  assert.ok(PHRASED.size >= 200, `only ${PHRASED.size} effects have a phrasing`);
+  assert.ok(PHRASED.size >= 290, `only ${PHRASED.size} effects have a phrasing`);
   // the limiters are the whole reason this exists — they read worst untranslated
   for (const spa of [134, 135, 136, 137, 138, 139, 140, 141, 142, 311, 348, 385])
     assert.ok(PHRASED.has(spa), `limiter SPA ${spa} must have a phrasing`);
