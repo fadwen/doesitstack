@@ -196,3 +196,12 @@ test('the two tenths-of-a-percent effects divide, as the description tokens alre
   assert.equal(phrase(slot(182, -225), -225), 'Decrease Weapon Delay by 22.5%');
   assert.equal(phrase(slot(182, 100), 100), 'Increase Weapon Delay by 10%');
 });
+
+test('the other two lines kept for older spell files are replaced by the current ones', () => {
+  // Found once the C# reader stepped over the Version-guarded returns. Both
+  // were word-for-word the line eqspellparser uses for 2018 files and earlier.
+  assert.equal(phrase(slot(32, 17005, 20), 17005), 'Summon: [Item 17005] x 20');
+  assert.equal(phrase(slot(329, 5000, 10000, 0), 5000), 'Absorb Damage using Mana: 50%');
+  assert.equal(phrase(slot(329, 5000, 4000, 1500), 5000),
+    'Absorb Damage using Mana: 50% (0.40 Mana per 1 HP), Max Per Hit: 1500');
+});

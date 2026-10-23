@@ -195,7 +195,8 @@ export function phrase(slot, value, names = {}) {
     case 20:  return `Blind`;
     case 27:  return `Dispel Magic (${value})`;
     case 31:  return `Mesmerize`;
-    case 32:  return `Summon Item: [Item ${base1}]`;
+    // Count in base2 since January 2019; eqspellparser's calc line is for older files.
+    case 32:  return `Summon: [Item ${base1}] x ${base2}`;
     case 57:  return 'Levitate';
     case 64:  return `Spin Stun for ${time(base1 / 1000)}`;
     case 65:  return 'Infravision';
@@ -306,7 +307,13 @@ export function phrase(slot, value, names = {}) {
     case 317: return up('HP Regen Cap', base1);
     case 318: return up('Mana Regen Cap', base1);
     case 324: return `Cast from HP with ${value}% Penalty`;
-    case 329: return `Absorb Damage using Mana: ${base1}%`;
+    // Hundredths of a percent since September 2019, with the mana-per-HP ratio in
+    // ten-thousandths. A deliberate divergence in two small places: eqspellparser
+    // divides base2 by 10000 as integers, so every ratio under 1.0 prints as 0.00
+    // (the file's 4000 means 0.40), and it omits the space before the bracket.
+    case 329: return `Absorb Damage using Mana: ${Math.trunc(base1 / 100)}%`
+              + (base2 !== 10000 ? ` (${(base2 / 10000).toFixed(2)} Mana per 1 HP)` : '')
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
     case 341: return up('ATK Cap', base1);
     case 347: return pct('Chance of Double Archery Attack', base1);
     case 375: return pct('Critical DoT Damage', base1) + ' of Base Damage';
