@@ -185,3 +185,14 @@ test('the two melee slows read differently, because they are different mechanism
   assert.equal(phrase(slot(11, 70), 70), 'Decrease Melee Haste by 30%');
   assert.equal(phrase(slot(11, 168), 168), 'Increase Melee Haste by 68%');
 });
+
+test('the two tenths-of-a-percent effects divide, as the description tokens already did', () => {
+  // tools/spells.mjs has scaled 178 and 182 by ten in descriptions all along;
+  // the phrasing printed the stored figure. 178 also still carried the line
+  // eqspellparser only uses for spell files older than August 2016.
+  assert.equal(phrase(slot(178, 50, 0, 0), 50), 'Return 5% of Melee Damage as HP');
+  assert.equal(phrase(slot(178, 125, 1, 300), 125), 'Return 12.5% of Melee Damage as Mana, Max Per Hit: 300');
+  assert.equal(phrase(slot(178, 100, 2, 0), 100), 'Return 10% of Melee Damage as Endurance');
+  assert.equal(phrase(slot(182, -225), -225), 'Decrease Weapon Delay by 22.5%');
+  assert.equal(phrase(slot(182, 100), 100), 'Increase Weapon Delay by 10%');
+});

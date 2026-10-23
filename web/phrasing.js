@@ -57,6 +57,8 @@ export function phrase(slot, value, names = {}) {
   const { spa, base1, base2, max } = slot;
   const skill = () => fromEnum(SpellSkill, base2);
   const effectName = (n) => names[Math.abs(n)] || `SPA ${Math.abs(n)}`;
+  // The resource taps (178, 457) say which pool the damage comes back as in base2.
+  const resource = () => ['HP', 'Mana', 'Endurance'][base2 % 3];
 
   switch (spa) {
     // --- the common stat and resource effects ---------------------------
@@ -116,7 +118,8 @@ export function phrase(slot, value, names = {}) {
     case 171: return pct('Chance to Crippling Blow', value);
     case 176: return pct('Dual Wield Chance', value);
     case 177: return pct('Double Attack Chance', value);
-    case 182: return pct('Weapon Delay', -value);
+    // Stored in tenths of a percent, like the SPA 178 return and the 457 tap.
+    case 182: return pct('Weapon Delay', value / 10);
     case 184: return pct(`Chance to Hit with ${skill()}`, value);
     case 193: return `${skill()} Attack for ${base1}`;
     case 185: return pct(`${skill()} Damage`, base1);
@@ -246,7 +249,11 @@ export function phrase(slot, value, names = {}) {
     case 152: return `Summon Pet x${base1} for ${time(max)}`;
     case 161: return `Absorb Spell Damage: ${base1}%`
                    + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
-    case 178: return `Lifetap from Weapon Damage: ${base1}%`;
+    // "Lifetap from Weapon Damage" is the line eqspellparser keeps for spell files
+    // older than August 2016. Since then the file stores tenths of a percent and
+    // says which resource comes back; this is the melee twin of SPA 457.
+    case 178: return `Return ${num(base1 / 10)}% of Melee Damage as ${resource()}`
+              + (max > 0 ? `, Max Per Hit: ${max}` : '');
     case 197: return pct(`${skill()} Damage Taken`, value);
     case 289: return `Cast: [Spell ${base1}] on Duration Fade`;
     case 296: return pct('Spell Damage Taken', base1) + ' (Before Crit)';
