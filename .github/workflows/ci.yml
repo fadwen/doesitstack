@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# Nothing here writes to the repo. The deploy is a script a person runs, so the
+# token this job gets can be read-only.
+permissions:
+  contents: read
+
 jobs:
   test:
     # Windows is in the matrix deliberately: most contributors here run EverQuest,
@@ -15,10 +20,10 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
-        node: ['20', '22']
+        node: ['20', '22', '24']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.node }}
 
@@ -31,6 +36,19 @@ jobs:
       # nothing imports; this asserts that rather than trusting it.
       - name: Generated tables exist after a clean checkout
         run: npm run gen && node -e "import('./web/spa.js').then(m => { if (!m.FOCUS_BEST_ONLY) { console.error('spa.js is missing its exports'); process.exit(1); } console.log('spa.js ok'); })"
+
+      # Not every script is imported by a test — the deploy helpers and the
+      # audit tools are run by hand — so each one is at least parsed. A node
+      # script rather than a shell glob, because this step runs under bash on
+      # one runner and PowerShell on the other.
+      - name: Every script parses
+        run: node -e "const fs=require('fs'),cp=require('child_process');let n=0;for(const d of ['tools','web'])for(const f of fs.readdirSync(d))if(f.endsWith('.js')||f.endsWith('.mjs')){const r=cp.spawnSync(process.execPath,['--check',d+'/'+f],{encoding:'utf8'});if(r.status!==0){console.error(r.stderr);process.exit(1)}n++}console.log(n+' scripts parse')"
+
+      # There is no game here, and the build's first act on such a machine is to
+      # say so and stop, with nothing written. Pin that: a build that got further
+      # would be reading something other than the client's files.
+      - name: Build refuses without an EverQuest install
+        run: node -e "const cp=require('child_process');const r=cp.spawnSync(process.execPath,['tools/build.mjs','--out','build-check'],{encoding:'utf8'});const out=r.stdout+r.stderr;if(r.status===0){console.error('expected the build to refuse without the game, but it ran:');console.error(out);process.exit(1)}if(out.indexOf('Could not find an EverQuest install')<0){console.error('the build stopped, but not for the reason it should have:');console.error(out);process.exit(1)}console.log('refused as it should - '+out.trim())"
 
       # No EverQuest install here, so the dataset-backed suites skip themselves.
       # The fixture and claim suites carry the load. `npm run verify:data`, which
