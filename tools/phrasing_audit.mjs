@@ -19,39 +19,24 @@
 // more than it should. That is the right side to err on.
 
 import fs from 'node:fs';
-import path from 'node:path';
 import { arg } from './eqdir.mjs';
+import { eqspCases, spellDataFile } from './eqsp_cases.mjs';
 
 const dir = arg('eqsp', null);
 if (!dir) {
   console.error('Needs a checkout of rumstil/eqspellparser: --eqsp <dir>');
   process.exit(2);
 }
-const file = path.join(dir, 'core', 'SpellData.cs');
-if (!fs.existsSync(file)) {
+const file = spellDataFile(dir);
+if (!file) {
   console.error(`No SpellData.cs under ${dir}`);
   process.exit(2);
-}
-
-/** The first `return` under each `case N:`, which is the formatting line. */
-function csLines(src) {
-  const lines = src.split('\n'), out = new Map();
-  for (let i = 0; i < lines.length; i++) {
-    const m = /^\s*case (\d+):\s*$/.exec(lines[i]);
-    if (!m || out.has(+m[1])) continue;          // the first switch is the formatter
-    for (let j = i + 1; j < Math.min(i + 12, lines.length); j++) {
-      if (/^\s*case \d+:/.test(lines[j])) break;
-      const r = /^\s*return (.+);\s*$/.exec(lines[j]);
-      if (r) { out.set(+m[1], r[1].trim()); break; }
-    }
-  }
-  return out;
 }
 
 // A divergence is exempt only if the comment immediately above it says
 // "deliberate divergence" and then says why. The exemption is the reason.
 function jsLines(src) {
-  const lines = src.split('\n'), out = new Map(), waived = new Set();
+  const lines = src.split(/\r?\n/), out = new Map(), waived = new Set();   // a Windows checkout is CRLF
   for (let i = 0; i < lines.length; i++) {
     const m = /^\s*case (\d+):\s*(?:return )?(.+)$/.exec(lines[i]);
     if (!m || out.has(+m[1])) continue;
@@ -71,7 +56,7 @@ const NOISE = new Set(['string', 'format', 'spell', 'formatcount', 'formatpercen
 const words = s => new Set(((s.match(/"[^"]*"|'[^']*'|`[^`]*`/g) || []).join(' ')
   .match(/[A-Za-z]{2,}/g) || []).map(w => w.toLowerCase()).filter(w => !NOISE.has(w)));
 
-const eq = csLines(fs.readFileSync(file, 'utf8'));
+const eq = eqspCases(fs.readFileSync(file, 'utf8'));
 const { out: mine, waived } = jsLines(fs.readFileSync(new URL('../web/phrasing.js', import.meta.url), 'utf8'));
 
 const mismatch = [], thinner = [];
