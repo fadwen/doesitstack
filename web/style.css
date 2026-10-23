@@ -148,8 +148,13 @@ h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:
 .provenance .ask{margin-top:10px;color:var(--muted)}
 .empty{color:var(--muted);padding:30px 0}
 .foot{color:var(--muted);font-size:13px;border-top:1px solid var(--line);margin-top:40px;padding-top:16px;padding-bottom:40px}
-.stale{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}
+.stale,.notice{color:var(--warn);border-left:3px solid var(--warn);padding:6px 12px;margin:8px 0;background:#221f16;border-radius:0 6px 6px 0}
 .stale.bad{color:var(--bad);border-left-color:var(--bad);background:#241a1a}
+/* Things the page could not do with what it was given — a spell that would not
+   load, an id that is not in this spell file, a set that would not save. Its own
+   element rather than part of a re-rendered region, which is what kept wiping
+   the storage warning before anyone saw it. */
+.notice{font-size:14px;margin:0 0 14px}
 code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:1px 5px;border-radius:4px}
 @media (max-width:760px){
   .pickers{grid-template-columns:1fr}
@@ -189,7 +194,7 @@ code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:
 .setchip-name.as-button{border:0;background:none;color:inherit;font:inherit;cursor:pointer;padding:0}
 .setchip-name.as-button:hover{text-decoration:underline}
 .saveas{width:auto;min-width:180px;padding:4px 10px;font-size:13px}
-.drift{align-items:center;gap:8px;color:var(--muted);font-size:13px}
+.drift{align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted);font-size:13px}
 
 /* Two views of the same dataset. The only route between them used to be a link
    trailing off the end of the tagline, which read as a footnote and wrapped out

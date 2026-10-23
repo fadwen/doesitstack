@@ -4,7 +4,7 @@ import { phrase } from './phrasing.js';
 import {
   $, el, link, escape, LUCY, LUCY_HISTORY, RAIDLOOT, SODEQ_ITEM, THIRD_PARTY_LAG, F_BENEFICIAL, row,
   KIND_LABEL, REL_LABEL, REL_HELP, kindHelp, relsOf, orderClasses, search, spellById, nameOf, load as loadData,
-  F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden, itemsOf,
+  F_AURA, lasts, getReading, setReading, getShowHidden, setShowHidden, itemsOf, notInFile, notLoaded,
 } from './data.js';
 
 let META, INDEX;
@@ -17,14 +17,22 @@ const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura', 'oth
 const active = { kinds: new Set(DEFAULT_KINDS), cls: -1 };
 
 async function boot() {
-  ({ META, INDEX } = await loadData());
+  try { ({ META, INDEX } = await loadData()); }
+  catch (err) { dataFailed(err); return; }
   renderDataAge();
   renderCredits();
+  // The cap is the dataset's, not the markup's: the HTML said 130 and would have
+  // gone on saying it after the next level increase.
+  $('#lvl').max = META.max_level;
   $('#lvl').value = META.max_level;
   buildFilters();
   for (const side of ['a', 'b']) wirePicker(side);
   $('#swap').onclick = () => { const t = picked.a; picked.a = picked.b; picked.b = t; syncAll(); };
-  for (const id of ['#f-buffs', '#f-benef', '#lvl']) $(id).addEventListener('change', refresh);
+  // Only the level changes a verdict. The other filters narrow the search lists
+  // and nothing else, so they must not redraw the detail — that was collapsing
+  // an evidence disclosure a reader had just opened.
+  for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunBoth);
+  $('#lvl').addEventListener('change', render);
   // Checked means "show me what the file says" — the opposite of the old box,
   // because the readable form is now what you get without asking.
   const exactBox = $('#f-exact');
@@ -39,7 +47,23 @@ async function boot() {
   await fromHash();
 }
 
-const refresh = () => { rerunSearch('a'); rerunSearch('b'); render(); };
+const rerunBoth = () => { rerunSearch('a'); rerunSearch('b'); };
+
+// Nothing drawn and nothing said was what a 404 on the data used to produce — a
+// blank page, most likely during the minute a deploy is half-copied.
+function dataFailed(err) {
+  const box = $('#stale');
+  box.hidden = false;
+  box.className = 'stale bad';
+  box.textContent = `The spell data could not be loaded (${err.message}). This copy may be `
+    + 'mid-deploy — try again in a minute.';
+}
+
+// One line above the verdict for things the page could not do: an id in the
+// link that is not in this spell file, a spell that would not load. Cleared by
+// the next change to the pair, so it describes the current state and no other.
+const alertLine = text => { const n = $('#notice'); n.textContent = text; n.hidden = false; };
+const clearLine = () => { $('#notice').hidden = true; };
 
 function buildFilters() {
   const kinds = $('#kinds');
@@ -49,7 +73,7 @@ function buildFilters() {
     b.onclick = () => {
       active.kinds.has(k) ? active.kinds.delete(k) : active.kinds.add(k);
       b.classList.toggle('on');
-      refresh();
+      rerunBoth();
     };
     kinds.appendChild(b);
   }
@@ -62,7 +86,7 @@ function buildFilters() {
     b.onclick = () => {
       active.cls = active.cls === idx ? -1 : idx;
       for (const [i, node] of chips) node.classList.toggle('on', i === active.cls);
-      refresh();
+      rerunBoth();
     };
     chips.set(idx, b);
     classes.appendChild(b);
@@ -149,7 +173,8 @@ function wirePicker(side) {
 }
 
 function rerunSearch(side) {
-  const q = $(`#q-${side}`).value.trim().toLowerCase(), box = $(`#results-${side}`);
+  const input = $(`#q-${side}`), box = $(`#results-${side}`);
+  const q = input.value.trim().toLowerCase();
   box.innerHTML = '';
   if (q.length < 2) { box.hidden = true; return; }
   const hits = search(q, {
@@ -183,15 +208,19 @@ function rerunSearch(side) {
     b.onclick = () => { box.hidden = true; select(side, r[row.id]); };
     box.appendChild(b);
   }
-  box.hidden = false;
+  // A filter change reruns both searches, and a list is only wanted under the
+  // box someone is typing in — not both of them, open over the cards.
+  box.hidden = document.activeElement !== input;
 }
 
 async function select(side, id) {
-  picked[side] = await spellById(id);
+  try { picked[side] = await spellById(id); }
+  catch { alertLine(notLoaded([id])); return; }
   syncAll();
 }
 
 function syncAll() {
+  clearLine();
   const h = [];
   if (picked.a) h.push(`a=${picked.a.id}`);
   if (picked.b) h.push(`b=${picked.b.id}`);
@@ -202,12 +231,23 @@ function syncAll() {
 
 async function fromHash() {
   const p = new URLSearchParams(location.hash.slice(1));
+  // Two different things can go wrong with an id in a link, and they are told
+  // apart: one that is not in this spell file is dropped from the hash and said
+  // to be missing; one that would not load stays in the hash, so a reload tries
+  // it again.
+  const missing = [], failed = [];
   for (const side of ['a', 'b']) {
     const id = parseInt(p.get(side), 10);
-    if (id && picked[side]?.id !== id) picked[side] = await spellById(id);
-    else if (!id) picked[side] = null;
+    if (!id) { picked[side] = null; continue; }
+    if (picked[side]?.id === id) continue;
+    try {
+      picked[side] = await spellById(id);
+      if (!picked[side]) missing.push(id);
+    } catch { picked[side] = null; failed.push(id); }
   }
-  render();
+  if (missing.length) syncAll(); else { clearLine(); render(); }
+  const said = [missing.length && notInFile(missing), failed.length && notLoaded(failed)].filter(Boolean);
+  if (said.length) alertLine(said.join(' '));
 }
 
 // ---------- rendering -------------------------------------------------------
