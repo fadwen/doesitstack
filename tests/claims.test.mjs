@@ -5,6 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { load, validate, deriveStatus, isActionable, spasOf, STRENGTHS, KINDS } from '../tools/claims.mjs';
+import { CHECKS } from '../tools/verify_claims.mjs';
 import { FOCUS_CONTESTED, FOCUS_BEST_ONLY, IGNORED_BY_CLAIM } from '../web/spa.js';
 
 const doc = load();
@@ -49,6 +50,47 @@ test('a parse must carry its method, sample size and result', () => {
   });
   for (const field of ['method', 'sample_size', 'result'])
     assert.ok(problems.some(p => p.includes(field)), `expected a complaint about ${field}`);
+});
+
+test('the fields the generator and engine read literally are typed and bounded', () => {
+  const one = (claim) => validate({ version: 1, claims: [claim] });
+  const nc = (extra) => one({ id: 'non-cumulative/1', type: 'non_cumulative', spa: 1, assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'weak', kind: 'community', summary: 's', source: 'somewhere' }], ...extra });
+  // engine.js compares `mixed` to the literal 'negative'. A typo would not fail;
+  // it would silently switch the slow-takes-the-slot rule off.
+  assert.ok(nc({ mixed: 'negatve' }).some(p => /"mixed"/.test(p)));
+  assert.ok(nc({ offset: '100' }).some(p => /"offset"/.test(p)));
+  assert.ok(nc({ keep: 'larger' }).some(p => /"keep"/.test(p)));
+  assert.deepEqual(nc({ mixed: 'negative', offset: 100, keep: 'magnitude' }), []);
+
+  const rule = (extra) => one({ id: 'stacking-rule/x', type: 'stacking_rule', slug: 'x', assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'supporting', kind: 'implementation', summary: 's', source: 'code' }], ...extra });
+  // none of the three means anything off a non-cumulative claim
+  assert.ok(rule({ mixed: 'negative' }).some(p => /"mixed"/.test(p)));
+  // rule names are keyed into meta.json as rule:<name> and looked up by the verdict
+  assert.ok(rule({ engine_rules: [] }).some(p => /"engine_rules"/.test(p)));
+  assert.ok(rule({ engine_rules: ['Same Spell'] }).some(p => /"engine_rules"/.test(p)));
+  assert.ok(nc({ engine_rules: ['x'] }).some(p => /"engine_rules"/.test(p)));
+  assert.deepEqual(rule({ engine_rules: ['same-spell'] }), []);
+
+  // the generator subtracts `exceptions` from the focus list, so it has to be a list
+  const focus = (extra) => one({ id: 'focus-best-only/all', type: 'focus_best_only', slug: 'all', spas: [], assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'supporting', kind: 'implementation', summary: 's', source: 'code' }], ...extra });
+  assert.ok(focus({}).some(p => /"exceptions"/.test(p)));
+  assert.ok(focus({ exceptions: ['383'] }).some(p => /"exceptions"/.test(p)));
+  assert.ok(nc({ exceptions: [1] }).some(p => /"exceptions"/.test(p)));
+  assert.deepEqual(focus({ exceptions: [383] }), []);
+});
+
+test('every machine check names a checker that exists', () => {
+  // `npm run verify` re-runs these, but only on a machine with the game; an
+  // unknown id would otherwise sit unnoticed until someone ran it there.
+  const bad = validate({ version: 1, claims: [{ id: 'non-cumulative/1', type: 'non_cumulative', spa: 1, assertion: 'a'.repeat(20),
+    evidence: [{ strength: 'primary', kind: 'game-text', summary: 's', source: 'dbstr', check: { phrase: 'x' } }] }] });
+  assert.ok(bad.some(p => /"check"/.test(p)));
+  for (const c of doc.claims)
+    for (const e of c.evidence)
+      if (e.check) assert.ok(CHECKS[e.check.id], `${c.id}: no checker called "${e.check.id}" in tools/verify_claims.mjs`);
 });
 
 test('SPA 496 is confirmed and the rest are not, as of this dataset', () => {
@@ -299,9 +341,13 @@ test('a non-cumulative claim says which value applies, and says it correctly', (
   // wherever the effect is negative — and SPA 505 is negative in every slot it
   // occupies. The engine reads this wording, so getting it wrong here would name
   // the weaker effect the winner on the page.
+  //
+  // `keep` states the same rule as data. Nothing reads it yet — the magnitude
+  // comparison is written out in engine.js's ncWinner, not generated — so all
+  // this can pin is that the declaration agrees with the prose.
   for (const c of doc.claims.filter(x => x.type === 'non_cumulative')) {
     assert.match(c.assertion, /furthest from zero/, `${c.id} must state the rule, not "the larger"`);
-    assert.equal(c.keep, 'magnitude', `${c.id} needs a keep rule the generator can act on`);
+    assert.equal(c.keep, 'magnitude', `${c.id} must declare the rule its assertion states`);
   }
 });
 
