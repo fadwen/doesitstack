@@ -44,8 +44,10 @@ export const LUCY_HISTORY = id => `https://lucy.allakhazam.com/spellhistory.html
 // same staleness question the footer raises about the dump as a whole.
 export const SODEQ_ITEM = id => `https://items.sodeq.org/item.php?id=${id}`;
 
-export const F_BENEFICIAL = 1, F_SKILL = 2, F_SONG = 4, F_SONGWIN = 8, F_GROUP = 16,
-             F_STACKGRP = 32, F_AURA = 64;
+// The flag bits on an index row, in order: beneficial, skill (discipline),
+// song, song window, group, stacking group, aura. Only the two the pages test
+// for are named; the rest are listed so the aura bit's position is explained.
+export const F_BENEFICIAL = 1, F_AURA = 64;
 
 /**
  * Does this sit on you, rather than firing and being done?
@@ -144,7 +146,8 @@ export function setShowHidden(next) {
   return showHidden;
 }
 
-export let META = null, INDEX = null;
+export let META = null;
+let INDEX = null;
 const shardCache = new Map(), descCache = new Map(), itemCache = new Map();
 
 // A 404 used to surface as a JSON parse error on the text "not found", which
@@ -234,7 +237,7 @@ export async function itemsOf(id) {
 }
 
 /** compact record -> the shape engine.js expects */
-export function hydrate(rec) {
+function hydrate(rec) {
   if (!rec) return null;
   return {
     ...rec,

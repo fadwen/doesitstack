@@ -139,7 +139,6 @@ table.slots .spa{padding-left:33px}
 table.slots tr.hit td{background:#2a1f1f}
 table.slots tr.ok td{background:#1a231e}
 .spa{font-family:var(--mono);font-size:12px;color:var(--muted)}
-.blank{color:#59607080;font-style:italic}
 h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
 .trace li{margin:4px 0;color:#c9cfdb}
 .provenance{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted)}
@@ -155,7 +154,6 @@ h3.sec{margin:26px 0 4px;font-size:15px;text-transform:uppercase;letter-spacing:
    element rather than part of a re-rendered region, which is what kept wiping
    the storage warning before anyone saw it. */
 .notice{font-size:14px;margin:0 0 14px}
-code{font-family:var(--mono);font-size:12.5px;background:var(--panel-2);padding:1px 5px;border-radius:4px}
 @media (max-width:760px){
   .pickers{grid-template-columns:1fr}
   .swap-col{padding:0}
