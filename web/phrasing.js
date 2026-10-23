@@ -23,7 +23,8 @@
 // convenience, not a source — which is why the exact view is the default and
 // this one has to be asked for.
 
-import { SpellResist, SpellTarget, SpellTargetRestrict, SpellSkill, SpellClasses, SpellBodyType, fromEnum, limit } from './enums.js';
+import { SpellResist, SpellTarget, SpellTargetRestrict, SpellSkill, SpellClasses, SpellBodyType, SpellTeleport,
+         fromEnum, limit } from './enums.js';
 
 const num = (n) => Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100);
 const up = (name, v) => `${v < 0 ? 'Decrease' : 'Increase'} ${name} by ${num(Math.abs(v))}`;
@@ -446,6 +447,14 @@ export function phrase(slot, value, names = {}, spell = null) {
     case 514: return pct('Max Endurance', base1 / 100);
     case 328: return up('Max Negative HP', value);
     case 243: return pct('Chance of Charm Breaking', -base1);
+
+    // --- the remainder of the worklist, down to the single-slot effects -------
+    // Still in the order `node tools/phrasing_todo.mjs` lists them, and still
+    // without the " per tick" and level-range suffixes that need the duration.
+    // The anchors are spell ids the source names in an enum of its own.
+    case 437: return `Teleport to your ${fromEnum(SpellTeleport, base1)}`;
+    case 438: return `Teleport to their ${fromEnum(SpellTeleport, base1)}`;
+
     // --- lines that print the spell's Extra field ----------------------------
     // A zone, a pet or a doppelganger token, which the slot does not carry. These
     // need the spell record, and are null without it — the "as-is" badge rather

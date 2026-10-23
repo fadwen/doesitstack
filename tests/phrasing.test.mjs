@@ -349,3 +349,13 @@ test('and says nothing without the spell, or when the spell has no Extra', () =>
   // eqspellparser returns null for it, and so does this, spell or no spell.
   assert.equal(phrase(slot(146, 1, 1, 1), 1, {}, { extra: 'x' }), null);
 });
+
+test('the anchor teleports name the anchor, by the spell id the source keys them on', () => {
+  // SpellTeleport in SpellEnums.cs is three spell ids; FormatEnum turns the
+  // underscores into spaces. An id outside the three reads as "Type n", like
+  // every other table here, rather than as a guess at which anchor it is.
+  assert.equal(phrase(slot(437, 52584), 52584), 'Teleport to your Primary Anchor');
+  assert.equal(phrase(slot(437, 50874), 50874), 'Teleport to your Guild Anchor');
+  assert.equal(phrase(slot(438, 52585), 52585), 'Teleport to their Secondary Anchor');
+  assert.equal(phrase(slot(438, 1), 1), 'Teleport to their Type 1');
+});
