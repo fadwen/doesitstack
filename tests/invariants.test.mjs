@@ -84,11 +84,15 @@ test('a data source the build ships is credited on the page, not only in the REA
   // Most visitors never open the repo. The item database in particular supplies
   // data that is shipped in dist/ rather than merely linked, so describing it as
   // "a community database" and crediting it only in the README was not enough.
-  const app = await read('web/app.js');
-  const html = await read('web/index.html');
-  assert.match(html, /id="credits"/, 'the footer needs somewhere to put the credits');
-  assert.match(app, /renderCredits/);
-  assert.match(app, /META\.items\.source/,
+  // The footer is drawn by web/ui.js for both pages; each page needs the element
+  // and has to call it.
+  const ui = await read('web/ui.js');
+  for (const page of ['index', 'set']) {
+    assert.match(await read(`web/${page}.html`), /id="credits"/, `${page}.html needs somewhere to put the credits`);
+    assert.match(await read(`web/${page === 'index' ? 'app' : 'set'}.js`), /renderFooter\(\)/);
+  }
+  assert.match(ui, /renderCredits/);
+  assert.match(ui, /META\.items\.source/,
     'the item source URL ships in meta.json — render it rather than hardcoding or omitting it');
   const readme = await read('README.md');
   assert.match(readme, /items\.sodeq\.org/, 'and it stays in the README credits too');
