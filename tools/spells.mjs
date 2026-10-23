@@ -174,7 +174,7 @@ function parseSpellLine(f, level) {
     const p = chunk.split('|');
     if (p.length < 6) break;
     const i = int(p[0]) - 1, spa = int(p[1]);
-    if (spa === 254) break;                       // unused slot, nothing meaningful follows
+    if (spa === 254) continue;                    // the client's "unused slot" marker; skip it, not what follows
     while (s.slots.length <= i) s.slots.push(null);
     s.slots[i] = { i, spa, base1: int(p[2]), base2: int(p[3]), calc: int(p[4]), max: int(p[5]) };
   }
