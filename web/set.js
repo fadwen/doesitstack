@@ -11,8 +11,8 @@ import {
   getReading, named, notInFile, notLoaded,
 } from './data.js';
 import {
-  DEFAULT_KINDS, readLevel, noticeLine, dataFailed, buildFilters, searchFilters, wireReadingBox,
-  wirePicker, renderFooter,
+  DEFAULT_KINDS, readLevel, levelParam, applyLevelParam, noticeLine, dataFailed, buildFilters,
+  searchFilters, wireReadingBox, wirePicker, wireCopyLink, renderFooter,
 } from './ui.js';
 import { readSets, writeSets, upsert, removeSet, findSet, sameSet, cleanName } from './saved.js';
 import { PRESETS, findPreset } from './presets.js';
@@ -58,7 +58,7 @@ async function boot() {
     q => search(q, { ...searchFilters(active), exclude: new Set(ids()) }),
     id => { $('#q').value = ''; add(id); });
   $('#clear').onclick = () => { chosen.length = 0; loadedFrom = null; unresolved = []; sync(); };
-  $('#lvl').addEventListener('change', render);
+  $('#lvl').addEventListener('change', () => { writeHash(); render(); });
   wireReadingBox(render);
   for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', () => rerunSearch());
   $('#why-no-score').textContent = NO_SCORE;
@@ -156,17 +156,24 @@ const remove = id => {
   if (i > -1) { chosen.splice(i, 1); sync(); }
 };
 
+function writeHash() {
+  // A level with nothing in the set would be a link to an empty page.
+  const parts = chosen.length ? ['set=' + ids().join(','), levelParam()].filter(Boolean) : [];
+  const want = parts.length ? '#' + parts.join('&') : '';
+  if (location.hash !== want) history.replaceState(null, '', want || location.pathname);
+}
+
 function sync() {
   clearLine();
-  const want = chosen.length ? '#set=' + chosen.map(s => s.id).join(',') : '';
-  if (location.hash !== want) history.replaceState(null, '', want || location.pathname);
+  writeHash();
   render();
 }
 
 async function fromHash() {
-  const param = new URLSearchParams(location.hash.slice(1)).get('set');
-  const want = (param || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
-  if (want.join(',') === ids().join(',')) return;
+  const p = new URLSearchParams(location.hash.slice(1));
+  const levelChanged = applyLevelParam(p);
+  const want = (p.get('set') || '').split(',').map(n => parseInt(n, 10)).filter(Boolean).slice(0, MAX_SET);
+  if (want.join(',') === ids().join(',')) { if (levelChanged) render(); return; }
   const { found, missing, failed } = await resolve(want);
   chosen.length = 0;
   chosen.push(...found);
@@ -190,14 +197,16 @@ function render() {
   const conflicted = new Set(res.conflicts.flatMap(c => [c.a, c.b]));
 
   const head = el('div', 'set-head');
-  head.appendChild(el('h3', 'sec', `${chosen.length} in the set`));
+  head.appendChild(el('h2', 'sec', `${chosen.length} in the set`));
   list.appendChild(head);
   const ul = el('div', 'set-chips');
   for (const sp of chosen) {
     const c = el('span', 'setchip' + (conflicted.has(sp.id) ? ' bad' : ''));
     c.appendChild(el('span', 'setchip-name', sp.name));
     const x = el('button', 'setchip-x', '×');
+    x.type = 'button';
     x.title = `Remove ${sp.name}`;
+    x.setAttribute('aria-label', x.title);
     x.onclick = () => remove(sp.id);
     c.appendChild(x);
     ul.appendChild(c);
@@ -241,7 +250,9 @@ function renderSaved() {
     open.onclick = () => loadSet(s.name);
     wrap.appendChild(open);
     const del = el('button', 'setchip-x', '×');
+    del.type = 'button';
     del.title = `Forget ${s.name}`;
+    del.setAttribute('aria-label', del.title);
     del.onclick = () => {
       if (loadedFrom === s.name) loadedFrom = null;
       persist(removeSet(saved, s.name));
@@ -295,20 +306,8 @@ function renderSaved() {
   }
 
   if (chosen.length) {
-    const share = el('button', 'chip wide', 'Copy link to this set');
-    share.onclick = async () => {
-      try {
-        await navigator.clipboard.writeText(location.href);
-        share.textContent = 'Link copied';
-        setTimeout(() => { share.textContent = 'Copy link to this set'; }, 1500);
-      } catch {
-        // Clipboard access is refused in plenty of contexts; the URL bar already
-        // holds the set, so say that rather than failing silently.
-        alertLine('Could not reach the clipboard — the address bar already holds this set, copy it from there.');
-      }
-    };
     const shareRow = el('div', 'frow');
-    shareRow.appendChild(share);
+    shareRow.appendChild(wireCopyLink(el('button', 'chip wide'), 'Copy link to this set', alertLine));
     box.appendChild(shareRow);
   }
 }
@@ -331,7 +330,7 @@ function renderReport(res) {
   const box = $('#report'); box.hidden = false; box.innerHTML = '';
 
   // --- can they all be up at once? -----------------------------------------
-  box.appendChild(el('h3', 'sec', 'Holding them all'));
+  box.appendChild(el('h2', 'sec', 'Holding them all'));
   if (res.allHold) {
     const ok = el('div', 'out independent', `All ${res.count} can be up at the same time.`);
     box.appendChild(ok);
@@ -364,7 +363,7 @@ function renderReport(res) {
   }
 
   // --- what overlaps --------------------------------------------------------
-  box.appendChild(el('h3', 'sec', 'Effects more than one of them carries'));
+  box.appendChild(el('h2', 'sec', 'Effects more than one of them carries'));
   const groups = [...res.nonCumulative, ...res.focusBestOnly];
   if (!groups.length && !res.focusProcs.length) {
     box.appendChild(el('p', 'legend', 'Nothing in this set doubles up — every effect here comes from one source.'));
@@ -380,7 +379,7 @@ function renderReport(res) {
 function groupShell(cls, title, subtitle) {
   const n = el('div', 'note ' + cls);
   const h = el('div', 'row1');
-  h.appendChild(el('h4', null, title));
+  h.appendChild(el('h3', null, title));
   n.appendChild(h);
   if (subtitle) n.appendChild(el('p', null, subtitle));
   return n;

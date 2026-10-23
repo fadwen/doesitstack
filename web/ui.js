@@ -19,6 +19,40 @@ export const DEFAULT_KINDS = ['spell', 'discipline', 'song', 'aa', 'item', 'aura
 /** The caster level from the #lvl box, or the cap when it says nothing usable. */
 export const readLevel = () => parseInt($('#lvl').value, 10) || META.max_level;
 
+// The level rides in the hash so a shared link reproduces the verdict — a
+// calc that scales with level can change the answer. Only written when it is
+// not the cap, so a plain link stays plain.
+export const levelParam = () => (readLevel() !== META.max_level ? `lvl=${readLevel()}` : null);
+/** Take a level from the hash into the box, clamped to what the data allows. */
+export function applyLevelParam(p) {
+  const l = parseInt(p.get('lvl'), 10);
+  if (!l) return false;
+  const want = Math.max(1, Math.min(META.max_level, l));
+  if (want === readLevel()) return false;
+  $('#lvl').value = want;
+  return true;
+}
+
+/**
+ * A button that copies the address bar. Clipboard access is refused in plenty
+ * of contexts; the URL already holds the state, so the failure says that
+ * rather than nothing.
+ */
+export function wireCopyLink(btn, label, alertLine) {
+  btn.type = 'button';
+  btn.textContent = label;
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      btn.textContent = 'Link copied';
+      setTimeout(() => { btn.textContent = label; }, 1500);
+    } catch {
+      alertLine('Could not reach the clipboard — the address bar already holds this link, copy it from there.');
+    }
+  };
+  return btn;
+}
+
 // A line for things the page could not do with what it was given: an id in the
 // link that is not in this spell file, a spell that would not load, a set that
 // would not save. Its own static element, never inside a region a render
@@ -42,6 +76,9 @@ export function dataFailed(err) {
 
 // ---------- filters -----------------------------------------------------------
 
+// A chip is a toggle button, and says so: the lit state was only ever a colour.
+const press = (b, on) => { b.classList.toggle('on', on); b.setAttribute('aria-pressed', String(on)); };
+
 /**
  * The Source and Class chips. `active` is the page's {kinds, cls} and is
  * mutated in place; `onChange` is called after every change.
@@ -49,24 +86,30 @@ export function dataFailed(err) {
 export function buildFilters(active, onChange) {
   const kinds = $('#kinds');
   for (const k of META.kinds) {
-    const b = el('button', 'chip' + (active.kinds.has(k) ? ' on' : ''), KIND_LABEL[k] || k);
+    const b = el('button', 'chip', KIND_LABEL[k] || k);
+    b.type = 'button';
     b.title = kindHelp(k);
+    press(b, active.kinds.has(k));
     b.onclick = () => {
       active.kinds.has(k) ? active.kinds.delete(k) : active.kinds.add(k);
-      b.classList.toggle('on');
+      press(b, active.kinds.has(k));
       onChange();
     };
     kinds.appendChild(b);
   }
   const classes = $('#classes');
   // Keyed by class index, not by position: the chips are no longer in class-index
-  // order, so "which chip is lit" cannot be derived from where it sits.
+  // order, so "which chip is lit" cannot be derived from where it sits. One of
+  // many, but still pressed buttons rather than radios — a radio group promises
+  // arrow-key movement between its members, which these do not have.
   const chips = new Map();
   const mk = (label, idx) => {
-    const b = el('button', 'chip' + (active.cls === idx ? ' on' : ''), label);
+    const b = el('button', 'chip', label);
+    b.type = 'button';
+    press(b, active.cls === idx);
     b.onclick = () => {
       active.cls = active.cls === idx ? -1 : idx;
-      for (const [i, node] of chips) node.classList.toggle('on', i === active.cls);
+      for (const [i, node] of chips) press(node, i === active.cls);
       onChange();
     };
     chips.set(idx, b);
@@ -123,39 +166,73 @@ export function resultButton(r) {
  * of two or more characters; `onSelect(id)` is told what was picked. Returns
  * the function that reruns the search, for the page to call when a filter
  * changes.
+ *
+ * To a screen reader this is a combobox over a listbox: the input says whether
+ * the list is open and which option the arrow keys have reached, and each row
+ * is an option. Nothing about the behaviour changed for anyone else.
  */
 export function wirePicker(input, box, find, onSelect) {
+  input.setAttribute('role', 'combobox');
+  input.setAttribute('aria-autocomplete', 'list');
+  input.setAttribute('aria-haspopup', 'listbox');
+  input.setAttribute('aria-controls', box.id);
+  box.setAttribute('role', 'listbox');
+  const show = open => {
+    box.hidden = !open;
+    input.setAttribute('aria-expanded', String(open));
+  };
+  show(false);
+  // The option the arrow keys are on, or none. Class for the eye, aria for
+  // the reader, and the input points at it so the reader follows along.
+  const highlight = n => {
+    const btns = [...box.querySelectorAll('button')];
+    btns.forEach((b, i) => { b.classList.toggle('on', i === n); b.setAttribute('aria-selected', String(i === n)); });
+    if (btns[n]) { input.setAttribute('aria-activedescendant', btns[n].id); btns[n].scrollIntoView({ block: 'nearest' }); }
+    else input.removeAttribute('aria-activedescendant');
+  };
   const rerun = () => {
     const q = input.value.trim().toLowerCase();
     box.innerHTML = '';
-    if (q.length < 2) { box.hidden = true; return; }
+    input.removeAttribute('aria-activedescendant');
+    if (q.length < 2) { show(false); return; }
     const hits = find(q);
-    if (!hits.length) { box.hidden = true; return; }
-    for (const r of hits) {
+    if (!hits.length) { show(false); return; }
+    hits.forEach((r, i) => {
       const b = resultButton(r);
+      b.type = 'button';
+      b.id = `${box.id}-${i}`;
+      b.setAttribute('role', 'option');
+      b.setAttribute('aria-selected', 'false');
       b.onmousedown = e => e.preventDefault();
-      b.onclick = () => { box.hidden = true; onSelect(r[row.id]); };
+      b.onclick = () => { show(false); onSelect(r[row.id]); };
       box.appendChild(b);
-    }
+    });
     // A filter change reruns the search too, and the list is only wanted
     // under the box someone is typing in — not popped open over the page by
     // a click somewhere else.
-    box.hidden = document.activeElement !== input;
+    show(document.activeElement === input);
   };
   input.addEventListener('input', rerun);
   input.addEventListener('focus', rerun);
-  input.addEventListener('blur', () => setTimeout(() => { box.hidden = true; }, 150));
+  // Tab from the box onto a result must not close the list under the cursor,
+  // which hiding on every blur did. Focus leaving for anywhere else still
+  // closes it, on the same short delay as before so a tap on a row lands.
+  const leaving = e => {
+    const to = e.relatedTarget;
+    if (to === input || box.contains(to)) return;
+    setTimeout(() => { if (document.activeElement !== input && !box.contains(document.activeElement)) show(false); }, 150);
+  };
+  input.addEventListener('blur', leaving);
+  box.addEventListener('focusout', leaving);
   input.addEventListener('keydown', e => {
     const btns = [...box.querySelectorAll('button')];
     const i = btns.findIndex(b => b.classList.contains('on'));
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const n = Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1)));
-      btns.forEach(b => b.classList.remove('on'));
-      if (btns[n]) { btns[n].classList.add('on'); btns[n].scrollIntoView({ block: 'nearest' }); }
+      highlight(Math.max(0, Math.min(btns.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))));
     } else if (e.key === 'Enter' && btns[Math.max(i, 0)]) {
       e.preventDefault(); btns[Math.max(i, 0)].click();
-    } else if (e.key === 'Escape') box.hidden = true;
+    } else if (e.key === 'Escape') show(false);
   });
   return rerun;
 }

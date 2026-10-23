@@ -6,8 +6,8 @@ import {
   getReading, getShowHidden, setShowHidden, itemsOf, notInFile, notLoaded,
 } from './data.js';
 import {
-  DEFAULT_KINDS, readLevel, noticeLine, dataFailed, buildFilters, searchFilters, wireReadingBox,
-  wirePicker, renderFooter,
+  DEFAULT_KINDS, readLevel, levelParam, applyLevelParam, noticeLine, dataFailed, buildFilters,
+  searchFilters, wireReadingBox, wirePicker, wireCopyLink, renderFooter,
 } from './ui.js';
 
 let META;
@@ -35,11 +35,12 @@ async function boot() {
       q => search(q, searchFilters(active)), id => select(side, id));
   }
   $('#swap').onclick = () => { const t = picked.a; picked.a = picked.b; picked.b = t; syncAll(); };
+  wireCopyLink($('#share'), 'Copy link to this pair', alertLine);
   // Only the level changes a verdict. The other filters narrow the search lists
   // and nothing else, so they must not redraw the detail — that was collapsing
   // an evidence disclosure a reader had just opened.
   for (const id of ['#f-buffs', '#f-benef']) $(id).addEventListener('change', rerunBoth);
-  $('#lvl').addEventListener('change', render);
+  $('#lvl').addEventListener('change', () => { writeHash(); render(); });
   wireReadingBox(render);
 
   const hiddenBox = $('#f-hidden');
@@ -58,18 +59,25 @@ async function select(side, id) {
   syncAll();
 }
 
-function syncAll() {
-  clearLine();
+function writeHash() {
   const h = [];
   if (picked.a) h.push(`a=${picked.a.id}`);
   if (picked.b) h.push(`b=${picked.b.id}`);
+  // A level with nothing picked would be a link to an empty page.
+  if (h.length && levelParam()) h.push(levelParam());
   const want = h.length ? '#' + h.join('&') : '';
   if (location.hash !== want) history.replaceState(null, '', want || location.pathname);
+}
+
+function syncAll() {
+  clearLine();
+  writeHash();
   render();
 }
 
 async function fromHash() {
   const p = new URLSearchParams(location.hash.slice(1));
+  applyLevelParam(p);
   // Two different things can go wrong with an id in a link, and they are told
   // apart: one that is not in this spell file is dropped from the hash and said
   // to be missing; one that would not load stays in the hash, so a reload tries
@@ -99,13 +107,23 @@ function fmtTime(sec) {
   return h ? `${h}h ${m}m` : m ? `${m}m${s ? ' ' + s + 's' : ''}` : `${s}s`;
 }
 
-function spellCard(sp) {
+function spellCard(sp, side) {
   const c = el('div', 'card');
   const h = el('div', 'row1');
-  h.appendChild(el('h3', null, sp.name));
+  h.appendChild(el('h2', null, sp.name));
+  const tools = el('span', 'card-tools');
   const badge = el('span', 'badge ' + sp.kind, KIND_LABEL[sp.kind] || sp.kind);
   badge.title = kindHelp(sp.kind);
-  h.appendChild(badge);
+  tools.appendChild(badge);
+  // Clearing a side used to mean editing the address bar or picking something
+  // else over it. The same × the set page puts on its chips.
+  const x = el('button', 'setchip-x', '×');
+  x.type = 'button';
+  x.title = `Clear ${sp.name}`;
+  x.setAttribute('aria-label', x.title);
+  x.onclick = () => { picked[side] = null; syncAll(); };
+  tools.appendChild(x);
+  h.appendChild(tools);
   c.appendChild(h);
   const sub = el('div', 'sub');
   const bits = [`#${sp.id}`, META.targets[sp.target] || `target ${sp.target}`, durText(sp.duration, sp.aura)];
@@ -235,9 +253,10 @@ function itemList(all) {
 function render() {
   for (const side of ['a', 'b']) {
     const box = $(`#chosen-${side}`); box.innerHTML = '';
-    if (picked[side]) box.appendChild(spellCard(picked[side]));
+    if (picked[side]) box.appendChild(spellCard(picked[side], side));
   }
   const { a, b } = picked;
+  $('#share-row').hidden = !(a && b);
   if (!a || !b) { $('#verdict').hidden = true; $('#detail').hidden = true; $('#empty').hidden = false; return; }
   $('#empty').hidden = true;
 
@@ -264,7 +283,7 @@ function renderVerdict(a, b, res) {
   const dirs = el('div', 'dirs');
   for (const [key, label] of [['xThenY', `${a.name} first, then ${b.name}`], ['yThenX', `${b.name} first, then ${a.name}`]]) {
     const r = res[key], d = el('div', 'dir');
-    d.appendChild(el('h4', null, label));
+    d.appendChild(el('h3', null, label));
     const words = { independent: 'Both hold', overwrite: 'The second one overwrites the first', blocked: 'The second one is refused' };
     d.appendChild(el('div', 'out ' + r.verdict, words[r.verdict]));
     d.appendChild(el('div', 'why', r.reason));

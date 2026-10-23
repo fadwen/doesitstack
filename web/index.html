@@ -44,7 +44,7 @@
       <div class="results" id="results-a" hidden></div>
       <div class="chosen" id="chosen-a"></div>
     </div>
-    <div class="swap-col"><button id="swap" class="swap" title="Swap the two spells">⇄</button></div>
+    <div class="swap-col"><button id="swap" class="swap" type="button" title="Swap the two spells" aria-label="Swap the two spells">⇄</button></div>
     <div class="picker" data-side="b">
       <label class="picker-label" for="q-b">Buff being cast</label>
       <input id="q-b" class="search" type="search" autocomplete="off" placeholder="Search by name or spell id…">
@@ -71,8 +71,9 @@
     </div>
   </section>
 
-  <p id="notice" class="notice" hidden></p>
-  <section id="verdict" class="verdict" hidden></section>
+  <p id="notice" class="notice" aria-live="polite" hidden></p>
+  <div class="frow share-row" id="share-row" hidden><button id="share" class="chip wide">Copy link to this pair</button></div>
+  <section id="verdict" class="verdict" aria-live="polite" hidden></section>
   <section id="detail" class="detail" hidden></section>
 
   <section id="empty" class="empty">
@@ -85,7 +86,7 @@
 
 <footer class="wrap foot">
   <p id="build"></p>
-  <p id="stale" hidden></p>
+  <p id="stale" aria-live="polite" hidden></p>
   <p>Spell data is read from the EverQuest client's own files — not scraped — but by whoever published this copy, so it is only as current as the build above. <a id="repo-link" href="https://github.com/fadwen/doesitstack" target="_blank" rel="noopener">Run your own copy</a> to check against your install. The stacking rules are ported from the <a href="https://github.com/EQEmu/Server" target="_blank" rel="noopener">EQEmu server</a> — the most complete public implementation of them, but a volunteer reimplementation targeting a 2013 client, not Daybreak's own account of how the game works. Every rule records where it came from, and most of them are unverified. Not affiliated with Daybreak Game Company.</p>
   <p id="credits" class="credits"></p>
 </footer>
