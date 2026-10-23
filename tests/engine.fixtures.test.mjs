@@ -464,7 +464,7 @@ test('proc-type foci are reported apart, because they all do fire', () => {
 });
 
 test('the set view never scores a set', () => {
-  // Ranking sets by damage needs a bonus-bucket model resting on six unverified
+  // Ranking sets by damage needs a bonus-bucket model resting on seven unverified
   // claims. If this ever grows a score, that decision needs its own evidence.
   const r = analyzeSet([setSpell(1, 'A', [[124, 10]]), setSpell(2, 'B', [[124, 90]])]);
   for (const key of ['score', 'rank', 'dps', 'best', 'total'])

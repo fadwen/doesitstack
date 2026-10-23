@@ -35,9 +35,9 @@ files and nothing else. Keep it that way; a test enforces it.
 
 **The build never touches the network.** Only `tools/fetch_items.mjs` does. `npm run
 build` must stay offline and deterministic — CI cannot depend on a third party being up,
-and two builds from the same inputs must produce the same `dist/`. A test enforces it.
+and two builds from the same inputs must produce the same `dist/`. A test enforces the offline half.
 
-**Third-party dump columns are resolved by name.** `tools/items.mjs` reads 9 of the item
+**Third-party dump columns are resolved by name.** `tools/items.mjs` reads 11 of the item
 dump's 315 columns by header name, never by position, and throws on a column it cannot
 find. Positional parsing of someone else's export is wrong the moment they add a field,
 and wrong silently.
@@ -48,7 +48,7 @@ another. Never let an item relationship overwrite a `kind` the spell file alread
 justifies — the only bucket item data may reclassify is the residual.
 
 **The set view reports, it does not score.** `analyzeSet` says what a buff set is wasting;
-it must never rank sets by damage. That needs a bonus-bucket model resting on six
+it must never rank sets by damage. That needs a bonus-bucket model resting on seven
 unverified non-cumulative claims and a corroborated focus rule, and would present a number
 far more confident than its evidence. A test enforces it.
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publish dist/ to the gh-pages branch as a single orphan commit, so the
-# generated 30-odd MB of spell data never accumulates in the repo's history.
+# generated fifty-odd MB of spell data never accumulates in the repo's history.
 #
 #   tools/deploy_pages.sh [remote]
 set -euo pipefail

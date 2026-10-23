@@ -1,5 +1,5 @@
 # Publish dist\ to the gh-pages branch as a single orphan commit, so the
-# generated 30-odd MB of spell data never accumulates in the repo's history.
+# generated fifty-odd MB of spell data never accumulates in the repo's history.
 #
 #   powershell -ExecutionPolicy Bypass -File tools\deploy_pages.ps1 [remote]
 param([string]$Remote = "origin")
