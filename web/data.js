@@ -147,11 +147,37 @@ export function setShowHidden(next) {
 export let META = null, INDEX = null;
 const shardCache = new Map(), descCache = new Map(), itemCache = new Map();
 
+// A 404 used to surface as a JSON parse error on the text "not found", which
+// names neither the file nor the status. Both pages catch this and say so.
+async function json(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
+  return r.json();
+}
+
 export async function load() {
-  [META, INDEX] = await Promise.all([
-    fetch('data/meta.json').then(r => r.json()),
-    fetch('data/index.json').then(r => r.json()),
-  ]);
+  const [meta, index] = await Promise.all([json('data/meta.json'), json('data/index.json')]);
+  return adopt(meta, index);
+}
+
+/**
+ * Take a dataset that is already in memory. load() calls this with what it
+ * fetched; a test calls it with a synthetic index, which is how search() is
+ * exercised without a built dataset or a browser.
+ *
+ * One pass over the index here pays for every later lookup: the id -> name map
+ * a phrasing needs while it is being drawn, and the lower-cased names a search
+ * compares against — which used to be lower-cased again on every keystroke, for
+ * all sixty-odd thousand rows.
+ */
+export function adopt(meta, index) {
+  META = meta; INDEX = index;
+  nameById = new Map();
+  lowerNames = new Array(index.length);
+  index.forEach((r, i) => {
+    nameById.set(r[row.id], r[row.name]);
+    lowerNames[i] = r[row.name].toLowerCase();
+  });
   return { META, INDEX };
 }
 
@@ -160,15 +186,9 @@ export const kindHelp = k => (META.items ? KIND_HELP[k] : KIND_HELP_NO_ITEMS[k] 
 // Name lookup without a fetch. A phrased effect that says "Cast: [Spell 6097]"
 // has to decide, while it is being drawn, whether 6097 is in this spell file at
 // all — an id that is not cannot be offered as something to open. The index is
-// already in memory and carries every id and name, so this costs one pass.
-let nameById = null;
-export function nameOf(id) {
-  if (!nameById) {
-    nameById = new Map();
-    for (const r of INDEX) nameById.set(r[row.id], r[row.name]);
-  }
-  return nameById.get(id) || null;
-}
+// already in memory and carries every id and name; adopt() built the map.
+let nameById = null, lowerNames = null;
+export const nameOf = id => nameById.get(id) || null;
 
 // "Cast: [Spell 6097] on Fade" -> "Cast: Savage Spirit Penance on Fade".
 // A token whose id is not in this spell file is left exactly as written, because
@@ -180,9 +200,20 @@ export const named = text =>
 // tags without fetching a shard. Bit order matches meta.items.rel.
 export const relsOf = mask => (META.items?.rel || []).filter((_, i) => mask & (1 << i));
 
+// A bucket that does not exist is a run of ids with no spell in it, so a 404 is
+// an empty shard. Anything else — no network, a 5xx, a half-deployed copy — is a
+// failure, and it is forgotten rather than cached: the old code kept the rejected
+// promise, so one bad moment made every later spell in that bucket unloadable
+// until a reload. The description and item fetches below swallow theirs because
+// a missing description costs a line; a missing spell costs the verdict, so this
+// one rejects and the page says so.
 async function shard(id) {
   const b = Math.floor(id / META.bucket);
-  if (!shardCache.has(b)) shardCache.set(b, fetch(`data/spells/${b}.json`).then(r => r.ok ? r.json() : {}));
+  if (!shardCache.has(b)) {
+    shardCache.set(b, fetch(`data/spells/${b}.json`)
+      .then(r => r.ok ? r.json() : r.status === 404 ? {} : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .catch(err => { shardCache.delete(b); throw err; }));
+  }
   return (await shardCache.get(b))[id] || null;
 }
 async function descOf(id) {
@@ -219,9 +250,22 @@ export async function spellById(id) {
   return sp;
 }
 
-const matches = (r, q) => /^\d+$/.test(q)
-  ? String(r[row.id]).startsWith(q)
-  : r[row.name].toLowerCase().includes(q);
+// How many weaker matches are worth collecting before sorting. The strong ones
+// — a name that starts with the query, or the id typed in full — are never
+// capped, because they are the ones that sort to the top.
+const WEAK_CAP = 400;
+export const SHOWN = 60;
+
+/**
+ * Say which spells are not here, in one sentence both pages share. The date is
+ * the point: an id from a link or a saved set that no longer resolves is a story
+ * about two spell files, and the reader should be told which one this is.
+ */
+export const notInFile = ids => ids.length === 1
+  ? `Spell ${ids[0]} is not in this spell file (dated ${META.spell_file_date}) — it may have been removed or renumbered.`
+  : `Spells ${ids.join(', ')} are not in this spell file (dated ${META.spell_file_date}) — they may have been removed or renumbered.`;
+export const notLoaded = ids =>
+  `Could not load spell${ids.length === 1 ? '' : 's'} ${ids.join(', ')} — check your connection and try again.`;
 
 /**
  * @param {string} q                lower-cased query — a name fragment or a spell id
@@ -234,24 +278,32 @@ const matches = (r, q) => /^\d+$/.test(q)
  */
 export function search(q, f) {
   const clsBit = f.cls >= 0 ? (1 << f.cls) : 0;
-  const out = [];
-  for (const r of INDEX) {
+  const numeric = /^\d+$/.test(q), want = numeric ? +q : null;
+  // Two buckets, because the index is in id order. Stopping at a flat 400 hits
+  // and sorting afterwards meant a query with more matches than that — "spirit"
+  // has over 800 — never saw a prefix match past the first 400 ids. The ones it
+  // dropped were the newest spells, which are the ones people come to check.
+  const strong = [], weak = [];
+  for (let i = 0; i < INDEX.length; i++) {
+    const r = INDEX[i];
     if (f.buffsOnly && !lasts(r)) continue;
     if (f.benefOnly && !(r[row.flags] & F_BENEFICIAL)) continue;
     if (f.kinds && !f.kinds.has(META.kinds[r[row.kind]])) continue;
     // a class matches either by learning the spell or by triggering it
     if (clsBit && !((r[row.classMask] | r[row.extMask]) & clsBit)) continue;
     if (f.exclude?.has(r[row.id])) continue;
-    if (!matches(r, q)) continue;
-    out.push(r);
-    if (out.length >= 400) break;
+    if (numeric) {
+      if (r[row.id] === want) strong.push(r);
+      else if (weak.length < WEAK_CAP && String(r[row.id]).startsWith(q)) weak.push(r);
+    } else if (lowerNames[i].startsWith(q)) strong.push(r);
+    else if (weak.length < WEAK_CAP && lowerNames[i].includes(q)) weak.push(r);
   }
-  // exact-ish first, then shortest name, then id
-  out.sort((x, y) => {
-    const a = x[row.name].toLowerCase(), b = y[row.name].toLowerCase();
-    return (a.startsWith(q) ? 0 : 1) - (b.startsWith(q) ? 0 : 1) || a.length - b.length || x[row.id] - y[row.id];
-  });
-  return out.slice(0, 60);
+  // An id typed in full comes first, then the rest in id order: 6273 before
+  // 62730, which sorting by name length did not promise.
+  if (numeric) return [...strong, ...weak.sort((x, y) => x[row.id] - y[row.id])].slice(0, SHOWN);
+  // prefix matches first, then shortest name, then id
+  const byName = (x, y) => x[row.name].length - y[row.name].length || x[row.id] - y[row.id];
+  return [...strong.sort(byName), ...weak.sort(byName)].slice(0, SHOWN);
 }
 
 /**
