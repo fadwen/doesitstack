@@ -395,8 +395,9 @@ A reordered set is not "changed": the ids carry insertion order, which is a disp
 detail, so comparison is order-insensitive rather than crying wolf.
 
 Saved sets never leave the browser they were made in — no account, no server. The **URL
-already carries the whole set**, so that stays the way to move one between machines or send
-it to someone. Storage that is blocked or full is reported rather than silently losing a
+already carries the whole set** — and the caster level, when it is not the cap — so that
+stays the way to move one between machines or send it to someone; both pages have a
+**Copy link** button for it. Storage that is blocked or full is reported rather than silently losing a
 set, and a browser that refuses it entirely still leaves the link in the address bar.
 
 ### Why it will not rank sets
@@ -788,6 +789,7 @@ tools/fetch_items.mjs              the only thing here that touches the network
 tools/serve.mjs                    dependency-free static server for dist/
 web/engine.js                      the stacking rules, pair and set
 web/data.js                        loading and searching the dataset, shared by both pages
+web/ui.js                          the picker, filters, footer and notices both pages draw
 web/app.js                         the pair view
 web/set.js                         the set view — conflicts and shared effects
 web/saved.js                       named sets in browser storage, pure and testable
