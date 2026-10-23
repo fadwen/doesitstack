@@ -50,13 +50,22 @@ function time(seconds) {
  * @param {number} value  the level-scaled value the engine computed
  * @param {object} names  meta.spa_names — Daybreak's naming, for effects that
  *                        reference another effect by number
+ * @param {object} [spell] the spell record, for the few lines that print a field
+ *                        of the spell rather than of the slot — its `extra`, the
+ *                        pet or zone token. Optional: the set page's limiter
+ *                        chips have no spell to give, and need none.
  * @returns {string|null} null where nothing has been ported, so the caller can
  *                        fall back honestly rather than invent a phrasing
  */
-export function phrase(slot, value, names = {}) {
+export function phrase(slot, value, names = {}, spell = null) {
   const { spa, base1, base2, max } = slot;
   const skill = () => fromEnum(SpellSkill, base2);
   const effectName = (n) => names[Math.abs(n)] || `SPA ${Math.abs(n)}`;
+  // The spell file's Extra field, verbatim — "PCPetMagS01L005ElemErf", a zone
+  // token — which is what eqspellparser prints too. Null without a spell, or on
+  // the one spell in the file that carries a pet slot and no name for it, so
+  // those lines say nothing rather than "Summon Pet: ".
+  const extra = spell?.extra || null;
   // The resource taps (178, 457) say which pool the damage comes back as in base2.
   const resource = () => ['HP', 'Mana', 'Endurance'][base2 % 3];
   // Several control effects cap at a target level held in max — eqspellparser's
@@ -224,9 +233,9 @@ export function phrase(slot, value, names = {}) {
     case 158: return pct('Chance to Reflect Spell', base1);
     case 159: return up('All Stats', value);
     case 167: return `Add Pet Proc: [Spell ${base1}]`;
-    // 179 is Instrument Modifier and 145 is Teleport; both read a field that
-    // belongs to the spell, not the slot, and this function only sees the slot.
-    // Better to say nothing and wear the "as-is" badge than to say the wrong thing.
+    // Instrument Modifier prints the spell's Skill field, which the compact record
+    // does not carry — the record has the slot fields and `extra`, nothing else of
+    // the spell. Better to say nothing and wear the "as-is" badge than to guess.
     case 179: return null;
     case 194: return 'Fade (Drop Aggro)';
     case 199: return `Taunt`;
@@ -252,8 +261,7 @@ export function phrase(slot, value, names = {}) {
     case 48:  return up('Poison Resist', value);
     case 49:  return up('Disease Resist', value);
     case 50:  return up('Magic Resist', value);
-    case 145: return null;
-    case 152: return `Summon Pet x${base1} for ${time(max)}`;
+    case 152:return `Summon Pet x${base1} for ${time(max)}`;
     case 161: return `Absorb Spell Damage: ${base1}%`
                    + (base2 > 0 ? `, Max Per Hit: ${base2}` : '') + (max > 0 ? `, Total: ${max}` : '');
     // "Lifetap from Weapon Damage" is the line eqspellparser keeps for spell files
@@ -438,26 +446,37 @@ export function phrase(slot, value, names = {}) {
     case 514: return pct('Max Endurance', base1 / 100);
     case 328: return up('Max Negative HP', value);
     case 243: return pct('Chance of Charm Breaking', -base1);
-    // These read the spell's Extra field — a zone, a pet or a doppelganger name —
-    // which is not in the slot. Kept null for the same reason as 145 and 179.
-    case 83:  return null;
-    case 33:  return null;
-    case 104: return null;
-    case 300: return null;
-    case 71:  return null;
-    case 306: return null;
-    case 88:  return null;
-    case 146: return null;   // Portal Locations: eqspellparser itself returns null
+    // --- lines that print the spell's Extra field ----------------------------
+    // A zone, a pet or a doppelganger token, which the slot does not carry. These
+    // need the spell record, and are null without it — the "as-is" badge rather
+    // than "Teleport to " with nothing after it.
+    case 83:  return extra && `Teleport to ${extra}`;
+    case 33:  return extra && `Summon Pet: ${extra}`;
+    case 104: return extra && `Translocate to ${extra}`;
+    case 300: return extra && `Summon Doppelganger: ${extra}`;
+    case 71:  return extra && `Summon Pet: ${extra}`;
+    case 306: return extra && `Wake the Dead: ${extra} x ${base1} for ${max}s`;
+    case 88:  return extra && `Evacuate to ${extra}`;
+    case 106: return extra && `Summon Warder: ${extra}`;
+    case 145: return extra && `Teleport to ${extra}`;
+    // Portal Locations: the co-ordinates of a teleport spread over several slots.
+    // eqspellparser itself returns null, and there is nothing a slot could say.
+    case 146: return null;
 
     default:  return null;   // not ported — say so rather than guess
   }
 }
 
-/** Which SPAs have a phrasing, for the coverage figure the build reports. */
+/**
+ * Which SPAs have a phrasing, for the coverage figure the build reports. The
+ * probe carries an `extra`, so the lines that print one count as phrased: on the
+ * spell page they always have the record, and the one place that phrases without
+ * it (the set page's limiter chips) never meets these effects.
+ */
 export const PHRASED = (() => {
   const out = new Set();
   const probe = { base1: 1, base2: 1, calc: 100, max: 1 };
   for (let spa = 0; spa <= 600; spa++)
-    if (phrase({ ...probe, spa }, 1, {}) !== null) out.add(spa);
+    if (phrase({ ...probe, spa }, 1, {}, { extra: 'x' }) !== null) out.add(spa);
   return out;
 })();

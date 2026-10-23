@@ -83,7 +83,7 @@ test('coverage is wide enough to be worth offering', () => {
 
 test('every phrasing is a non-empty string', () => {
   for (const spa of PHRASED) {
-    const out = phrase(slot(spa, 1, 1, 1), 1, {});
+    const out = phrase(slot(spa, 1, 1, 1), 1, {}, { extra: 'x' });
     assert.equal(typeof out, 'string', `SPA ${spa} returned ${typeof out}`);
     assert.ok(out.trim().length > 0, `SPA ${spa} phrased to an empty string`);
     assert.doesNotMatch(out, /undefined|NaN|\[object/, `SPA ${spa} phrased to "${out}"`);
@@ -143,11 +143,13 @@ test('under a second, a stun is only an interrupt', () => {
 });
 
 test('an effect that needs a field of the spell says nothing, rather than the wrong thing', () => {
-  // Instrument Modifier reads the spell's skill and Teleport reads its zone
-  // string. Neither is in the slot, which is all this function is given, so both
-  // fall back to the exact name and carry the "as-is" badge.
+  // Instrument Modifier reads the spell's skill, which the record does not carry,
+  // so it falls back to the exact name and the "as-is" badge whatever it is given.
+  // Teleport reads the zone token: null without the spell, the line with it.
   assert.equal(phrase(slot(179, 200), 200), null);
+  assert.equal(phrase(slot(179, 200), 200, {}, { extra: 'x', skill: 41 }), null);
   assert.equal(phrase(slot(145, 1), 1), null);
+  assert.equal(phrase(slot(145, 1), 1, {}, { extra: 'northkarana' }), 'Teleport to northkarana');
 });
 
 test('the second batch of written-not-ported lines matches the source too', () => {
@@ -308,10 +310,42 @@ test('every effect ported from the worklist reads as its source line does', () =
     assert.equal(phrase({ spa, base1, base2, max, calc }, value, {}), want, `SPA ${spa}`);
 });
 
-test('an effect that names a zone or a pet from the spell record stays unphrased', () => {
-  // Portal, Spawn NPC, Translocate, Doppelganger, Create Undead, Wake the Dead
-  // and Combat Portal all print the spell's Extra field, which the slot does
-  // not carry. Said so in the switch rather than left to the default.
-  for (const spa of [83, 33, 104, 300, 71, 306, 88, 146])
-    assert.equal(phrase(slot(spa, 1, 1, 1), 1), null, `SPA ${spa}`);
+// --- the lines that print a field of the spell -------------------------------
+
+const EXTRA = [
+  [83, 'Teleport to northkarana'],
+  [33, 'Summon Pet: PCPetMagS01L005ElemErf'],
+  [104, 'Translocate to northkarana'],
+  [300, 'Summon Doppelganger: PCPetMagS01L005ElemErf'],
+  [71, 'Summon Pet: PCPetMagS01L005ElemErf'],
+  [88, 'Evacuate to northkarana'],
+  [106, 'Summon Warder: PCPetMagS01L005ElemErf'],
+  [145, 'Teleport to northkarana'],
+];
+
+test('an effect that names a zone or a pet prints the spell\'s Extra field, verbatim', () => {
+  // Portal, Spawn NPC, Translocate, Doppelganger, Create Undead, Combat Portal,
+  // the warder and the banish all print Extra as the file has it — a pet token
+  // or a zone short name — which is what eqspellparser prints too.
+  for (const [spa, want] of EXTRA) {
+    const extra = want.split(/[: ]/).pop();
+    assert.equal(phrase(slot(spa, 1, 1, 1), 1, {}, { extra }), want, `SPA ${spa}`);
+  }
+  assert.equal(phrase(slot(306, 5, 0, 90), 5, {}, { extra: 'animateDead28' }),
+    'Wake the Dead: animateDead28 x 5 for 90s');
+});
+
+test('and says nothing without the spell, or when the spell has no Extra', () => {
+  // The set page phrases limiter chips with no spell to hand; these effects never
+  // appear there, but a slot without its spell must still fall back honestly.
+  // One spell in the file carries a pet slot and an empty Extra, and "Summon
+  // Pet: " is not a phrasing.
+  for (const [spa] of EXTRA) {
+    assert.equal(phrase(slot(spa, 1, 1, 1), 1), null, `SPA ${spa} without a spell`);
+    assert.equal(phrase(slot(spa, 1, 1, 1), 1, {}, {}), null, `SPA ${spa} with no extra`);
+    assert.equal(phrase(slot(spa, 1, 1, 1), 1, {}, { extra: '' }), null, `SPA ${spa} with an empty extra`);
+  }
+  // Portal Locations spreads a teleport's co-ordinates over several slots.
+  // eqspellparser returns null for it, and so does this, spell or no spell.
+  assert.equal(phrase(slot(146, 1, 1, 1), 1, {}, { extra: 'x' }), null);
 });
