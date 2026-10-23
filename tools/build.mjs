@@ -10,7 +10,8 @@
 // item dump; if vendor/items.txt is absent the build simply carries no item tags.
 //
 // Outputs:
-//   dist/index.html, app.js, engine.js, spa.js, style.css
+//   dist/*                    every html/css/js/png/svg/ico/webp/txt/xml under web/,
+//                             placeholders filled
 //   dist/data/meta.json       SPA names, ignore list, build stamp
 //   dist/data/index.json      one small row per spell, for the search box
 //   dist/data/spells/NN.json  full spell records, fetched only for the pair you pick

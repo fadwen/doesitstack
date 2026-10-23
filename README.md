@@ -628,8 +628,11 @@ vendor/items.txt                   which item casts which spell — items.sodeq.
 Optional, gitignored, and fetched by `npm run fetch` rather than by the build. Its 315
 columns are read **by name**, so the collector adding or reordering columns cannot shift
 the data underneath us; a *renamed* column is a hard build failure rather than silently
-wrong tags. Only spells present in the current spell file get tagged, which is what makes
-stale item data produce fewer tags instead of tags pointing nowhere.
+wrong tags. A row whose width does not match the header — an item name with a `|` in it
+does that — is skipped and counted rather than read into the wrong columns; the build
+says how many, and more than one in a hundred fails it. Only spells present in the
+current spell file get tagged, which is what makes stale item data produce fewer tags
+instead of tags pointing nowhere.
 
 A card names three items; "and N other items" opens the rest, grouped by how each item
 grants the spell. That list ships with the site rather than linking to a SoDeq search,
@@ -694,6 +697,7 @@ Node 20+ is the only prerequisite — no dependencies to install.
 npm run fetch                 # item database — downloads only if it changed (~8 MB)
 npm run build                 # auto-detects the usual Windows install paths
 node tools/build.mjs --eq-dir "C:/Users/Public/Daybreak Game Company/Installed Games/EverQuest"
+EQ_DIR="D:/Games/EverQuest" npm run build        # or point every tool at it at once
 
 npm run serve                 # builds, then serves dist/ on http://localhost:8000
 ```

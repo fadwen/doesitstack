@@ -38,9 +38,9 @@ build` must stay offline and deterministic — CI cannot depend on a third party
 and two builds from the same inputs must produce the same `dist/`. A test enforces the offline half.
 
 **Third-party dump columns are resolved by name.** `tools/items.mjs` reads 11 of the item
-dump's 315 columns by header name, never by position, and throws on a column it cannot
-find. Positional parsing of someone else's export is wrong the moment they add a field,
-and wrong silently.
+dump's 315 columns by header name, never by position, throws on a column it cannot find,
+and skips (and counts) a row whose width does not match the header. Positional parsing
+of someone else's export is wrong the moment they add a field, and wrong silently.
 
 **Item tags are additive, not a classification.** A spell can be scribed *and* be a
 clicky; an AA can also be a proc; one spell can be a click on one item and a proc on
